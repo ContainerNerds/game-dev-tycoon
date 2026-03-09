@@ -12,6 +12,7 @@ import PressTab from '@/components/game/tabs/PressTab';
 import StaffTab from '@/components/game/tabs/StaffTab';
 import OfficeTab from '@/components/game/tabs/OfficeTab';
 import DevelopmentPanel from '@/components/game/DevelopmentPanel';
+import GameManagementPanel from '@/components/game/GameManagementPanel';
 import { useGameTick } from '@/lib/game/useGameTick';
 import { useGameStore } from '@/lib/store/gameStore';
 import BankruptcyScreen from '@/components/screens/BankruptcyScreen';
@@ -25,6 +26,7 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
 
   const isBankrupt = useGameStore((s) => s.isBankrupt);
   const gameInDev = useGameStore((s) => s.gameInDevelopment);
+  const currentGame = useGameStore((s) => s.currentGame);
 
   if (isBankrupt) {
     return <BankruptcyScreen onRestart={onQuit} />;
@@ -34,8 +36,8 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
     <div className="flex flex-col h-screen bg-slate-900 text-white">
       <StudioHeader />
 
-      {/* Development progress bar when a game is in dev */}
       {gameInDev && <DevelopmentPanel />}
+      {currentGame && currentGame.phase !== 'retired' && <GameManagementPanel />}
 
       <div className="flex-1 overflow-hidden">
         <Tabs defaultValue="delivery" className="h-full flex flex-col">
