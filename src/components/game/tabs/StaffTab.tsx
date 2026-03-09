@@ -29,10 +29,15 @@ export default function StaffTab() {
   const staffContributions = useGameStore((s) => s.staffContributions);
   const office = useGameStore((s) => s.office);
   const money = useGameStore((s) => s.money);
+  const calendar = useGameStore((s) => s.calendar);
+  const lastRefresh = useGameStore((s) => s.lastCandidateRefreshDay);
   const spendMoney = useGameStore((s) => s.spendMoney);
   const setCandidatePool = useGameStore((s) => s.setCandidatePool);
   const hireEmployee = useGameStore((s) => s.hireEmployee);
   const fireEmployee = useGameStore((s) => s.fireEmployee);
+
+  const currentDay = calendar.day + (calendar.month - 1) * 30 + (calendar.year - 2040) * 360;
+  const daysUntilRefresh = Math.max(0, 7 - (currentDay - lastRefresh) % 7);
 
   const handleRefreshPool = () => {
     if (spendMoney(EMPLOYEE_CONFIG.refreshPoolCost)) {
@@ -176,9 +181,14 @@ export default function StaffTab() {
       {/* Candidate pool */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Candidates
-          </h4>
+          <div className="flex items-center gap-3">
+            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Candidates
+            </h4>
+            <span className="text-xs text-muted-foreground">
+              Auto-refresh in {daysUntilRefresh} day{daysUntilRefresh !== 1 ? 's' : ''}
+            </span>
+          </div>
           <Button
             size="sm"
             variant="outline"

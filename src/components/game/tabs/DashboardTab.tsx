@@ -44,7 +44,8 @@ export default function DashboardTab() {
   const serverCount = currentGame?.servers.length ?? 0;
   const serverMonthlyCost = currentGame ? getTotalMonthlyCost(currentGame.servers) : 0;
   const totalCapacity = currentGame?.servers.reduce((sum, s) => sum + s.capacity, 0) ?? 0;
-  const serverLoad = totalCapacity > 0 ? (totalPlayers / totalCapacity) * 100 : 0;
+  const isMP = currentGame?.mode === 'multiplayer';
+  const serverLoad = isMP && totalCapacity > 0 ? (totalPlayers / totalCapacity) * 100 : 0;
   const capacityByRegion = currentGame ? getTotalCapacityByRegion(currentGame.servers) : {};
   const activeRegions = Object.keys(capacityByRegion).length;
 
@@ -129,7 +130,7 @@ export default function DashboardTab() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Employees</span>
-              <span>{employees.length}/{office.maxSeats}</span>
+              <span>{employees.filter(e => !e.isPlayer).length}/{office.maxSeats} + you</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Monthly Salaries</span>
@@ -170,15 +171,22 @@ export default function DashboardTab() {
               <span className="text-muted-foreground">Total Capacity</span>
               <span>{totalCapacity.toLocaleString()} players</span>
             </div>
-            <div className="space-y-1">
+            {isMP ? (
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Server Load</span>
+                  <span className={serverLoad > 90 ? 'text-red-400' : serverLoad > 70 ? 'text-yellow-400' : 'text-green-400'}>
+                    {serverLoad.toFixed(1)}%
+                  </span>
+                </div>
+                <Progress value={Math.min(100, serverLoad)} className={`h-2 ${serverLoad > 90 ? '[&>div]:bg-red-500' : ''}`} />
+              </div>
+            ) : (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Server Load</span>
-                <span className={serverLoad > 90 ? 'text-red-400' : serverLoad > 70 ? 'text-yellow-400' : 'text-green-400'}>
-                  {serverLoad.toFixed(1)}%
-                </span>
+                <span className="text-muted-foreground/60">N/A (Single Player)</span>
               </div>
-              <Progress value={Math.min(100, serverLoad)} className={`h-2 ${serverLoad > 90 ? '[&>div]:bg-red-500' : ''}`} />
-            </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Compute Cost</span>
               <span className="text-red-400 font-mono">${serverMonthlyCost.toLocaleString()}/mo</span>

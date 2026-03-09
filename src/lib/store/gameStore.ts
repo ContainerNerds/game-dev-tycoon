@@ -82,6 +82,8 @@ export function createInitialState(studioName: string, playerName: string, start
     calendar: createInitialCalendar(),
     dailyRates: { moneyPerDay: 0, fansPerDay: 0, rpPerDay: 0 },
     staffContributions: [],
+    monthlyReports: [],
+    lastCandidateRefreshDay: 0,
     _dayAccMoney: 0,
     _dayAccFans: 0,
     _dayAccRP: 0,
@@ -164,6 +166,8 @@ interface GameActions {
   addCompletedGame: (summary: GameSummary) => void;
   setBankrupt: () => void;
   trackDailyRate: (moneyDelta: number, fansDelta: number, rpDelta: number) => void;
+  pushMonthlyReport: (report: MonthlyReport) => void;
+  refreshCandidatePool: () => void;
   updateStaffContributions: (contributions: import('@/lib/game/types').StaffContribution[]) => void;
 
   // Full state replacement (for load)
@@ -216,6 +220,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       calendar: state.calendar,
       dailyRates: state.dailyRates,
       staffContributions: state.staffContributions,
+      monthlyReports: state.monthlyReports,
+      lastCandidateRefreshDay: state.lastCandidateRefreshDay,
       _dayAccMoney: 0,
       _dayAccFans: 0,
       _dayAccRP: 0,
@@ -243,7 +249,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (cal.day > daysInCurrentMonth) {
         cal.day = 1;
         cal.monthEndPending = true;
-        cal.speed = 0; // auto-pause at month end
         cal.month += 1;
 
         if (cal.month > 12) {
@@ -656,6 +661,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   }),
 
   updateStaffContributions: (contributions) => set({ staffContributions: contributions }),
+
+  pushMonthlyReport: (report) => set((s) => ({
+    monthlyReports: [...s.monthlyReports, report],
+  })),
+
+  refreshCandidatePool: () => set((s) => ({
+    lastCandidateRefreshDay: s.calendar.day + (s.calendar.month - 1) * 30 + (s.calendar.year - 2040) * 360,
+  })),
 
   // ----------------------------------------------------------
   // Full state replacement

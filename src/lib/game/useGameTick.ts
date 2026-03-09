@@ -10,7 +10,6 @@ export function useGameTick(): void {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const speed = useGameStore((s) => s.calendar.speed);
-  const monthEndPending = useGameStore((s) => s.calendar.monthEndPending);
 
   useEffect(() => {
     if (intervalRef.current) {
@@ -18,7 +17,7 @@ export function useGameTick(): void {
       intervalRef.current = null;
     }
 
-    if (speed === 0 || monthEndPending) return;
+    if (speed === 0) return;
 
     const ms = CALENDAR_CONFIG.msPerTickBySpeed[speed as Exclude<GameSpeed, 0>];
     if (!ms || ms === Infinity) return;
@@ -34,5 +33,5 @@ export function useGameTick(): void {
         intervalRef.current = null;
       }
     };
-  }, [speed, monthEndPending]);
+  }, [speed]);
 }

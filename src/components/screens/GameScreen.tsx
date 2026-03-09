@@ -2,7 +2,6 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StudioHeader from '@/components/game/StudioHeader';
-import MonthEndModal from '@/components/game/MonthEndModal';
 import DevMenu from '@/components/game/DevMenu';
 import DashboardTab from '@/components/game/tabs/DashboardTab';
 import UpgradesTab from '@/components/game/tabs/UpgradesTab';
@@ -12,6 +11,7 @@ import DeliveryTab from '@/components/game/tabs/DeliveryTab';
 import PressTab from '@/components/game/tabs/PressTab';
 import StaffTab from '@/components/game/tabs/StaffTab';
 import OfficeTab from '@/components/game/tabs/OfficeTab';
+import FinancesTab from '@/components/game/tabs/FinancesTab';
 import DevelopmentPanel from '@/components/game/DevelopmentPanel';
 import GameManagementPanel from '@/components/game/GameManagementPanel';
 import NewProjectPanel from '@/components/game/NewProjectPanel';
@@ -46,6 +46,7 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
         <Tabs defaultValue="dashboard" className="h-full flex flex-col">
           <TabsList className="w-full justify-start rounded-none border-b border-border bg-background px-4 shrink-0">
             <TabsTrigger value="dashboard" className="cursor-pointer">Dashboard</TabsTrigger>
+            <TabsTrigger value="finances" className="cursor-pointer">Finances</TabsTrigger>
             <TabsTrigger value="delivery" className="cursor-pointer">Delivery</TabsTrigger>
             <TabsTrigger value="upgrades" className="cursor-pointer">Upgrades</TabsTrigger>
             <TabsTrigger value="bugs" className="cursor-pointer">Bugs</TabsTrigger>
@@ -57,6 +58,7 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
 
           <div className="flex-1 overflow-y-auto min-h-0">
             <TabsContent value="dashboard" className="mt-0"><DashboardTab /></TabsContent>
+            <TabsContent value="finances" className="mt-0"><FinancesTab /></TabsContent>
             <TabsContent value="delivery" className="mt-0"><DeliveryTab /></TabsContent>
             <TabsContent value="upgrades" className="mt-0"><UpgradesTab /></TabsContent>
             <TabsContent value="bugs" className="mt-0"><BugsTab /></TabsContent>
@@ -68,7 +70,6 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
         </Tabs>
       </div>
 
-      <MonthEndModal />
       <DevMenu />
     </div>
   );

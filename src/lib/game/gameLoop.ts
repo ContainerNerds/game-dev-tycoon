@@ -1,4 +1,4 @@
-import type { GameStore } from '@/lib/store/gameStore';
+import { useGameStore, type GameStore } from '@/lib/store/gameStore';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
 import {
@@ -10,7 +10,7 @@ import {
 import { calculateFanConversion } from './fanSystem';
 import { getLoadByRegion, isRegionOverloaded, calculatePlayerLossFromOverload } from './serverSystem';
 import { buildMonthlyReport, getTotalMonthlyCosts } from './calendarSystem';
-import { getEmployeePillarContribution, getBugChancePerContribution } from './employeeSystem';
+import { getEmployeePillarContribution, getBugChancePerContribution, generateCandidatePool } from './employeeSystem';
 import type { Bug, BugSeverity, RegionId, StaffContribution } from './types';
 
 function generateBugId(): string {
@@ -80,17 +80,26 @@ function pickWeightedRegion(weights: Record<string, number>): string {
 export function processTick(store: GameStore): void {
   const state = store;
 
-  if (state.calendar.speed === 0 || state.calendar.monthEndPending) return;
+  if (state.calendar.speed === 0) return;
   if (state.isBankrupt) return;
 
   // 1. Advance calendar
   store.advanceTick();
 
-  // Check if month-end was triggered by advanceTick
-  const calAfter = store.calendar;
-  if (calAfter.monthEndPending) {
-    handleMonthEnd(store);
+  // Re-read fresh state after advanceTick mutated the store
+  const fresh = useGameStore.getState();
+  if (fresh.calendar.monthEndPending) {
+    handleMonthEnd(fresh as GameStore);
     return;
+  }
+
+  // Weekly candidate pool refresh (every 7 days at hour 0)
+  if (fresh.calendar.hour === 0 && fresh.calendar.day % 7 === 1) {
+    const currentDay = fresh.calendar.day + (fresh.calendar.month - 1) * 30 + (fresh.calendar.year - 2040) * 360;
+    if (currentDay > fresh.lastCandidateRefreshDay) {
+      store.setCandidatePool(generateCandidatePool());
+      store.refreshCandidatePool();
+    }
   }
 
   // 2. Development progress via employee contributions (only dev-assigned employees)
@@ -353,7 +362,18 @@ export function processTick(store: GameStore): void {
       store.addResearchPoints(researchPerTick);
     }
 
-    store.trackDailyRate(tickRevenue, newGameFans + newStudioFans, researchPerTick);
+    const monthlyCosts = getTotalMonthlyCosts(state);
+    const hourlyCostRate = monthlyCosts / (30 * 24);
+    store.trackDailyRate(tickRevenue - hourlyCostRate, newGameFans + newStudioFans, researchPerTick);
+  }
+
+  // If no active game, still track costs in daily rate
+  if (!game || game.phase === 'retired') {
+    const monthlyCosts = getTotalMonthlyCosts(state);
+    if (monthlyCosts > 0) {
+      const hourlyCostRate = monthlyCosts / (30 * 24);
+      store.trackDailyRate(-hourlyCostRate, 0, 0);
+    }
   }
 
   // 4. Bankruptcy check
@@ -373,7 +393,6 @@ function handleMonthEnd(store: GameStore): void {
     });
     report.income = state.currentGame.totalRevenue;
 
-    // Snapshot monthly metrics for the popularity chart
     const totalPlayers = state.currentGame.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0);
     const totalSold = state.currentGame.platformReleases.reduce((sum, p) => sum + p.totalCopiesSold, 0);
     const prevSold = state.currentGame.monthlyHistory.length > 0
@@ -399,5 +418,7 @@ function handleMonthEnd(store: GameStore): void {
   const totalCosts = getTotalMonthlyCosts(state);
   store.spendMoney(totalCosts);
 
-  store.setMonthEndReport(report);
+  // Push to history and dismiss — no pause, no modal
+  store.pushMonthlyReport(report);
+  store.dismissMonthEnd();
 }

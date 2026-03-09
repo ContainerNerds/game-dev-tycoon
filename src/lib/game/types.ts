@@ -359,6 +359,8 @@ export interface StudioState {
 
   dailyRates: DailyRates;
   staffContributions: StaffContribution[];
+  monthlyReports: MonthlyReport[];
+  lastCandidateRefreshDay: number;
 
   _dayAccMoney: number;
   _dayAccFans: number;
