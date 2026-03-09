@@ -104,6 +104,17 @@ export interface DailyRates {
   rpPerDay: number;
 }
 
+export interface StaffContribution {
+  employeeId: string;
+  employeeName: string;
+  graphics: number;
+  gameplay: number;
+  sound: number;
+  polish: number;
+  bugsIntroduced: number;
+  bugsFixed: number;
+}
+
 // ============================================================
 // Bugs
 // ============================================================
@@ -329,7 +340,8 @@ export interface StudioState {
   calendar: CalendarState;
 
   dailyRates: DailyRates;
-  // Accumulators reset each game-day (24 ticks) to compute rates
+  staffContributions: StaffContribution[];
+
   _dayAccMoney: number;
   _dayAccFans: number;
   _dayAccRP: number;

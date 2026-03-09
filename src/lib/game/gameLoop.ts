@@ -11,7 +11,7 @@ import { calculateFanConversion } from './fanSystem';
 import { getLoadByRegion, isRegionOverloaded, calculatePlayerLossFromOverload } from './serverSystem';
 import { buildMonthlyReport, getTotalMonthlyCosts } from './calendarSystem';
 import { getEmployeePillarContribution, getBugChancePerContribution } from './employeeSystem';
-import type { Bug, BugSeverity, RegionId } from './types';
+import type { Bug, BugSeverity, RegionId, StaffContribution } from './types';
 
 function generateBugId(): string {
   return `bug-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -97,6 +97,17 @@ export function processTick(store: GameStore): void {
   const devEmployees = state.employees.filter((e) => e.assignment === 'development');
   const bugfixEmployees = state.employees.filter((e) => e.assignment === 'bugfix');
 
+  // Build contribution tracker map
+  const contribMap = new Map<string, StaffContribution>();
+  for (const emp of state.employees) {
+    contribMap.set(emp.id, {
+      employeeId: emp.id,
+      employeeName: emp.name,
+      graphics: 0, gameplay: 0, sound: 0, polish: 0,
+      bugsIntroduced: 0, bugsFixed: 0,
+    });
+  }
+
   if (state.gameInDevelopment && state.gameInDevelopment.progressPercent < 100) {
     const dev = state.gameInDevelopment;
     const crunchMultiplier = dev.isCrunching ? GAME_CONFIG.crunchSpeedMultiplier : 1;
@@ -105,17 +116,20 @@ export function processTick(store: GameStore): void {
       for (const emp of devEmployees) {
         const contrib = getEmployeePillarContribution(emp);
         const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
+        const c = contribMap.get(emp.id)!;
 
         for (const pillar of pillars) {
           const points = contrib[pillar] * crunchMultiplier * 0.1;
           if (points > 0) {
             store.contributePillarPoints(pillar, points);
+            c[pillar] += points;
           }
         }
 
         const bugChance = getBugChancePerContribution(emp) * (dev.isCrunching ? 1.5 : 1);
         if (Math.random() < bugChance) {
           store.addDevBugs(1);
+          c.bugsIntroduced += 1;
         }
       }
     } else {
@@ -135,9 +149,34 @@ export function processTick(store: GameStore): void {
       const oldestBug = state.currentGame.bugs[0];
       if (oldestBug) {
         store.removeBug(oldestBug.id);
+        // Credit bug fix to the highest-devel bugfix employee
+        const bestFixer = bugfixEmployees.sort((a, b) => b.skills.devel - a.skills.devel)[0];
+        if (bestFixer) {
+          const c = contribMap.get(bestFixer.id);
+          if (c) c.bugsFixed += 1;
+        }
       }
     }
   }
+
+  // Update staff contributions (accumulated across ticks, blended with previous)
+  const newContribs = Array.from(contribMap.values());
+  const prevContribs = state.staffContributions;
+  const blendFactor = 0.95;
+  const merged = newContribs.map((nc) => {
+    const prev = prevContribs.find((p) => p.employeeId === nc.employeeId);
+    if (!prev) return nc;
+    return {
+      ...nc,
+      graphics: prev.graphics * blendFactor + nc.graphics,
+      gameplay: prev.gameplay * blendFactor + nc.gameplay,
+      sound: prev.sound * blendFactor + nc.sound,
+      polish: prev.polish * blendFactor + nc.polish,
+      bugsIntroduced: prev.bugsIntroduced * blendFactor + nc.bugsIntroduced,
+      bugsFixed: prev.bugsFixed * blendFactor + nc.bugsFixed,
+    };
+  });
+  store.updateStaffContributions(merged);
 
   // 3. Active game processing — accumulate all mutations locally, write once
   const game = state.currentGame;

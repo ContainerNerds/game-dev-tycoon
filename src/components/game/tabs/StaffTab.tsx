@@ -26,6 +26,7 @@ const SKILL_LABELS: Record<string, string> = {
 export default function StaffTab() {
   const employees = useGameStore((s) => s.employees);
   const candidatePool = useGameStore((s) => s.candidatePool);
+  const staffContributions = useGameStore((s) => s.staffContributions);
   const office = useGameStore((s) => s.office);
   const money = useGameStore((s) => s.money);
   const spendMoney = useGameStore((s) => s.spendMoney);
@@ -76,6 +77,45 @@ export default function StaffTab() {
           </CardContent>
         </Card>
       )}
+
+      {/* Staff Contributions */}
+      {staffContributions.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Contributions (recent)
+          </h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border text-muted-foreground">
+                  <th className="text-left py-1.5 pr-3">Employee</th>
+                  <th className="text-right px-2">Graphics</th>
+                  <th className="text-right px-2">Gameplay</th>
+                  <th className="text-right px-2">Sound</th>
+                  <th className="text-right px-2">Polish</th>
+                  <th className="text-right px-2">Bugs+</th>
+                  <th className="text-right pl-2">Fixed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {staffContributions.filter((c) => c.graphics + c.gameplay + c.sound + c.polish + c.bugsFixed > 0.01).map((c) => (
+                  <tr key={c.employeeId} className="border-b border-border/50">
+                    <td className="py-1.5 pr-3 font-medium">{c.employeeName}</td>
+                    <td className="text-right px-2 text-pink-400">{c.graphics.toFixed(1)}</td>
+                    <td className="text-right px-2 text-blue-400">{c.gameplay.toFixed(1)}</td>
+                    <td className="text-right px-2 text-green-400">{c.sound.toFixed(1)}</td>
+                    <td className="text-right px-2 text-yellow-400">{c.polish.toFixed(1)}</td>
+                    <td className="text-right px-2 text-red-400">{c.bugsIntroduced > 0.1 ? c.bugsIntroduced.toFixed(0) : '-'}</td>
+                    <td className="text-right pl-2 text-emerald-400">{c.bugsFixed > 0.1 ? c.bugsFixed.toFixed(0) : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <Separator />
 
       {/* Current employees */}
       {employees.length > 0 && (

@@ -81,6 +81,7 @@ export function createInitialState(studioName: string, playerName: string, start
     office: createInitialOffice(),
     calendar: createInitialCalendar(),
     dailyRates: { moneyPerDay: 0, fansPerDay: 0, rpPerDay: 0 },
+    staffContributions: [],
     _dayAccMoney: 0,
     _dayAccFans: 0,
     _dayAccRP: 0,
@@ -157,6 +158,7 @@ interface GameActions {
   addCompletedGame: (summary: GameSummary) => void;
   setBankrupt: () => void;
   trackDailyRate: (moneyDelta: number, fansDelta: number, rpDelta: number) => void;
+  updateStaffContributions: (contributions: import('@/lib/game/types').StaffContribution[]) => void;
 
   // Full state replacement (for load)
   setState: (state: StudioState) => void;
@@ -207,6 +209,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       office: state.office,
       calendar: state.calendar,
       dailyRates: state.dailyRates,
+      staffContributions: state.staffContributions,
       _dayAccMoney: 0,
       _dayAccFans: 0,
       _dayAccRP: 0,
@@ -590,6 +593,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       _dayTickCounter: counter,
     };
   }),
+
+  updateStaffContributions: (contributions) => set({ staffContributions: contributions }),
 
   // ----------------------------------------------------------
   // Full state replacement
