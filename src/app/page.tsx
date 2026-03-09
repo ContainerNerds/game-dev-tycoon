@@ -1,7 +1,15 @@
+'use client';
+
+import { useState } from 'react';
+import MainMenu from '@/components/screens/MainMenu';
+import GameScreen from '@/components/screens/GameScreen';
+
 export default function Home() {
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <h1 className="text-4xl font-bold">Game Dev Tycoon</h1>
-    </main>
-  );
+  const [inGame, setInGame] = useState(false);
+
+  if (inGame) {
+    return <GameScreen onQuit={() => setInGame(false)} />;
+  }
+
+  return <MainMenu onStartGame={() => setInGame(true)} />;
 }
