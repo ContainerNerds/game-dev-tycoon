@@ -9,8 +9,8 @@ import {
 } from './calculations';
 import { calculateFanConversion } from './fanSystem';
 import { getLoadByRegion, isRegionOverloaded, calculatePlayerLossFromOverload } from './serverSystem';
-import { calculateDevProgressPerTick } from './developmentSystem';
 import { buildMonthlyReport, getTotalMonthlyCosts } from './calendarSystem';
+import { getEmployeePillarContribution, getBugChancePerContribution } from './employeeSystem';
 import type { Bug, BugSeverity } from './types';
 
 function generateBugId(): string {
@@ -68,19 +68,35 @@ export function processTick(store: GameStore): void {
     return;
   }
 
-  // 2. Development progress
-  if (state.gameInDevelopment) {
-    const progress = calculateDevProgressPerTick(state);
-    store.updateDevProgress(progress);
+  // 2. Development progress via employee contributions
+  if (state.gameInDevelopment && state.gameInDevelopment.progressPercent < 100) {
+    const dev = state.gameInDevelopment;
+    const crunchMultiplier = dev.isCrunching ? GAME_CONFIG.crunchSpeedMultiplier : 1;
 
-    // Accumulate crunch bug penalty
-    if (state.gameInDevelopment.isCrunching) {
-      const currentDev = store.gameInDevelopment;
-      if (currentDev) {
-        // This is handled via the store's updateDevProgress — crunch penalty
-        // is tracked on the GameInDev object. We update it here since
-        // updateDevProgress only handles the progress number.
-        // We'll handle this by directly updating through setState pattern
+    if (state.employees.length > 0) {
+      for (const emp of state.employees) {
+        const contrib = getEmployeePillarContribution(emp);
+        const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
+
+        for (const pillar of pillars) {
+          const points = contrib[pillar] * crunchMultiplier * 0.1;
+          if (points > 0) {
+            store.contributePillarPoints(pillar, points);
+          }
+        }
+
+        // Each contribution has a chance to introduce bugs
+        const bugChance = getBugChancePerContribution(emp) * (dev.isCrunching ? 1.5 : 1);
+        if (Math.random() < bugChance) {
+          store.addDevBugs(1);
+        }
+      }
+    } else {
+      // Solo dev in garage — slow baseline progress
+      const soloRate = GAME_CONFIG.baseDevProgressPerTick * 0.3 * crunchMultiplier;
+      const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
+      for (const pillar of pillars) {
+        store.contributePillarPoints(pillar, soloRate);
       }
     }
   }

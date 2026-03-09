@@ -15,6 +15,13 @@ const SPEED_OPTIONS: { speed: GameSpeed; label: string; icon: React.ReactNode }[
   { speed: 4, label: '4x', icon: <SkipForward className="h-3.5 w-3.5" /> },
 ];
 
+const SPEED_LABELS: Record<GameSpeed, string> = {
+  0: 'Paused',
+  1: '1x',
+  2: '2x',
+  4: '4x',
+};
+
 export default function StudioHeader() {
   const studioName = useGameStore((s) => s.studioName);
   const money = useGameStore((s) => s.money);
@@ -28,11 +35,13 @@ export default function StudioHeader() {
   const currentGame = useGameStore((s) => s.currentGame);
   const gameInDev = useGameStore((s) => s.gameInDevelopment);
 
-  return (
-    <header className="flex items-center gap-4 border-b border-slate-700 bg-slate-900/95 px-4 py-2 backdrop-blur">
-      <div className="font-bold text-white text-lg">{studioName}</div>
+  const speedLabel = SPEED_LABELS[speed];
 
-      <Separator orientation="vertical" className="h-6 bg-slate-700" />
+  return (
+    <header className="flex items-center gap-4 border-b border-border bg-card px-4 py-2 shrink-0">
+      <div className="font-bold text-foreground text-lg">{studioName}</div>
+
+      <Separator orientation="vertical" className="h-6" />
 
       <div className="flex items-center gap-4 text-sm">
         <div className="text-green-400 font-mono">
@@ -46,10 +55,9 @@ export default function StudioHeader() {
         </div>
       </div>
 
-      <Separator orientation="vertical" className="h-6 bg-slate-700" />
+      <Separator orientation="vertical" className="h-6" />
 
-      {/* Game status */}
-      <div className="text-sm text-slate-400">
+      <div className="text-sm text-muted-foreground">
         {gameInDev && (
           <span>
             Developing: <span className="text-yellow-400">{gameInDev.name}</span>
@@ -66,18 +74,26 @@ export default function StudioHeader() {
           </span>
         )}
         {!gameInDev && !currentGame && (
-          <span className="text-slate-500">No active project</span>
+          <span className="text-muted-foreground/50">No active project</span>
         )}
       </div>
 
       <div className="ml-auto flex items-center gap-3">
-        {/* Calendar */}
-        <div className="text-sm font-mono text-slate-300">
-          {formatDate(calendar)}
+        {/* Calendar with Day/Hour */}
+        <div className="text-sm font-mono text-foreground">
+          <span>{formatDate(calendar)}</span>
+          <span className="text-muted-foreground ml-2">
+            Day {calendar.day}, {String(calendar.hour).padStart(2, '0')}:00
+          </span>
         </div>
 
-        {/* Speed controls */}
-        <div className="flex items-center gap-1">
+        <Separator orientation="vertical" className="h-6" />
+
+        {/* Speed controls + label */}
+        <div className="flex items-center gap-1.5">
+          <span className={`text-xs font-semibold min-w-[3.5rem] text-center ${speed === 0 ? 'text-yellow-400' : 'text-green-400'}`}>
+            {speedLabel}
+          </span>
           {SPEED_OPTIONS.map((opt) => (
             <Button
               key={opt.speed}

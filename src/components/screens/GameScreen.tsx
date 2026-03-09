@@ -1,9 +1,10 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import StudioHeader from '@/components/game/StudioHeader';
 import MonthEndModal from '@/components/game/MonthEndModal';
+import DevMenu from '@/components/game/DevMenu';
+import DashboardTab from '@/components/game/tabs/DashboardTab';
 import UpgradesTab from '@/components/game/tabs/UpgradesTab';
 import BugsTab from '@/components/game/tabs/BugsTab';
 import ResearchTab from '@/components/game/tabs/ResearchTab';
@@ -33,15 +34,16 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-slate-900 text-white">
+    <div className="flex flex-col h-screen bg-background text-foreground">
       <StudioHeader />
 
       {gameInDev && <DevelopmentPanel />}
       {currentGame && currentGame.phase !== 'retired' && <GameManagementPanel />}
 
-      <div className="flex-1 overflow-hidden">
-        <Tabs defaultValue="delivery" className="h-full flex flex-col">
-          <TabsList className="w-full justify-start rounded-none border-b border-slate-700 bg-slate-900 px-4">
+      <div className="flex-1 min-h-0">
+        <Tabs defaultValue="dashboard" className="h-full flex flex-col">
+          <TabsList className="w-full justify-start rounded-none border-b border-border bg-background px-4 shrink-0">
+            <TabsTrigger value="dashboard" className="cursor-pointer">Dashboard</TabsTrigger>
             <TabsTrigger value="delivery" className="cursor-pointer">Delivery</TabsTrigger>
             <TabsTrigger value="upgrades" className="cursor-pointer">Upgrades</TabsTrigger>
             <TabsTrigger value="bugs" className="cursor-pointer">Bugs</TabsTrigger>
@@ -51,7 +53,8 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
             <TabsTrigger value="office" className="cursor-pointer">Office</TabsTrigger>
           </TabsList>
 
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <TabsContent value="dashboard" className="mt-0"><DashboardTab /></TabsContent>
             <TabsContent value="delivery" className="mt-0"><DeliveryTab /></TabsContent>
             <TabsContent value="upgrades" className="mt-0"><UpgradesTab /></TabsContent>
             <TabsContent value="bugs" className="mt-0"><BugsTab /></TabsContent>
@@ -59,11 +62,12 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
             <TabsContent value="press" className="mt-0"><PressTab /></TabsContent>
             <TabsContent value="staff" className="mt-0"><StaffTab /></TabsContent>
             <TabsContent value="office" className="mt-0"><OfficeTab /></TabsContent>
-          </ScrollArea>
+          </div>
         </Tabs>
       </div>
 
       <MonthEndModal />
+      <DevMenu />
     </div>
   );
 }

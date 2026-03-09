@@ -87,7 +87,10 @@ export default function StaffTab() {
                 <CardContent className="p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div>
-                      <span className="text-sm font-medium text-white">{emp.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-white">{emp.name}</span>
+                        <span className="text-xs text-muted-foreground">{emp.title}</span>
+                      </div>
                       <div className="flex gap-1 mt-1">
                         {(Object.entries(emp.skills) as [string, number][]).map(([skill, level]) => (
                           <Badge
@@ -155,7 +158,10 @@ export default function StaffTab() {
                 <Card key={candidate.id} className="border-slate-700 bg-slate-800">
                   <CardContent className="p-3 flex items-center justify-between">
                     <div>
-                      <span className="text-sm font-medium text-white">{candidate.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-white">{candidate.name}</span>
+                        <span className="text-xs text-muted-foreground">{candidate.title}</span>
+                      </div>
                       <div className="flex gap-1 mt-1">
                         {(Object.entries(candidate.skills) as [string, number][]).map(([skill, level]) => (
                           <Badge

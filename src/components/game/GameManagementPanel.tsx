@@ -89,14 +89,24 @@ export default function GameManagementPanel() {
   const handleStartSequel = () => {
     if (!sequelName.trim() || !spendMoney(sequelCost)) return;
 
+    const weights = currentGame.pillarWeights;
+    const baseComplexity = 100;
     const sequel: GameInDev = {
       id: `game-${Date.now()}`,
       name: sequelName,
       genre: currentGame.genre,
       style: currentGame.style,
       platforms: currentGame.platformReleases.map((pr) => pr.platform),
-      pillarWeights: { ...currentGame.pillarWeights },
+      pillarWeights: { ...weights },
+      pillarProgress: { graphics: 0, gameplay: 0, sound: 0, polish: 0 },
+      pillarTargets: {
+        graphics: Math.round((weights.graphics / 100) * baseComplexity),
+        gameplay: Math.round((weights.gameplay / 100) * baseComplexity),
+        sound: Math.round((weights.sound / 100) * baseComplexity),
+        polish: Math.round((weights.polish / 100) * baseComplexity),
+      },
       progressPercent: 0,
+      bugsFound: 0,
       devCostSpent: sequelCost,
       isCrunching: false,
       crunchBugPenalty: 0,

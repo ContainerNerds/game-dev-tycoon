@@ -21,6 +21,16 @@ export type RegionId =
 
 export type SkillType = 'devel' | 'infra' | 'project' | 'management';
 
+export type EmployeeTitle =
+  | 'Engineer'
+  | 'Architect'
+  | 'Artist'
+  | 'Sound Designer'
+  | 'Producer'
+  | 'QA Lead'
+  | 'DevOps'
+  | 'Generalist';
+
 export type GameSpeed = 0 | 1 | 2 | 4;
 
 export type GameLifecyclePhase = 'development' | 'growth' | 'peak' | 'decline' | 'retired';
@@ -44,6 +54,20 @@ export interface PillarWeights {
   polish: number;
 }
 
+export interface PillarProgress {
+  graphics: number;   // current accumulated points
+  gameplay: number;
+  sound: number;
+  polish: number;
+}
+
+export interface PillarTargets {
+  graphics: number;   // points needed to complete
+  gameplay: number;
+  sound: number;
+  polish: number;
+}
+
 // ============================================================
 // Employee
 // ============================================================
@@ -58,6 +82,7 @@ export interface EmployeeSkills {
 export interface Employee {
   id: string;
   name: string;
+  title: EmployeeTitle;
   skills: EmployeeSkills;
   hireCost: number;
   monthlySalary: number;
@@ -148,10 +173,13 @@ export interface GameInDev {
   style: Style;
   platforms: Platform[];
   pillarWeights: PillarWeights;
-  progressPercent: number;     // 0–100
+  pillarProgress: PillarProgress;   // current points contributed
+  pillarTargets: PillarTargets;     // target points to complete
+  progressPercent: number;          // 0–100, derived from pillar completion
+  bugsFound: number;                // bugs accumulated during development
   devCostSpent: number;
   isCrunching: boolean;
-  crunchBugPenalty: number;    // accumulated extra bug chance from crunch
+  crunchBugPenalty: number;
 }
 
 export interface ActiveGame {

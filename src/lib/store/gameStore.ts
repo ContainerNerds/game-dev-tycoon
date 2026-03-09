@@ -92,6 +92,8 @@ interface GameActions {
   // Game development
   startDevelopment: (game: GameInDev) => void;
   updateDevProgress: (progressDelta: number) => void;
+  contributePillarPoints: (pillar: keyof import('@/lib/game/types').PillarProgress, points: number) => void;
+  addDevBugs: (count: number) => void;
   toggleCrunch: () => void;
   releaseGame: (activeGame: ActiveGame) => void;
   retireGame: () => void;
@@ -250,6 +252,39 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const newProgress = Math.min(100, s.gameInDevelopment.progressPercent + progressDelta);
     return {
       gameInDevelopment: { ...s.gameInDevelopment, progressPercent: newProgress },
+    };
+  }),
+
+  contributePillarPoints: (pillar, points) => set((s) => {
+    if (!s.gameInDevelopment) return {};
+    const dev = s.gameInDevelopment;
+    const newProgress = { ...dev.pillarProgress, [pillar]: dev.pillarProgress[pillar] + points };
+
+    // Recalculate overall % from pillar completion
+    const targets = dev.pillarTargets;
+    const totalTarget = targets.graphics + targets.gameplay + targets.sound + targets.polish;
+    const totalDone = Math.min(newProgress.graphics, targets.graphics)
+      + Math.min(newProgress.gameplay, targets.gameplay)
+      + Math.min(newProgress.sound, targets.sound)
+      + Math.min(newProgress.polish, targets.polish);
+    const pct = totalTarget > 0 ? (totalDone / totalTarget) * 100 : 0;
+
+    return {
+      gameInDevelopment: {
+        ...dev,
+        pillarProgress: newProgress,
+        progressPercent: Math.min(100, pct),
+      },
+    };
+  }),
+
+  addDevBugs: (count) => set((s) => {
+    if (!s.gameInDevelopment) return {};
+    return {
+      gameInDevelopment: {
+        ...s.gameInDevelopment,
+        bugsFound: s.gameInDevelopment.bugsFound + count,
+      },
     };
   }),
 

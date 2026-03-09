@@ -69,6 +69,15 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
   const handleCreate = () => {
     newGame(studioName, startingMoney);
 
+    // Base complexity determines total points needed
+    const baseComplexity = 100;
+    const pillarTargets = {
+      graphics: Math.round((pillars.graphics / 100) * baseComplexity),
+      gameplay: Math.round((pillars.gameplay / 100) * baseComplexity),
+      sound: Math.round((pillars.sound / 100) * baseComplexity),
+      polish: Math.round((pillars.polish / 100) * baseComplexity),
+    };
+
     const gameInDev: GameInDev = {
       id: `game-${Date.now()}`,
       name: gameName,
@@ -76,7 +85,10 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
       style,
       platforms: ['PC'],
       pillarWeights: pillars,
+      pillarProgress: { graphics: 0, gameplay: 0, sound: 0, polish: 0 },
+      pillarTargets,
       progressPercent: 0,
+      bugsFound: 0,
       devCostSpent: 0,
       isCrunching: false,
       crunchBugPenalty: 0,
