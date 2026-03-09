@@ -79,11 +79,14 @@ export interface EmployeeSkills {
   management: number;
 }
 
+export type EmployeeAssignment = 'development' | 'bugfix';
+
 export interface Employee {
   id: string;
   name: string;
   title: EmployeeTitle;
   skills: EmployeeSkills;
+  assignment: EmployeeAssignment;
   hireCost: number;
   monthlySalary: number;
 }
@@ -218,6 +221,7 @@ export interface ActiveGame {
   unlockedGameUpgrades: string[];
   totalRevenue: number;
   monthlyHistory: MonthlySnapshot[];
+  bugRateDecay: number;           // starts at 1.0, decays each game-day toward a floor
 }
 
 export interface GameSummary {

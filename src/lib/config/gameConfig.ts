@@ -28,6 +28,9 @@ export const GAME_CONFIG = {
   bugPlayerScaling: 0.0001,       // additional bug chance per active player
   bugFixBaseCost: 500,
   bugFixBaseHours: 24,            // in-game hours
+  bugDecayPerDay: 0.97,           // multiply bug spawn rate by this each game-day
+  bugMinDecay: 0.1,              // floor — bugs never fully stop spawning
+  bugfixTicksPerDevelPoint: 48,   // game-hours for a bugfix employee to fix 1 bug per Devel point
 
   // Research
   researchPointsPerGameDay: 0.5,  // earned while a game is online

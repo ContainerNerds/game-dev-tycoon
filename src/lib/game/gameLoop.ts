@@ -68,13 +68,16 @@ export function processTick(store: GameStore): void {
     return;
   }
 
-  // 2. Development progress via employee contributions
+  // 2. Development progress via employee contributions (only dev-assigned employees)
+  const devEmployees = state.employees.filter((e) => e.assignment === 'development');
+  const bugfixEmployees = state.employees.filter((e) => e.assignment === 'bugfix');
+
   if (state.gameInDevelopment && state.gameInDevelopment.progressPercent < 100) {
     const dev = state.gameInDevelopment;
     const crunchMultiplier = dev.isCrunching ? GAME_CONFIG.crunchSpeedMultiplier : 1;
 
-    if (state.employees.length > 0) {
-      for (const emp of state.employees) {
+    if (devEmployees.length > 0) {
+      for (const emp of devEmployees) {
         const contrib = getEmployeePillarContribution(emp);
         const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
 
@@ -85,18 +88,28 @@ export function processTick(store: GameStore): void {
           }
         }
 
-        // Each contribution has a chance to introduce bugs
         const bugChance = getBugChancePerContribution(emp) * (dev.isCrunching ? 1.5 : 1);
         if (Math.random() < bugChance) {
           store.addDevBugs(1);
         }
       }
     } else {
-      // Solo dev in garage — slow baseline progress
       const soloRate = GAME_CONFIG.baseDevProgressPerTick * 0.3 * crunchMultiplier;
       const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
       for (const pillar of pillars) {
         store.contributePillarPoints(pillar, soloRate);
+      }
+    }
+  }
+
+  // 2b. Bugfix employees auto-fix bugs on the active game
+  if (state.currentGame && bugfixEmployees.length > 0 && state.currentGame.bugs.length > 0) {
+    const totalDevelSkill = bugfixEmployees.reduce((sum, e) => sum + e.skills.devel, 0);
+    const fixRate = totalDevelSkill / GAME_CONFIG.bugfixTicksPerDevelPoint;
+    if (Math.random() < fixRate) {
+      const oldestBug = state.currentGame.bugs[0];
+      if (oldestBug) {
+        store.removeBug(oldestBug.id);
       }
     }
   }
@@ -176,7 +189,13 @@ export function processTick(store: GameStore): void {
       }
     }
 
-    // --- Bug spawning ---
+    // --- Bug spawning with decay ---
+    let bugRateDecay = game.bugRateDecay;
+    // Decay once per game-day (every 24 ticks)
+    if (phaseTicks % 24 === 0) {
+      bugRateDecay = Math.max(GAME_CONFIG.bugMinDecay, bugRateDecay * GAME_CONFIG.bugDecayPerDay);
+    }
+
     const bugRateMultiplier = getBugRateMultiplier(state.employees);
     const bugUpgradeMultiplier = getUpgradeMultiplier(
       'bugRateMultiplier',
@@ -184,7 +203,7 @@ export function processTick(store: GameStore): void {
       game.unlockedGameUpgrades
     );
     const bugChance = (GAME_CONFIG.bugBaseRatePerTick + totalPlayers * GAME_CONFIG.bugPlayerScaling) *
-      bugRateMultiplier * bugUpgradeMultiplier;
+      bugRateMultiplier * bugUpgradeMultiplier * bugRateDecay;
 
     if (Math.random() < bugChance) {
       const severity = randomBugSeverity();
@@ -219,6 +238,7 @@ export function processTick(store: GameStore): void {
       phase,
       phaseTicks,
       bugs: newBugs.length > 0 ? [...game.bugs, ...newBugs] : game.bugs,
+      bugRateDecay,
     });
 
     if (tickRevenue > 0) store.earnMoney(tickRevenue);

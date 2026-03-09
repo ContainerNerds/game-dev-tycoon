@@ -106,6 +106,7 @@ interface GameActions {
   setCandidatePool: (pool: Employee[]) => void;
   hireEmployee: (employee: Employee) => void;
   fireEmployee: (employeeId: string) => void;
+  toggleEmployeeAssignment: (employeeId: string) => void;
 
   // Office
   upgradeOffice: (tier: OfficeTier) => void;
@@ -348,6 +349,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   fireEmployee: (employeeId) => set((s) => ({
     employees: s.employees.filter((e) => e.id !== employeeId),
+  })),
+
+  toggleEmployeeAssignment: (employeeId) => set((s) => ({
+    employees: s.employees.map((e) =>
+      e.id === employeeId
+        ? { ...e, assignment: e.assignment === 'development' ? 'bugfix' as const : 'development' as const }
+        : e
+    ),
   })),
 
   // ----------------------------------------------------------

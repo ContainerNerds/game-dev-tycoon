@@ -150,5 +150,6 @@ export function convertDevToActiveGame(
     unlockedGameUpgrades: [],
     totalRevenue: 0,
     monthlyHistory: [],
+    bugRateDecay: 1.0,
   };
 }
