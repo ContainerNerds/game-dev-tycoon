@@ -6,7 +6,7 @@
 
 A browser-based idle/incremental game where you manage a game development studio. You create games by choosing genre + style combos, set development pillar weights, hire staff, buy office space, manage server infrastructure across global regions, and grow your fan base.
 
-**Status**: V1 in active development.
+**Status**: V1 complete — all core systems implemented and playable.
 
 ## Tech Stack
 
@@ -93,9 +93,29 @@ US-East (default), US-West, Brazil, Saudi Arabia, Russia, India, China, Japan, A
 - Post-V1: feature branches, PR-based workflow with AI code review
 - Commit messages: `feat:`, `fix:`, `refactor:`, `chore:`
 
+## Implemented V1 Features
+
+- New Game / Load Game / Save flow with localStorage persistence
+- Game Creation Wizard: studio name, starting money, genre, style, pillar weights
+- Calendar system: Jan 1 2040 start, Stop/1x/2x/4x speed controls
+- Tick-based game loop: revenue, bugs, fan conversion, server load, research
+- End-of-month report modal with itemized cost breakdown
+- 7 game tabs: Delivery, Upgrades, Bugs, Research, Press, Staff, Office
+- 9 server regions (US-East default, 8 more unlockable)
+- Colocated servers + Datacenter purchases
+- Employee hiring/firing with 4 skills (Devel/Infra/Project/Management 1–5)
+- 5-tier office system (Garage through Studio Floor)
+- Skill tree with studio-wide + per-game upgrades and prerequisite DAG
+- Game lifecycle: Development → Growth → Peak → Decline
+- DLC creation, Sequel development, Game retirement
+- Bankruptcy detection and restart flow
+- Platform system: PC (default), Console, Mobile with revenue cuts
+
 ## Known Limitations (V1)
 
 - Single-player only, no backend
 - Save/load via localStorage (no cloud sync)
 - No sound effects or animations yet
-- Skill tree is functional but not visually polished
+- DLC progress ticking not yet connected in game loop (DLC is created but doesn't auto-progress)
+- Marketing / hype budget system not yet implemented
+- No in-game tutorial or onboarding
