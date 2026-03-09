@@ -60,7 +60,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
 
       <div className="flex-1 min-h-0">
         <Tabs defaultValue="dashboard" className="h-full flex flex-col">
-          <TabsList className="w-full justify-start rounded-none border-b border-border bg-background px-4 shrink-0">
+          <TabsList className="w-full justify-start rounded-none border-b border-border bg-background px-2 sm:px-4 shrink-0 overflow-x-auto no-scrollbar">
             <TabsTrigger value="dashboard" className="cursor-pointer">Dashboard</TabsTrigger>
             <TabsTrigger value="finances" className="cursor-pointer">Finances</TabsTrigger>
             <TabsTrigger value="delivery" className="cursor-pointer">Delivery</TabsTrigger>

@@ -64,16 +64,16 @@ function TaskRow({ task, onRelease }: { task: StudioTask; onRelease: (task: Stud
   };
 
   return (
-    <div className="border-b border-border bg-card/50 px-4 py-2 shrink-0">
-      <div className="flex items-center gap-3">
+    <div className="border-b border-border bg-card/50 px-3 sm:px-4 py-1.5 sm:py-2 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
             <Badge variant="outline" className={`text-xs ${TASK_TYPE_COLORS[task.type]}`}>
               {task.type.toUpperCase()}
             </Badge>
-            <span className="text-sm font-medium truncate">{task.name}</span>
+            <span className="text-xs sm:text-sm font-medium truncate">{task.name}</span>
             {task.isCrunching && (
-              <Badge variant="outline" className="text-xs text-orange-400 border-orange-500/50">
+              <Badge variant="outline" className="text-xs text-orange-400 border-orange-500/50 hidden sm:flex">
                 <Zap className="h-3 w-3 mr-0.5" />Crunch
               </Badge>
             )}
@@ -82,41 +82,40 @@ function TaskRow({ task, onRelease }: { task: StudioTask; onRelease: (task: Stud
             </span>
           </div>
           <Progress value={task.progressPercent} className="h-1.5 mb-1" />
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-1 sm:gap-2">
             {PILLAR_CONFIG.map(({ key, label, icon: Icon, color }) => {
               const current = task.pillarProgress[key];
               const target = task.pillarTargets[key];
-              const pct = target > 0 ? Math.min(100, (current / target) * 100) : 100;
               return (
-                <div key={key} className="flex items-center gap-1 text-xs">
-                  <Icon className={`h-3 w-3 ${current >= target ? 'text-green-400' : color}`} />
-                  <span className="font-mono text-muted-foreground">{Math.floor(current)}/{target}</span>
+                <div key={key} className="flex items-center gap-0.5 sm:gap-1 text-xs">
+                  <Icon className={`h-3 w-3 shrink-0 ${current >= target ? 'text-green-400' : color}`} />
+                  <span className="font-mono text-muted-foreground text-[10px] sm:text-xs">{Math.floor(current)}/{target}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        <div className="flex gap-1.5 shrink-0">
-          <Button size="sm" variant={task.isCrunching ? 'destructive' : 'outline'} className="text-xs h-7 cursor-pointer" onClick={handleToggleCrunch}>
+        <div className="flex gap-1 sm:gap-1.5 shrink-0">
+          <Button size="sm" variant={task.isCrunching ? 'destructive' : 'outline'} className="text-xs h-6 w-6 sm:h-7 sm:w-auto sm:px-2 p-0 cursor-pointer" onClick={handleToggleCrunch}>
             <Zap className="h-3 w-3" />
           </Button>
           {task.type === 'game' && (
             <Button
-              size="sm" className="text-xs h-7 cursor-pointer"
+              size="sm" className="text-xs h-6 sm:h-7 cursor-pointer px-2"
               disabled={!canReleaseGame || needsServers}
               onClick={() => onRelease(task)}
               title={needsServers ? 'Live Service games need servers' : ''}
             >
-              <Rocket className="h-3 w-3 mr-1" />Release
+              <Rocket className="h-3 w-3 sm:mr-1" /><span className="hidden sm:inline">Release</span>
             </Button>
           )}
           {task.type === 'dlc' && canReleaseDLC && (
-            <Button size="sm" className="text-xs h-7 cursor-pointer" onClick={handleReleaseDLC}>
-              <Rocket className="h-3 w-3 mr-1" />Release DLC
+            <Button size="sm" className="text-xs h-6 sm:h-7 cursor-pointer px-2" onClick={handleReleaseDLC}>
+              <Rocket className="h-3 w-3 sm:mr-1" /><span className="hidden sm:inline">Release DLC</span>
             </Button>
           )}
-          <Button size="sm" variant="ghost" className="text-xs h-7 text-red-400 cursor-pointer" onClick={handleCancel}>
+          <Button size="sm" variant="ghost" className="text-xs h-6 w-6 sm:h-7 sm:w-auto p-0 text-red-400 cursor-pointer" onClick={handleCancel}>
             <X className="h-3 w-3" />
           </Button>
         </div>

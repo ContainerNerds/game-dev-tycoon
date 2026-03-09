@@ -47,27 +47,26 @@ export default function ActiveGamesBar() {
       {activeGames.filter((g) => g.phase !== 'retired').map((game) => {
         const totalPlayers = game.platformReleases.reduce((s, p) => s + p.activePlayers, 0);
         return (
-          <div key={game.id} className="border-b border-border bg-card/30 px-4 py-1.5 shrink-0 flex items-center gap-3">
-            <Badge variant="outline" className="text-xs capitalize">{game.phase}</Badge>
-            <span className="text-sm font-medium">{game.name}</span>
-            <Badge variant="outline" className="text-xs">{game.mode === 'liveservice' ? 'Live Service' : 'Standard'}</Badge>
-            <span className="text-xs text-muted-foreground">
-              {Math.floor(totalPlayers).toLocaleString()} players
+          <div key={game.id} className="border-b border-border bg-card/30 px-3 sm:px-4 py-1.5 shrink-0 flex items-center gap-2 sm:gap-3">
+            <Badge variant="outline" className="text-xs capitalize shrink-0">{game.phase}</Badge>
+            <span className="text-xs sm:text-sm font-medium truncate">{game.name}</span>
+            <Badge variant="outline" className="text-xs hidden sm:inline-flex">{game.mode === 'liveservice' ? 'Live Service' : 'Standard'}</Badge>
+            <span className="text-xs text-muted-foreground shrink-0">
+              {Math.floor(totalPlayers).toLocaleString()} <span className="hidden sm:inline">players</span>
             </span>
-            <span className="text-xs text-green-400 font-mono">
+            <span className="text-xs text-green-400 font-mono shrink-0">
               ${Math.floor(game.totalRevenue).toLocaleString()}
             </span>
 
-            {/* Mini player count bar */}
-            <div className="w-16 h-2 bg-muted rounded-full overflow-hidden" title={`${Math.floor(totalPlayers)} players`}>
+            <div className="w-10 sm:w-16 h-2 bg-muted rounded-full overflow-hidden shrink-0" title={`${Math.floor(totalPlayers)} players`}>
               <div
                 className="h-full bg-green-500 rounded-full transition-all"
                 style={{ width: `${Math.min(100, (totalPlayers / Math.max(totalPlayers, 1000)) * 100)}%` }}
               />
             </div>
 
-            <Button size="sm" variant="ghost" className="text-xs text-red-400 hover:text-red-300 cursor-pointer ml-auto" onClick={() => setRetireTarget(game.id)}>
-              <Archive className="h-3 w-3 mr-1" />Retire
+            <Button size="sm" variant="ghost" className="text-xs h-6 sm:h-8 text-red-400 hover:text-red-300 cursor-pointer ml-auto shrink-0 px-1.5 sm:px-3" onClick={() => setRetireTarget(game.id)}>
+              <Archive className="h-3 w-3 sm:mr-1" /><span className="hidden sm:inline">Retire</span>
             </Button>
           </div>
         );
