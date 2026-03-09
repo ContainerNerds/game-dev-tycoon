@@ -18,10 +18,10 @@ export default function ResearchTab() {
       <div className="flex items-center gap-4">
         <FlaskConical className="h-8 w-8 text-blue-400" />
         <div>
-          <h3 className="text-2xl font-bold text-white">
+          <h3 className="text-2xl font-bold text-foreground">
             {researchPoints.toFixed(1)} <span className="text-lg text-blue-400">RP</span>
           </h3>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             {isEarning
               ? `Earning ${ratePerDay} RP per game-day while your game is online`
               : 'No game online — not earning research points'}
@@ -29,14 +29,14 @@ export default function ResearchTab() {
         </div>
       </div>
 
-      <Card className="border-slate-700 bg-slate-800">
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-white">How Research Works</CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardTitle className="text-foreground">How Research Works</CardTitle>
+          <CardDescription className="text-muted-foreground">
             Research points are earned passively while you have an active game online.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-slate-300">
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
             Research points are spent to unlock upgrades in the Upgrades tab.
             Each upgrade has both a money cost and a research point cost.
@@ -49,7 +49,7 @@ export default function ResearchTab() {
             <Badge variant="outline" className="text-blue-400 border-blue-500/50">
               Rate: {ratePerDay} RP/day
             </Badge>
-            <Badge variant="outline" className="text-slate-400 border-slate-500/50">
+            <Badge variant="outline" className="text-muted-foreground border-border">
               Source: Active games
             </Badge>
           </div>

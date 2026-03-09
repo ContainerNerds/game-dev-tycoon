@@ -25,12 +25,12 @@ export default function OfficeTab() {
   return (
     <div className="p-4 space-y-6">
       <div className="flex items-center gap-3">
-        <Building2 className="h-6 w-6 text-slate-400" />
+        <Building2 className="h-6 w-6 text-muted-foreground" />
         <div>
-          <h3 className="text-lg font-semibold text-white">
+          <h3 className="text-lg font-semibold text-foreground">
             Office: {OFFICE_CONFIG.tiers.find((t) => t.tier === office.tier)?.name}
           </h3>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             {employees.length}/{office.maxSeats} seats filled
             {office.monthlyOverhead > 0 && ` · $${office.monthlyOverhead}/mo overhead`}
           </p>
@@ -52,24 +52,24 @@ export default function OfficeTab() {
                 isCurrent
                   ? 'border-blue-500 bg-blue-950/20'
                   : isPast
-                  ? 'border-slate-700 bg-slate-800/40 opacity-50'
+                  ? 'border-border bg-card/40 opacity-50'
                   : isNextTier
-                  ? 'border-slate-600 bg-slate-800 hover:border-blue-400'
-                  : 'border-slate-700 bg-slate-800/60'
+                  ? 'border-border bg-card hover:border-blue-400'
+                  : 'border-border bg-card/60'
               }`}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-white">{def.name}</span>
+                      <span className="font-semibold text-foreground">{def.name}</span>
                       {isCurrent && (
                         <Badge className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/50">
                           Current
                         </Badge>
                       )}
                     </div>
-                    <div className="flex gap-4 text-sm text-slate-400">
+                    <div className="flex gap-4 text-sm text-muted-foreground">
                       <span>{def.maxSeats} seat{def.maxSeats !== 1 ? 's' : ''}</span>
                       {def.monthlyOverhead > 0 && (
                         <span>${def.monthlyOverhead}/mo overhead</span>
@@ -102,7 +102,7 @@ export default function OfficeTab() {
                   )}
 
                   {isPast && (
-                    <Check className="h-5 w-5 text-slate-500" />
+                    <Check className="h-5 w-5 text-muted-foreground/60" />
                   )}
                 </div>
               </CardContent>

@@ -31,27 +31,27 @@ export default function PressTab() {
     <div className="p-4 space-y-6">
       {/* Review & Sentiment */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-slate-700 bg-slate-800">
+        <Card className="border-border bg-card">
           <CardContent className="p-4 flex items-center gap-4">
             <Star className="h-8 w-8 text-yellow-400" />
             <div>
-              <p className="text-2xl font-bold text-white">{reviewScore.toFixed(1)}/10</p>
-              <p className="text-sm text-slate-400">Review Score</p>
+              <p className="text-2xl font-bold text-foreground">{reviewScore.toFixed(1)}/10</p>
+              <p className="text-sm text-muted-foreground">Review Score</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-700 bg-slate-800">
+        <Card className="border-border bg-card">
           <CardContent className="p-4 flex items-center gap-4">
             <Newspaper className={`h-8 w-8 ${sentimentColor}`} />
             <div>
               <p className={`text-lg font-semibold ${sentimentColor}`}>{sentiment}</p>
-              <p className="text-sm text-slate-400">Public Sentiment</p>
+              <p className="text-sm text-muted-foreground">Public Sentiment</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-700 bg-slate-800">
+        <Card className="border-border bg-card">
           <CardContent className="p-4 flex items-center gap-4">
             {phase === 'decline' ? (
               <TrendingDown className="h-8 w-8 text-red-400" />
@@ -59,17 +59,17 @@ export default function PressTab() {
               <TrendingUp className="h-8 w-8 text-green-400" />
             )}
             <div>
-              <p className="text-lg font-semibold text-white capitalize">{phase ?? 'N/A'}</p>
-              <p className="text-sm text-slate-400">Game Phase</p>
+              <p className="text-lg font-semibold text-foreground capitalize">{phase ?? 'N/A'}</p>
+              <p className="text-sm text-muted-foreground">Game Phase</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Fan breakdown */}
-      <Card className="border-slate-700 bg-slate-800">
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
+          <CardTitle className="text-foreground flex items-center gap-2">
             <Users className="h-5 w-5" />
             Fan Base
           </CardTitle>
@@ -77,25 +77,25 @@ export default function PressTab() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-slate-400">Game Fans</p>
+              <p className="text-sm text-muted-foreground">Game Fans</p>
               <p className="text-xl font-bold text-purple-400">{Math.floor(gameFans).toLocaleString()}</p>
-              <p className="text-xs text-slate-500">Buy DLC, hype sequels</p>
+              <p className="text-xs text-muted-foreground/60">Buy DLC, hype sequels</p>
             </div>
             <div>
-              <p className="text-sm text-slate-400">Studio Fans</p>
+              <p className="text-sm text-muted-foreground">Studio Fans</p>
               <p className="text-xl font-bold text-blue-400">{Math.floor(studioFans).toLocaleString()}</p>
-              <p className="text-xs text-slate-500">Auto-buy new releases</p>
+              <p className="text-xs text-muted-foreground/60">Auto-buy new releases</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-700">
+          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
             <div>
-              <p className="text-sm text-slate-400">Active Players</p>
+              <p className="text-sm text-muted-foreground">Active Players</p>
               <p className="text-xl font-bold text-green-400">{Math.floor(totalPlayers).toLocaleString()}</p>
             </div>
             <div>
-              <p className="text-sm text-slate-400">Total Copies Sold</p>
-              <p className="text-xl font-bold text-white">{Math.floor(totalSold).toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground">Total Copies Sold</p>
+              <p className="text-xl font-bold text-foreground">{Math.floor(totalSold).toLocaleString()}</p>
             </div>
           </div>
         </CardContent>
@@ -103,22 +103,22 @@ export default function PressTab() {
 
       {/* Past games */}
       {completedGames.length > 0 && (
-        <Card className="border-slate-700 bg-slate-800">
+        <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle className="text-white">Past Releases</CardTitle>
+            <CardTitle className="text-foreground">Past Releases</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {completedGames.map((game) => (
-                <div key={game.id} className="flex items-center justify-between py-2 border-b border-slate-700 last:border-0">
+                <div key={game.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                   <div>
-                    <span className="text-sm font-medium text-white">{game.name}</span>
-                    <span className="text-xs text-slate-400 ml-2">{game.genre} / {game.style}</span>
+                    <span className="text-sm font-medium text-foreground">{game.name}</span>
+                    <span className="text-xs text-muted-foreground ml-2">{game.genre} / {game.style}</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs">
                     <span className="text-yellow-400">{game.reviewScore.toFixed(1)}/10</span>
                     <span className="text-green-400">${game.totalRevenue.toLocaleString()}</span>
-                    <span className="text-slate-400">{game.totalCopiesSold.toLocaleString()} sold</span>
+                    <span className="text-muted-foreground">{game.totalCopiesSold.toLocaleString()} sold</span>
                   </div>
                 </div>
               ))}

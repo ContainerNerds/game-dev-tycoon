@@ -31,7 +31,7 @@ export default function BugsTab() {
 
   if (!bugs.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/60">
         <BugIcon className="h-12 w-12 mb-4 opacity-50" />
         <p className="text-lg">No bugs reported!</p>
         <p className="text-sm">Your game is running smoothly... for now.</p>
@@ -42,10 +42,10 @@ export default function BugsTab() {
   return (
     <div className="p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">
+        <h3 className="text-lg font-semibold text-foreground">
           Active Bugs ({bugs.length})
         </h3>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-muted-foreground">
           Unresolved bugs reduce your review score
         </p>
       </div>
@@ -54,12 +54,12 @@ export default function BugsTab() {
         {bugs.map((bug) => {
           const progress = (bug.fixProgressHours / bug.fixTimeHours) * 100;
           return (
-            <Card key={bug.id} className="border-slate-700 bg-slate-800">
+            <Card key={bug.id} className="border-border bg-card">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-white">{bug.name}</span>
+                      <span className="text-sm font-medium text-foreground">{bug.name}</span>
                       <Badge
                         variant="outline"
                         className={`text-xs ${SEVERITY_COLORS[bug.severity]}`}
@@ -70,7 +70,7 @@ export default function BugsTab() {
                     {bug.fixProgressHours > 0 && (
                       <Progress value={progress} className="h-1.5" />
                     )}
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-muted-foreground">
                       Fix cost: ${bug.fixCost.toLocaleString()} &middot; {bug.fixTimeHours}h to fix
                     </div>
                   </div>

@@ -54,12 +54,12 @@ export default function StaffTab() {
       {/* Summary */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Users className="h-6 w-6 text-slate-400" />
+          <Users className="h-6 w-6 text-muted-foreground" />
           <div>
-            <h3 className="text-lg font-semibold text-white">
+            <h3 className="text-lg font-semibold text-foreground">
               Staff ({employees.length}/{office.maxSeats})
             </h3>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted-foreground">
               Monthly salaries: ${totalMonthlySalary.toLocaleString()}
             </p>
           </div>
@@ -78,17 +78,17 @@ export default function StaffTab() {
       {/* Current employees */}
       {employees.length > 0 && (
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
             Your Team
           </h4>
           <div className="grid gap-2">
             {employees.map((emp) => (
-              <Card key={emp.id} className="border-slate-700 bg-slate-800">
+              <Card key={emp.id} className="border-border bg-card">
                 <CardContent className="p-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-white">{emp.name}</span>
+                        <span className="text-sm font-medium text-foreground">{emp.name}</span>
                         <span className="text-xs text-muted-foreground">{emp.title}</span>
                       </div>
                       <div className="flex gap-1 mt-1">
@@ -105,7 +105,7 @@ export default function StaffTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-muted-foreground">
                       ${emp.monthlySalary.toLocaleString()}/mo
                     </span>
                     <Button
@@ -124,12 +124,12 @@ export default function StaffTab() {
         </div>
       )}
 
-      <Separator className="bg-slate-700" />
+      <Separator />
 
       {/* Candidate pool */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
+          <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
             Candidates
           </h4>
           <Button
@@ -145,8 +145,8 @@ export default function StaffTab() {
         </div>
 
         {candidatePool.length === 0 ? (
-          <Card className="border-slate-700 bg-slate-800/50">
-            <CardContent className="p-6 text-center text-slate-500">
+          <Card className="border-border bg-card/50">
+            <CardContent className="p-6 text-center text-muted-foreground/60">
               <p>No candidates available. Refresh the pool to find talent.</p>
             </CardContent>
           </Card>
@@ -155,11 +155,11 @@ export default function StaffTab() {
             {candidatePool.map((candidate) => {
               const canHire = employees.length < office.maxSeats && money >= candidate.hireCost;
               return (
-                <Card key={candidate.id} className="border-slate-700 bg-slate-800">
+                <Card key={candidate.id} className="border-border bg-card">
                   <CardContent className="p-3 flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-white">{candidate.name}</span>
+                        <span className="text-sm font-medium text-foreground">{candidate.name}</span>
                         <span className="text-xs text-muted-foreground">{candidate.title}</span>
                       </div>
                       <div className="flex gap-1 mt-1">
@@ -175,7 +175,7 @@ export default function StaffTab() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="text-right text-xs text-slate-400">
+                      <div className="text-right text-xs text-muted-foreground">
                         <div>Hire: ${candidate.hireCost.toLocaleString()}</div>
                         <div>${candidate.monthlySalary.toLocaleString()}/mo</div>
                       </div>

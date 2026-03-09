@@ -21,17 +21,17 @@ export default function BankruptcyScreen({ onRestart }: BankruptcyScreenProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-red-950 via-slate-900 to-slate-900">
-      <Card className="w-full max-w-md border-red-800 bg-slate-800/80 backdrop-blur">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-red-950 via-background to-background">
+      <Card className="w-full max-w-md border-red-800 bg-card/80 backdrop-blur">
         <CardHeader className="text-center">
           <Skull className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <CardTitle className="text-3xl font-bold text-red-400">Bankrupt!</CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardDescription className="text-muted-foreground">
             {studioName} has run out of money.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2 text-sm text-slate-300">
+          <div className="space-y-2 text-sm text-muted-foreground">
             <div className="flex justify-between">
               <span>Games Released</span>
               <span>{completedGames.length}</span>

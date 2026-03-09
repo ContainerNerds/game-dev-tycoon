@@ -41,7 +41,7 @@ export function convertDevToActiveGame(
 
   const reviewScore = calculateReviewScore(
     { genre: dev.genre, style: dev.style, pillarWeights: dev.pillarWeights },
-    Math.floor(dev.crunchBugPenalty * 10),
+    dev.bugsFound,
     state.unlockedStudioUpgrades,
     []
   );

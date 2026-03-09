@@ -104,37 +104,37 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
 
   const comboMultiplier = getComboMultiplier(genre, style);
   const comboLabel = comboMultiplier >= 2.0 ? 'Great combo!' : comboMultiplier >= 1.5 ? 'Good combo' : comboMultiplier >= 1.0 ? 'Average combo' : 'Poor combo';
-  const comboColor = comboMultiplier >= 2.0 ? 'text-green-400' : comboMultiplier >= 1.5 ? 'text-blue-400' : comboMultiplier >= 1.0 ? 'text-slate-400' : 'text-red-400';
+  const comboColor = comboMultiplier >= 2.0 ? 'text-green-400' : comboMultiplier >= 1.5 ? 'text-blue-400' : comboMultiplier >= 1.0 ? 'text-muted-foreground' : 'text-red-400';
 
   if (step === 'studio') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <Card className="w-full max-w-md border-slate-700 bg-slate-800/80 backdrop-blur">
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Card className="w-full max-w-md border-border bg-card/80 backdrop-blur">
           <CardHeader>
-            <CardTitle className="text-2xl text-white">Create Your Studio</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-2xl text-foreground">Create Your Studio</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Choose a name and starting budget for your studio
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="studioName" className="text-slate-300">Studio Name</Label>
+              <Label htmlFor="studioName" className="text-muted-foreground">Studio Name</Label>
               <Input
                 id="studioName"
                 value={studioName}
                 onChange={(e) => setStudioName(e.target.value)}
                 placeholder="Enter studio name..."
-                className="border-slate-600 bg-slate-700 text-white placeholder:text-slate-500"
+                className="border-border bg-muted text-foreground placeholder:text-muted-foreground"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-300">Starting Money</Label>
+              <Label className="text-muted-foreground">Starting Money</Label>
               <Select
                 value={startingMoney.toString()}
                 onValueChange={(v) => setStartingMoney(Number(v))}
               >
-                <SelectTrigger className="border-slate-600 bg-slate-700 text-white">
+                <SelectTrigger className="border-border bg-muted text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -166,31 +166,31 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <Card className="w-full max-w-lg border-slate-700 bg-slate-800/80 backdrop-blur">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-lg border-border bg-card/80 backdrop-blur">
         <CardHeader>
-          <CardTitle className="text-2xl text-white">Design Your First Game</CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardTitle className="text-2xl text-foreground">Design Your First Game</CardTitle>
+          <CardDescription className="text-muted-foreground">
             {studioName}&apos;s debut title
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="gameName" className="text-slate-300">Game Name</Label>
+            <Label htmlFor="gameName" className="text-muted-foreground">Game Name</Label>
             <Input
               id="gameName"
               value={gameName}
               onChange={(e) => setGameName(e.target.value)}
               placeholder="Enter game name..."
-              className="border-slate-600 bg-slate-700 text-white placeholder:text-slate-500"
+              className="border-border bg-muted text-foreground placeholder:text-muted-foreground"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-slate-300">Genre</Label>
+              <Label className="text-muted-foreground">Genre</Label>
               <Select value={genre} onValueChange={(v) => setGenre(v as Genre)}>
-                <SelectTrigger className="border-slate-600 bg-slate-700 text-white">
+                <SelectTrigger className="border-border bg-muted text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -202,9 +202,9 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-300">Style</Label>
+              <Label className="text-muted-foreground">Style</Label>
               <Select value={style} onValueChange={(v) => setStyle(v as Style)}>
-                <SelectTrigger className="border-slate-600 bg-slate-700 text-white">
+                <SelectTrigger className="border-border bg-muted text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -222,15 +222,15 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
             </span>
           </div>
 
-          <Separator className="bg-slate-700" />
+          <Separator />
 
           <div className="space-y-4">
-            <Label className="text-slate-300">Development Focus (must total 100%)</Label>
+            <Label className="text-muted-foreground">Development Focus (must total 100%)</Label>
             {(Object.keys(pillars) as (keyof PillarWeights)[]).map((key) => (
               <div key={key} className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="capitalize text-slate-400">{key}</span>
-                  <span className="text-white font-mono">{pillars[key]}%</span>
+                  <span className="capitalize text-muted-foreground">{key}</span>
+                  <span className="text-foreground font-mono">{pillars[key]}%</span>
                 </div>
                 <Slider
                   value={[pillars[key]]}

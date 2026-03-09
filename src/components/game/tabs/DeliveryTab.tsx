@@ -25,7 +25,7 @@ export default function DeliveryTab() {
 
   if (!currentGame) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/60">
         <Globe className="h-12 w-12 mb-4 opacity-50" />
         <p className="text-lg">No active game</p>
         <p className="text-sm">Release a game to manage server delivery.</p>
@@ -59,8 +59,8 @@ export default function DeliveryTab() {
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-white">Server Infrastructure</h3>
-          <p className="text-sm text-slate-400">
+          <h3 className="text-lg font-semibold text-foreground">Server Infrastructure</h3>
+          <p className="text-sm text-muted-foreground">
             {Math.floor(totalPlayers).toLocaleString()} total players &middot; ${totalMonthlyCost.toLocaleString()}/mo
           </p>
         </div>
@@ -84,21 +84,21 @@ export default function DeliveryTab() {
           return (
             <Card
               key={region.id}
-              className={`border ${overloaded ? 'border-red-500 bg-red-950/20' : 'border-slate-700 bg-slate-800'}`}
+              className={`border ${overloaded ? 'border-red-500 bg-red-950/20' : 'border-border bg-card'}`}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Server className="h-4 w-4 text-slate-400" />
-                    <span className="font-medium text-white">{region.name}</span>
+                    <Server className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-foreground">{region.name}</span>
                     {overloaded && (
                       <Badge variant="destructive" className="text-xs">OVERLOADED</Badge>
                     )}
                     {!isUnlocked && (
-                      <Badge variant="outline" className="text-xs text-slate-500">Locked</Badge>
+                      <Badge variant="outline" className="text-xs text-muted-foreground/60">Locked</Badge>
                     )}
                   </div>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-muted-foreground">
                     {regionPlayers.toLocaleString()} players / {capacity.toLocaleString()} capacity
                   </span>
                 </div>
@@ -133,7 +133,7 @@ export default function DeliveryTab() {
                           + Datacenter (${dcCost.toLocaleString()})
                         </Button>
                       )}
-                      <span className="text-xs text-slate-500 ml-auto">
+                      <span className="text-xs text-muted-foreground/60 ml-auto">
                         {regionServers.length} server{regionServers.length !== 1 ? 's' : ''}
                       </span>
                     </>

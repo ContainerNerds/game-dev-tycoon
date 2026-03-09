@@ -119,9 +119,9 @@ export default function GameManagementPanel() {
 
   return (
     <>
-      <div className="border-b border-slate-700 bg-slate-800/30 px-4 py-2">
+      <div className="border-b border-border bg-card/30 px-4 py-2">
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-sm text-slate-400">Game Actions:</span>
+          <span className="text-sm text-muted-foreground">Game Actions:</span>
 
           {hasDLCUpgrade && (
             <Button
@@ -161,13 +161,13 @@ export default function GameManagementPanel() {
 
       {/* Retire Confirmation */}
       <Dialog open={showRetireConfirm} onOpenChange={setShowRetireConfirm}>
-        <DialogContent className="border-slate-700 bg-slate-800 text-white">
+        <DialogContent className="border-border bg-card text-foreground">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <TriangleAlert className="h-5 w-5 text-yellow-400" />
               Retire {currentGame.name}?
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-muted-foreground">
               Retiring a game shuts down all servers and ends revenue. {Math.floor(currentGame.gameFans * 0.3)} game fans will convert to studio fans.
             </DialogDescription>
           </DialogHeader>
@@ -184,21 +184,21 @@ export default function GameManagementPanel() {
 
       {/* DLC Dialog */}
       <Dialog open={showDLCDialog} onOpenChange={setShowDLCDialog}>
-        <DialogContent className="border-slate-700 bg-slate-800 text-white">
+        <DialogContent className="border-border bg-card text-foreground">
           <DialogHeader>
             <DialogTitle>Create DLC for {currentGame.name}</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-muted-foreground">
               Cost: ${dlcCost.toLocaleString()} &middot; Price: ${GAME_CONFIG.dlcBasePrice}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label className="text-slate-300">DLC Name</Label>
+              <Label className="text-muted-foreground">DLC Name</Label>
               <Input
                 value={dlcName}
                 onChange={(e) => setDlcName(e.target.value)}
                 placeholder="Enter DLC name..."
-                className="border-slate-600 bg-slate-700 text-white"
+                className="border-border bg-muted text-foreground"
               />
             </div>
           </div>
@@ -219,21 +219,21 @@ export default function GameManagementPanel() {
 
       {/* Sequel Dialog */}
       <Dialog open={showSequelDialog} onOpenChange={setShowSequelDialog}>
-        <DialogContent className="border-slate-700 bg-slate-800 text-white">
+        <DialogContent className="border-border bg-card text-foreground">
           <DialogHeader>
             <DialogTitle>Start Sequel Development</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-muted-foreground">
               Cost: ${sequelCost.toLocaleString()} &middot; Inherits {currentGame.genre} / {currentGame.style}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label className="text-slate-300">Sequel Name</Label>
+              <Label className="text-muted-foreground">Sequel Name</Label>
               <Input
                 value={sequelName}
                 onChange={(e) => setSequelName(e.target.value)}
                 placeholder="Enter sequel name..."
-                className="border-slate-600 bg-slate-700 text-white"
+                className="border-border bg-muted text-foreground"
               />
             </div>
           </div>

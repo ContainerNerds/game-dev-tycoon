@@ -32,12 +32,12 @@ export default function MonthEndModal() {
 
   return (
     <Dialog open={true} onOpenChange={() => {}}>
-      <DialogContent className="border-slate-700 bg-slate-800 text-white sm:max-w-lg [&>button]:hidden">
+      <DialogContent className="border-border bg-card text-foreground sm:max-w-lg [&>button]:hidden">
         <DialogHeader>
           <DialogTitle className="text-xl">
             Monthly Report — {getMonthName(report.month)} {report.year}
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-muted-foreground">
             End of month financial summary
           </DialogDescription>
         </DialogHeader>
@@ -49,7 +49,7 @@ export default function MonthEndModal() {
               <h4 className="text-sm font-semibold text-green-400 mb-2">Income</h4>
               {income.map((li, i) => (
                 <div key={i} className="flex justify-between text-sm py-0.5">
-                  <span className="text-slate-300">{li.label}</span>
+                  <span className="text-muted-foreground">{li.label}</span>
                   <span className="font-mono text-green-400">
                     +${Math.abs(li.amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </span>
@@ -64,7 +64,7 @@ export default function MonthEndModal() {
               <h4 className="text-sm font-semibold text-red-400 mb-2">Expenses</h4>
               {expenses.map((li, i) => (
                 <div key={i} className="flex justify-between text-sm py-0.5">
-                  <span className="text-slate-300">{li.label}</span>
+                  <span className="text-muted-foreground">{li.label}</span>
                   <span className="font-mono text-red-400">
                     -${Math.abs(li.amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </span>
@@ -74,28 +74,28 @@ export default function MonthEndModal() {
           )}
 
           {income.length === 0 && expenses.length === 0 && (
-            <p className="text-sm text-slate-500 text-center py-4">
+            <p className="text-sm text-muted-foreground/60 text-center py-4">
               No transactions this month.
             </p>
           )}
 
-          <Separator className="bg-slate-700" />
+          <Separator />
 
           {/* Totals */}
           <div className="space-y-1">
             <div className="flex justify-between text-sm">
-              <span className="text-slate-400">Total Income</span>
+              <span className="text-muted-foreground">Total Income</span>
               <span className="font-mono text-green-400">
                 ${report.income.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-slate-400">Total Expenses</span>
+              <span className="text-muted-foreground">Total Expenses</span>
               <span className="font-mono text-red-400">
                 -${(report.employeeCosts + report.computeCosts + report.devOverheadCosts).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </span>
             </div>
-            <Separator className="bg-slate-600" />
+            <Separator />
             <div className="flex justify-between font-bold">
               <span>Net Cash Flow</span>
               <span className={`font-mono ${report.netCashFlow >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -103,8 +103,8 @@ export default function MonthEndModal() {
               </span>
             </div>
             <div className="flex justify-between text-sm pt-1">
-              <span className="text-slate-400">Studio Balance</span>
-              <span className="font-mono text-white">
+              <span className="text-muted-foreground">Studio Balance</span>
+              <span className="font-mono text-foreground">
                 ${Math.floor(money).toLocaleString()}
               </span>
             </div>

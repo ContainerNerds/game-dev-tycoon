@@ -39,13 +39,13 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <Card className="w-full max-w-md border-slate-700 bg-slate-800/80 backdrop-blur">
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <Card className="w-full max-w-md border-border bg-card/80 backdrop-blur">
         <CardHeader className="text-center">
-          <CardTitle className="text-4xl font-bold tracking-tight text-white">
+          <CardTitle className="text-4xl font-bold tracking-tight text-foreground">
             Game Dev Tycoon
           </CardTitle>
-          <CardDescription className="text-slate-400">
+          <CardDescription className="text-muted-foreground">
             Build your game development empire
           </CardDescription>
         </CardHeader>
@@ -67,7 +67,7 @@ export default function MainMenu({ onStartGame }: MainMenuProps) {
             {hasSave ? 'Load Game' : 'No Save Found'}
           </Button>
           {hasSave && saveDate && (
-            <p className="text-center text-sm text-slate-500">
+            <p className="text-center text-sm text-muted-foreground/60">
               Last saved: {saveDate}
             </p>
           )}

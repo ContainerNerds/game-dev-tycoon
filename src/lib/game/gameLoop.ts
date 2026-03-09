@@ -101,58 +101,53 @@ export function processTick(store: GameStore): void {
     }
   }
 
-  // 3. Active game processing
+  // 3. Active game processing — accumulate all mutations locally, write once
   const game = state.currentGame;
   if (game && game.phase !== 'retired') {
-    // Sales
+    const platforms = game.platformReleases.map((pr) => ({ ...pr }));
+    let tickRevenue = 0;
+    let newGameFans = 0;
+    let newStudioFans = 0;
+    let phase = game.phase;
+    let phaseTicks = game.phaseTicks + 1;
+    const newBugs: Bug[] = [];
+
+    // --- Sales ---
     const saleRate = getSaleRatePerTick(game, state);
     const copiesSold = Math.max(0, Math.round(saleRate * 100) / 100);
 
-    // Double sale chance from upgrades
     const doubleSaleChance = getUpgradeMultiplier(
       'doubleSaleChance',
       state.unlockedStudioUpgrades,
       game.unlockedGameUpgrades
-    ) - 1; // the multiplier starts at 1, so subtract to get chance
+    ) - 1;
     let actualCopies = copiesSold;
     if (doubleSaleChance > 0 && Math.random() < doubleSaleChance) {
       actualCopies *= 2;
     }
 
-    // Revenue per platform
     if (actualCopies > 0) {
-      const platformCount = game.platformReleases.length || 1;
+      const platformCount = platforms.length || 1;
       const copiesPerPlatform = actualCopies / platformCount;
 
-      let totalTickRevenue = 0;
-      const updatedPlatforms = game.platformReleases.map((pr) => {
+      for (const pr of platforms) {
         const netRevenue = copiesPerPlatform * game.gamePrice * (1 - pr.revenueCut);
-        totalTickRevenue += netRevenue;
-        return {
-          ...pr,
-          totalCopiesSold: pr.totalCopiesSold + copiesPerPlatform,
-          activePlayers: pr.activePlayers + copiesPerPlatform * 0.5,
-        };
-      });
+        tickRevenue += netRevenue;
+        pr.totalCopiesSold += copiesPerPlatform;
+        pr.activePlayers += copiesPerPlatform * 0.5;
+      }
 
-      store.earnMoney(totalTickRevenue);
-      store.updateCurrentGame({
-        platformReleases: updatedPlatforms,
-        totalRevenue: game.totalRevenue + totalTickRevenue,
-      });
-
-      // Fan conversion
       const fans = calculateFanConversion(
         actualCopies,
         state.unlockedStudioUpgrades,
         game.unlockedGameUpgrades
       );
-      if (fans.newGameFans > 0) store.addGameFans(fans.newGameFans);
-      if (fans.newStudioFans > 0) store.addStudioFans(fans.newStudioFans);
+      newGameFans += fans.newGameFans;
+      newStudioFans += fans.newStudioFans;
     }
 
-    // Player decay based on phase
-    const totalPlayers = game.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0);
+    // --- Player decay ---
+    const totalPlayers = platforms.reduce((sum, p) => sum + p.activePlayers, 0);
     let playerDecayRate = 0;
     if (game.phase === 'decline') {
       const declineMultiplier = getUpgradeMultiplier(
@@ -165,8 +160,7 @@ export function processTick(store: GameStore): void {
       playerDecayRate = 0.0005;
     }
 
-    // Server overload player loss
-    const loadByRegion = getLoadByRegion(game);
+    const loadByRegion = getLoadByRegion({ ...game, platformReleases: platforms });
     const overloaded = Object.entries(loadByRegion)
       .filter(([, load]) => isRegionOverloaded(load))
       .map(([regionId]) => regionId);
@@ -175,17 +169,14 @@ export function processTick(store: GameStore): void {
     if (playerDecayRate > 0 || overloadLoss > 0) {
       const decayLoss = totalPlayers * playerDecayRate;
       const totalLoss = decayLoss + overloadLoss;
-      const platformCount = game.platformReleases.length || 1;
+      const platformCount = platforms.length || 1;
       const lossPerPlatform = totalLoss / platformCount;
-
-      const decayedPlatforms = (store.currentGame?.platformReleases ?? game.platformReleases).map((pr) => ({
-        ...pr,
-        activePlayers: Math.max(0, pr.activePlayers - lossPerPlatform),
-      }));
-      store.updateCurrentGame({ platformReleases: decayedPlatforms });
+      for (const pr of platforms) {
+        pr.activePlayers = Math.max(0, pr.activePlayers - lossPerPlatform);
+      }
     }
 
-    // Bug spawning
+    // --- Bug spawning ---
     const bugRateMultiplier = getBugRateMultiplier(state.employees);
     const bugUpgradeMultiplier = getUpgradeMultiplier(
       'bugRateMultiplier',
@@ -197,7 +188,7 @@ export function processTick(store: GameStore): void {
 
     if (Math.random() < bugChance) {
       const severity = randomBugSeverity();
-      const bug: Bug = {
+      newBugs.push({
         id: generateBugId(),
         severity,
         name: randomBugName(),
@@ -205,12 +196,10 @@ export function processTick(store: GameStore): void {
         fixTimeHours: Math.round(GAME_CONFIG.bugFixBaseHours * severityCostMultiplier(severity)),
         fixProgressHours: 0,
         spawnedAt: Date.now(),
-      };
-      store.addBug(bug);
+      });
     }
 
-    // Phase progression
-    const phaseTicks = game.phaseTicks + 1;
+    // --- Phase progression ---
     const maxTicks = getLifecyclePhaseTicks(
       game.phase,
       state.unlockedStudioUpgrades,
@@ -218,15 +207,23 @@ export function processTick(store: GameStore): void {
     );
 
     if (phaseTicks >= maxTicks) {
-      let nextPhase = game.phase;
-      if (game.phase === 'growth') nextPhase = 'peak';
-      else if (game.phase === 'peak') nextPhase = 'decline';
-      // decline doesn't auto-advance — player must retire/DLC/sequel
-
-      store.updateCurrentGame({ phase: nextPhase, phaseTicks: 0 });
-    } else {
-      store.updateCurrentGame({ phaseTicks });
+      if (phase === 'growth') phase = 'peak';
+      else if (phase === 'peak') phase = 'decline';
+      phaseTicks = 0;
     }
+
+    // --- Single atomic write for all game state changes ---
+    store.updateCurrentGame({
+      platformReleases: platforms,
+      totalRevenue: game.totalRevenue + tickRevenue,
+      phase,
+      phaseTicks,
+      bugs: newBugs.length > 0 ? [...game.bugs, ...newBugs] : game.bugs,
+    });
+
+    if (tickRevenue > 0) store.earnMoney(tickRevenue);
+    if (newGameFans > 0) store.addGameFans(newGameFans);
+    if (newStudioFans > 0) store.addStudioFans(newStudioFans);
 
     // Research points (earned while game is online)
     const researchPerTick = GAME_CONFIG.researchPointsPerGameDay / 24;
