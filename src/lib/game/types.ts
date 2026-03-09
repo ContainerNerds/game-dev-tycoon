@@ -43,6 +43,8 @@ export type OfficeTier = 0 | 1 | 2 | 3 | 4;
 
 export type ServerType = 'colocated' | 'datacenter';
 
+export type GameMode = 'singleplayer' | 'multiplayer';
+
 // ============================================================
 // Development Pillars
 // ============================================================
@@ -174,12 +176,13 @@ export interface GameInDev {
   name: string;
   genre: Genre;
   style: Style;
+  mode: GameMode;
   platforms: Platform[];
   pillarWeights: PillarWeights;
-  pillarProgress: PillarProgress;   // current points contributed
-  pillarTargets: PillarTargets;     // target points to complete
-  progressPercent: number;          // 0–100, derived from pillar completion
-  bugsFound: number;                // bugs accumulated during development
+  pillarProgress: PillarProgress;
+  pillarTargets: PillarTargets;
+  progressPercent: number;
+  bugsFound: number;
   devCostSpent: number;
   isCrunching: boolean;
   crunchBugPenalty: number;
@@ -204,16 +207,18 @@ export interface ActiveGame {
   name: string;
   genre: Genre;
   style: Style;
+  mode: GameMode;
   comboMultiplier: number;
   phase: GameLifecyclePhase;
   pillarWeights: PillarWeights;
-  reviewScore: number;          // 0–10, average of blog reviews
+  reviewScore: number;
   blogReviews: BlogReview[];
   releaseMonth: number;
   releaseYear: number;
-  phaseTicks: number;           // ticks spent in current phase
+  phaseTicks: number;
   platformReleases: PlatformRelease[];
   gameFans: number;
+  regionalFans: Partial<Record<RegionId, number>>;
   gamePrice: number;
   bugs: Bug[];
   dlcs: DLC[];
@@ -221,7 +226,8 @@ export interface ActiveGame {
   unlockedGameUpgrades: string[];
   totalRevenue: number;
   monthlyHistory: MonthlySnapshot[];
-  bugRateDecay: number;           // starts at 1.0, decays each game-day toward a floor
+  bugRateDecay: number;
+  averageLatencyMs: number;
 }
 
 export interface GameSummary {

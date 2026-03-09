@@ -133,6 +133,7 @@ export function convertDevToActiveGame(
     name: dev.name,
     genre: dev.genre,
     style: dev.style,
+    mode: dev.mode,
     comboMultiplier,
     phase: 'growth',
     pillarWeights: dev.pillarWeights,
@@ -143,6 +144,7 @@ export function convertDevToActiveGame(
     phaseTicks: 0,
     platformReleases,
     gameFans: 0,
+    regionalFans: {},
     gamePrice: PLATFORM_CONFIG.basePriceByPlatform[dev.platforms[0] ?? 'PC'],
     bugs: [],
     dlcs: [],
@@ -151,5 +153,6 @@ export function convertDevToActiveGame(
     totalRevenue: 0,
     monthlyHistory: [],
     bugRateDecay: 1.0,
+    averageLatencyMs: 0,
   };
 }

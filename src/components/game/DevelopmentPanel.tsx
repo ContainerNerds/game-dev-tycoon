@@ -19,9 +19,14 @@ export default function DevelopmentPanel() {
   const toggleCrunch = useGameStore((s) => s.toggleCrunch);
   const releaseGame = useGameStore((s) => s.releaseGame);
 
+  const currentGame = useGameStore((s) => s.currentGame);
+
   if (!gameInDev) return null;
 
   const isComplete = gameInDev.progressPercent >= 100;
+  const needsServers = gameInDev.mode === 'multiplayer';
+  const hasServers = (currentGame?.servers.length ?? 0) > 0;
+  const canRelease = isComplete && (!needsServers || hasServers);
 
   const handleRelease = () => {
     const state = useGameStore.getState();
@@ -40,6 +45,9 @@ export default function DevelopmentPanel() {
               </span>
               <Badge variant="outline" className="text-xs">
                 {gameInDev.genre} / {gameInDev.style}
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                {gameInDev.mode === 'multiplayer' ? 'MP' : 'SP'}
               </Badge>
               {gameInDev.isCrunching && (
                 <Badge variant="outline" className="text-xs text-orange-400 border-orange-500/50">
@@ -100,10 +108,11 @@ export default function DevelopmentPanel() {
           <Button
             size="sm"
             className="text-xs cursor-pointer"
-            disabled={!isComplete}
+            disabled={!canRelease}
             onClick={handleRelease}
+            title={needsServers && !hasServers ? 'Multiplayer games require at least 1 server' : ''}
           >
-            Release Game
+            {needsServers && !hasServers ? 'Need Servers' : 'Release Game'}
           </Button>
         </div>
       </div>

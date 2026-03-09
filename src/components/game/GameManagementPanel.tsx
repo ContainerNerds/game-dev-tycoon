@@ -96,6 +96,7 @@ export default function GameManagementPanel() {
       name: sequelName,
       genre: currentGame.genre,
       style: currentGame.style,
+      mode: currentGame.mode,
       platforms: currentGame.platformReleases.map((pr) => pr.platform),
       pillarWeights: { ...weights },
       pillarProgress: { graphics: 0, gameplay: 0, sound: 0, polish: 0 },

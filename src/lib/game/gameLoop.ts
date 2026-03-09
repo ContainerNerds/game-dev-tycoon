@@ -11,7 +11,7 @@ import { calculateFanConversion } from './fanSystem';
 import { getLoadByRegion, isRegionOverloaded, calculatePlayerLossFromOverload } from './serverSystem';
 import { buildMonthlyReport, getTotalMonthlyCosts } from './calendarSystem';
 import { getEmployeePillarContribution, getBugChancePerContribution } from './employeeSystem';
-import type { Bug, BugSeverity } from './types';
+import type { Bug, BugSeverity, RegionId } from './types';
 
 function generateBugId(): string {
   return `bug-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -46,6 +46,31 @@ function severityCostMultiplier(severity: BugSeverity): number {
     case 'high': return 2.0;
     case 'critical': return 4.0;
   }
+}
+
+function getRegionalSaleWeights(game: { servers: { regionId: string }[]; mode: string }): Record<string, number> {
+  const weights: Record<string, number> = {};
+  let total = 0;
+  for (const region of SERVER_CONFIG.regions) {
+    const hasServer = game.servers.some((s) => s.regionId === region.id);
+    const w = region.playerDemandWeight * (game.mode === 'multiplayer' && hasServer ? 10 : 1);
+    weights[region.id] = w;
+    total += w;
+  }
+  if (total > 0) {
+    for (const key of Object.keys(weights)) weights[key] /= total;
+  }
+  return weights;
+}
+
+function pickWeightedRegion(weights: Record<string, number>): string {
+  const roll = Math.random();
+  let cumulative = 0;
+  for (const [region, weight] of Object.entries(weights)) {
+    cumulative += weight;
+    if (roll < cumulative) return region;
+  }
+  return 'us-east';
 }
 
 /**
@@ -121,6 +146,7 @@ export function processTick(store: GameStore): void {
     let tickRevenue = 0;
     let newGameFans = 0;
     let newStudioFans = 0;
+    const regionalFansDelta: Record<string, number> = {};
     let phase = game.phase;
     let phaseTicks = game.phaseTicks + 1;
     const newBugs: Bug[] = [];
@@ -157,6 +183,14 @@ export function processTick(store: GameStore): void {
       );
       newGameFans += fans.newGameFans;
       newStudioFans += fans.newStudioFans;
+
+      // Distribute fans across regions weighted by server presence
+      const regionWeights = getRegionalSaleWeights(game);
+      const totalNewFans = fans.newGameFans;
+      for (let i = 0; i < Math.ceil(totalNewFans); i++) {
+        const region = pickWeightedRegion(regionWeights);
+        regionalFansDelta[region] = (regionalFansDelta[region] ?? 0) + 1;
+      }
     }
 
     // --- Player decay ---
@@ -173,11 +207,30 @@ export function processTick(store: GameStore): void {
       playerDecayRate = 0.0005;
     }
 
-    const loadByRegion = getLoadByRegion({ ...game, platformReleases: platforms });
-    const overloaded = Object.entries(loadByRegion)
-      .filter(([, load]) => isRegionOverloaded(load))
-      .map(([regionId]) => regionId);
-    const overloadLoss = calculatePlayerLossFromOverload(totalPlayers, overloaded);
+    // Server overload only matters for multiplayer games
+    let overloadLoss = 0;
+    let avgLatency = 0;
+    if (game.mode === 'multiplayer' && game.servers.length > 0) {
+      const loadByRegion = getLoadByRegion({ ...game, platformReleases: platforms });
+      const overloaded = Object.entries(loadByRegion)
+        .filter(([, load]) => isRegionOverloaded(load))
+        .map(([regionId]) => regionId);
+      overloadLoss = calculatePlayerLossFromOverload(totalPlayers, overloaded);
+
+      // Average latency across active regions
+      let latencySum = 0;
+      let latencyCount = 0;
+      for (const region of SERVER_CONFIG.regions) {
+        const hasServer = game.servers.some((s) => s.regionId === region.id);
+        if (hasServer) {
+          const baseLat = region.latencyTier === 1 ? 25 : region.latencyTier === 2 ? 80 : 150;
+          const load = loadByRegion[region.id] ?? 0;
+          latencySum += baseLat * (1 + Math.max(0, load - 0.5));
+          latencyCount++;
+        }
+      }
+      avgLatency = latencyCount > 0 ? Math.round(latencySum / latencyCount) : 0;
+    }
 
     if (playerDecayRate > 0 || overloadLoss > 0) {
       const decayLoss = totalPlayers * playerDecayRate;
@@ -231,6 +284,12 @@ export function processTick(store: GameStore): void {
       phaseTicks = 0;
     }
 
+    // --- Merge regional fan deltas ---
+    const mergedRegionalFans = { ...game.regionalFans };
+    for (const [region, count] of Object.entries(regionalFansDelta)) {
+      mergedRegionalFans[region as RegionId] = (mergedRegionalFans[region as RegionId] ?? 0) + count;
+    }
+
     // --- Single atomic write for all game state changes ---
     store.updateCurrentGame({
       platformReleases: platforms,
@@ -239,6 +298,8 @@ export function processTick(store: GameStore): void {
       phaseTicks,
       bugs: newBugs.length > 0 ? [...game.bugs, ...newBugs] : game.bugs,
       bugRateDecay,
+      regionalFans: mergedRegionalFans,
+      averageLatencyMs: avgLatency,
     });
 
     if (tickRevenue > 0) store.earnMoney(tickRevenue);

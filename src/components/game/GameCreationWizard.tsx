@@ -13,7 +13,7 @@ import { useGameStore } from '@/lib/store/gameStore';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { ALL_GENRES, ALL_STYLES, getComboMultiplier } from '@/lib/config/genreStyleConfig';
 import { randomStudioName, randomGameName } from '@/lib/config/nameConfig';
-import type { Genre, Style, Platform, PillarWeights, GameInDev } from '@/lib/game/types';
+import type { Genre, Style, Platform, PillarWeights, GameInDev, GameMode } from '@/lib/game/types';
 import { Shuffle } from 'lucide-react';
 
 interface GameCreationWizardProps {
@@ -38,6 +38,7 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
     sound: 25,
     polish: 25,
   });
+  const [gameMode, setGameMode] = useState<GameMode>('singleplayer');
 
   const newGame = useGameStore((s) => s.newGame);
   const startDevelopment = useGameStore((s) => s.startDevelopment);
@@ -85,6 +86,7 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
       name: gameName,
       genre,
       style,
+      mode: gameMode,
       platforms: ['PC'],
       pillarWeights: pillars,
       pillarProgress: { graphics: 0, gameplay: 0, sound: 0, polish: 0 },
@@ -246,6 +248,33 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
             <span className={`text-sm font-medium ${comboColor}`}>
               {genre} + {style}: {comboLabel} ({comboMultiplier}x)
             </span>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-muted-foreground">Game Mode</Label>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={gameMode === 'singleplayer' ? 'default' : 'outline'}
+                className="flex-1 cursor-pointer"
+                onClick={() => setGameMode('singleplayer')}
+              >
+                Single Player
+              </Button>
+              <Button
+                type="button"
+                variant={gameMode === 'multiplayer' ? 'default' : 'outline'}
+                className="flex-1 cursor-pointer"
+                onClick={() => setGameMode('multiplayer')}
+              >
+                Multiplayer
+              </Button>
+            </div>
+            {gameMode === 'multiplayer' && (
+              <p className="text-xs text-muted-foreground">
+                Multiplayer games require servers. You&apos;ll need at least 1 server before release.
+              </p>
+            )}
           </div>
 
           <Separator />
