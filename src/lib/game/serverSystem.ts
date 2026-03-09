@@ -17,22 +17,72 @@ export function getTotalMonthlyCost(servers: Server[]): number {
   return servers.reduce((sum, s) => sum + s.monthlyCost, 0);
 }
 
+// Geographic proximity mapping: unserved regions route to nearest served region
+const NEAREST_REGION_MAP: Record<string, string[]> = {
+  'us-east': ['us-west'],
+  'us-west': ['us-east'],
+  'brazil': ['us-east', 'us-west'],
+  'saudi-arabia': ['russia', 'india', 'us-east'],
+  'russia': ['saudi-arabia', 'us-east', 'japan'],
+  'india': ['saudi-arabia', 'japan', 'australia'],
+  'china': ['japan', 'india', 'russia'],
+  'japan': ['china', 'us-west', 'australia'],
+  'australia': ['japan', 'india', 'us-west'],
+};
+
+export function getNearestServedRegion(regionId: string, servedRegions: Set<string>): string | null {
+  const candidates = NEAREST_REGION_MAP[regionId] ?? [];
+  for (const candidate of candidates) {
+    if (servedRegions.has(candidate)) return candidate;
+  }
+  // Fallback: any served region
+  for (const r of servedRegions) return r;
+  return null;
+}
+
+/**
+ * Calculate load per region with nearest-region routing.
+ * Unserved regions route their players to the nearest served region.
+ */
 export function getLoadByRegion(totalPlayers: number, servers: Server[]): Record<string, number> {
   const capacityByRegion = getTotalCapacityByRegion(servers);
-  const result: Record<string, number> = {};
+  const servedRegions = new Set(Object.keys(capacityByRegion).filter((r) => capacityByRegion[r] > 0));
+  const effectivePlayers: Record<string, number> = {};
 
   for (const region of SERVER_CONFIG.regions) {
-    const regionCapacity = capacityByRegion[region.id] ?? 0;
     const regionPlayers = totalPlayers * region.playerDemandWeight;
-
-    if (regionCapacity === 0) {
-      result[region.id] = regionPlayers > 0 ? Infinity : 0;
+    if (servedRegions.has(region.id)) {
+      effectivePlayers[region.id] = (effectivePlayers[region.id] ?? 0) + regionPlayers;
     } else {
-      result[region.id] = regionPlayers / regionCapacity;
+      const nearest = getNearestServedRegion(region.id, servedRegions);
+      if (nearest) {
+        effectivePlayers[nearest] = (effectivePlayers[nearest] ?? 0) + regionPlayers;
+      }
     }
   }
 
+  const result: Record<string, number> = {};
+  for (const region of SERVER_CONFIG.regions) {
+    const cap = capacityByRegion[region.id] ?? 0;
+    const players = effectivePlayers[region.id] ?? 0;
+    result[region.id] = cap > 0 ? players / cap : (players > 0 ? Infinity : 0);
+  }
+
   return result;
+}
+
+export function getRoutingInfo(servers: Server[]): Record<string, string | null> {
+  const capacityByRegion = getTotalCapacityByRegion(servers);
+  const servedRegions = new Set(Object.keys(capacityByRegion).filter((r) => capacityByRegion[r] > 0));
+  const routing: Record<string, string | null> = {};
+  for (const region of SERVER_CONFIG.regions) {
+    if (servedRegions.has(region.id)) {
+      routing[region.id] = null;
+    } else {
+      routing[region.id] = getNearestServedRegion(region.id, servedRegions);
+    }
+  }
+  return routing;
 }
 
 export function isRegionOverloaded(load: number): boolean {

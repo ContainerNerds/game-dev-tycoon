@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useGameStore } from '@/lib/store/gameStore';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
-import { createColocatedServer, createDatacenter, getLoadByRegion, isRegionOverloaded, getTotalMonthlyCost } from '@/lib/game/serverSystem';
+import { createColocatedServer, createDatacenter, getLoadByRegion, isRegionOverloaded, getTotalMonthlyCost, getRoutingInfo } from '@/lib/game/serverSystem';
 import { getUpgradeMultiplier, getServerCostMultiplier } from '@/lib/game/calculations';
 import type { RegionId, ServerRack } from '@/lib/game/types';
 import { Server, Globe, HardDrive, Wifi, AlertTriangle } from 'lucide-react';
@@ -35,6 +35,7 @@ export default function DeliveryTab() {
   const totalMonthlyCost = getTotalMonthlyCost(servers);
 
   const loadByRegion = getLoadByRegion(totalPlayers, servers);
+  const routing = getRoutingInfo(servers);
 
   const getRackCost = (regionId: RegionId) =>
     Math.round(SERVER_CONFIG.colocated.rackLeaseCostPerMonth * SERVER_CONFIG.regions.find(r => r.id === regionId)!.costMultiplier);
@@ -121,7 +122,12 @@ export default function DeliveryTab() {
                     {overloaded && (
                       <Badge variant="destructive" className="text-xs">OVERLOADED</Badge>
                     )}
-                    {!isUnlocked && (
+                    {!isUnlocked && routing[region.id] && (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        Routing to {SERVER_CONFIG.regions.find(r => r.id === routing[region.id])?.name ?? routing[region.id]}
+                      </Badge>
+                    )}
+                    {!isUnlocked && !routing[region.id] && (
                       <Badge variant="outline" className="text-xs text-muted-foreground">Locked</Badge>
                     )}
                   </div>

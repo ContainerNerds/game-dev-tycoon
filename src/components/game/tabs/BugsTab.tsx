@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useGameStore } from '@/lib/store/gameStore';
 import BugMiniGame from '@/components/game/BugMiniGame';
@@ -99,24 +100,36 @@ export default function BugsTab() {
         </div>
       ) : (
         <div className="grid gap-3">
-          {allBugs.map((bug) => (
-            <Card key={bug.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{bug.name}</span>
-                      <Badge variant="outline" className={`text-xs ${SEVERITY_COLORS[bug.severity]}`}>{bug.severity}</Badge>
+          {allBugs.map((bug) => {
+            const fixer = bug.assignedFixerId ? employees.find((e) => e.id === bug.assignedFixerId) : null;
+            const fixPct = Math.round(bug.fixProgress * 100);
+            return (
+              <Card key={bug.id}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">{bug.name}</span>
+                        <Badge variant="outline" className={`text-xs ${SEVERITY_COLORS[bug.severity]}`}>{bug.severity}</Badge>
+                        {fixer && (
+                          <span className="text-xs text-blue-400">
+                            {fixer.name} fixing ({fixPct}%)
+                          </span>
+                        )}
+                      </div>
+                      {bug.fixProgress > 0 && (
+                        <Progress value={fixPct} className="h-1.5" />
+                      )}
+                      <div className="text-xs text-muted-foreground">
+                        Fix cost: ${bug.fixCost.toLocaleString()} &middot; {bug.fixTimeHours}h to fix
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Fix cost: ${bug.fixCost.toLocaleString()} &middot; {bug.fixTimeHours}h to fix
-                    </div>
+                    <Button size="sm" variant="outline" className="cursor-pointer shrink-0" onClick={() => setMiniGameBug(bug)}>Fix</Button>
                   </div>
-                  <Button size="sm" variant="outline" className="cursor-pointer shrink-0" onClick={() => setMiniGameBug(bug)}>Fix</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
