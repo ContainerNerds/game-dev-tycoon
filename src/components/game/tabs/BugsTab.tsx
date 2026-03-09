@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useGameStore } from '@/lib/store/gameStore';
 import { Bug as BugIcon } from 'lucide-react';
+import type { Bug } from '@/lib/game/types';
 
 const SEVERITY_COLORS: Record<string, string> = {
   low: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
@@ -14,8 +15,10 @@ const SEVERITY_COLORS: Record<string, string> = {
   critical: 'bg-red-500/20 text-red-400 border-red-500/50',
 };
 
+const EMPTY_BUGS: Bug[] = [];
+
 export default function BugsTab() {
-  const bugs = useGameStore((s) => s.currentGame?.bugs ?? []);
+  const bugs = useGameStore((s) => s.currentGame?.bugs ?? EMPTY_BUGS);
   const money = useGameStore((s) => s.money);
   const spendMoney = useGameStore((s) => s.spendMoney);
   const removeBug = useGameStore((s) => s.removeBug);

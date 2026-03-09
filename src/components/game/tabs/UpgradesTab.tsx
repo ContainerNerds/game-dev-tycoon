@@ -8,11 +8,13 @@ import { useGameStore } from '@/lib/store/gameStore';
 import { SKILL_TREE } from '@/lib/config/skillTreeConfig';
 import { Lock, Unlock, Check } from 'lucide-react';
 
+const EMPTY_ARRAY: string[] = [];
+
 export default function UpgradesTab() {
   const money = useGameStore((s) => s.money);
   const researchPoints = useGameStore((s) => s.researchPoints);
   const studioUpgrades = useGameStore((s) => s.unlockedStudioUpgrades);
-  const gameUpgrades = useGameStore((s) => s.currentGame?.unlockedGameUpgrades ?? []);
+  const gameUpgrades = useGameStore((s) => s.currentGame?.unlockedGameUpgrades ?? EMPTY_ARRAY);
   const spendMoney = useGameStore((s) => s.spendMoney);
   const addResearchPoints = useGameStore((s) => s.addResearchPoints);
   const unlockStudioUpgrade = useGameStore((s) => s.unlockStudioUpgrade);
