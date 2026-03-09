@@ -103,7 +103,7 @@ export interface StudioTask {
   id: string;
   type: TaskType;
   name: string;
-  targetGameId: string | null;    // which active game this DLC/patch is for (null for game tasks)
+  targetGameId: string | null;
   pillarProgress: PillarProgress;
   pillarTargets: PillarTargets;
   progressPercent: number;
@@ -111,6 +111,8 @@ export interface StudioTask {
   assignedEmployeeIds: string[];
   autoAssign: boolean;
   isCrunching: boolean;
+  startMonth: number;
+  startYear: number;
   // Game task fields
   genre?: Genre;
   style?: Style;
@@ -149,12 +151,14 @@ export interface StaffContribution {
 
 export interface Bug {
   id: string;
-  gameId: string;               // which active game this bug belongs to
+  gameId: string;
   severity: BugSeverity;
   name: string;
   fixCost: number;
   fixTimeHours: number;
   fixProgressHours: number;
+  fixProgress: number;          // 0–1, auto-fix progress by bugfix employees
+  assignedFixerId: string | null; // employee ID currently fixing this bug
   spawnedAt: number;
 }
 
@@ -252,14 +256,16 @@ export interface ActiveGame {
   regionalFans: Partial<Record<RegionId, number>>;
   gamePrice: number;
   bugs: Bug[];
-  dlcIds: string[];                 // IDs of released DLC tasks
+  dlcIds: string[];
+  dlcCount: number;
+  dlcSalesBoost: number;            // temporary multiplier from DLC releases, decays over time
   isLiveService: boolean;
   unlockedGameUpgrades: string[];
   totalRevenue: number;
   monthlyHistory: MonthlySnapshot[];
   bugRateDecay: number;
   averageLatencyMs: number;
-  devCostTotal: number;             // total money spent developing this game
+  devCostTotal: number;
 }
 
 export interface GameSummary {

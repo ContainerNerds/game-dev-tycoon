@@ -18,7 +18,7 @@ import type {
 } from '@/lib/game/types';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { OFFICE_CONFIG } from '@/lib/config/officeConfig';
-import { saveGame, loadGame } from './saveLoad';
+import { saveToSlot, loadFromSlot } from './saveLoad';
 
 // ============================================================
 // Initial State Factory
@@ -93,8 +93,8 @@ export function createInitialState(studioName: string, playerName: string, start
 
 interface GameActions {
   newGame: (studioName: string, playerName: string, startingMoney: number) => void;
-  loadSavedGame: () => boolean;
-  save: () => void;
+  loadSlot: (slotId: number) => boolean;
+  saveToSlot: (slotId: number) => void;
 
   // Calendar
   setSpeed: (speed: GameSpeed) => void;
@@ -116,6 +116,7 @@ interface GameActions {
 
   // Game lifecycle
   releaseGame: (taskId: string, activeGame: ActiveGame) => void;
+  releaseDLC: (taskId: string) => void;
   retireGame: (gameId: string) => void;
   updateGame: (gameId: string, updates: Partial<ActiveGame>) => void;
   addCompletedGame: (summary: GameSummary) => void;
@@ -177,42 +178,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set(createInitialState(studioName, playerName, startingMoney));
   },
 
-  loadSavedGame: () => {
-    const saved = loadGame();
+  loadSlot: (slotId) => {
+    const saved = loadFromSlot(slotId);
     if (saved) { set(saved); return true; }
     return false;
   },
 
-  save: () => {
+  saveToSlot: (slotId) => {
     const state = get();
-    const { ...rest } = state;
     const stateOnly: StudioState = {
-      studioName: rest.studioName,
-      playerName: rest.playerName,
-      money: rest.money,
-      totalLifetimeMoney: rest.totalLifetimeMoney,
-      studioFans: rest.studioFans,
-      researchPoints: rest.researchPoints,
-      unlockedStudioUpgrades: rest.unlockedStudioUpgrades,
-      activeGames: rest.activeGames,
-      activeTasks: rest.activeTasks,
-      completedGames: rest.completedGames,
-      maxParallelTasks: rest.maxParallelTasks,
-      maxActiveGames: rest.maxActiveGames,
-      servers: rest.servers,
-      racks: rest.racks,
-      employees: rest.employees,
-      candidatePool: rest.candidatePool,
-      office: rest.office,
-      calendar: rest.calendar,
-      dailyRates: rest.dailyRates,
-      staffContributions: rest.staffContributions,
-      monthlyReports: rest.monthlyReports,
-      lastCandidateRefreshDay: rest.lastCandidateRefreshDay,
+      studioName: state.studioName,
+      playerName: state.playerName,
+      money: state.money,
+      totalLifetimeMoney: state.totalLifetimeMoney,
+      studioFans: state.studioFans,
+      researchPoints: state.researchPoints,
+      unlockedStudioUpgrades: state.unlockedStudioUpgrades,
+      activeGames: state.activeGames,
+      activeTasks: state.activeTasks,
+      completedGames: state.completedGames,
+      maxParallelTasks: state.maxParallelTasks,
+      maxActiveGames: state.maxActiveGames,
+      servers: state.servers,
+      racks: state.racks,
+      employees: state.employees,
+      candidatePool: state.candidatePool,
+      office: state.office,
+      calendar: state.calendar,
+      dailyRates: state.dailyRates,
+      staffContributions: state.staffContributions,
+      monthlyReports: state.monthlyReports,
+      lastCandidateRefreshDay: state.lastCandidateRefreshDay,
       _dayAccMoney: 0, _dayAccFans: 0, _dayAccRP: 0, _dayTickCounter: 0,
-      isBankrupt: rest.isBankrupt,
+      isBankrupt: state.isBankrupt,
     };
-    saveGame(stateOnly);
+    saveToSlot(slotId, stateOnly);
   },
 
   // ----------------------------------------------------------
@@ -327,6 +327,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return {
       activeGames: [...s.activeGames, activeGame],
       activeTasks: s.activeTasks.filter((t) => t.id !== taskId),
+      employees: s.employees.map((e) =>
+        e.assignedTaskId === taskId ? { ...e, assignedTaskId: null } : e
+      ),
+    };
+  }),
+
+  releaseDLC: (taskId) => set((s) => {
+    const task = s.activeTasks.find((t) => t.id === taskId);
+    if (!task || task.type !== 'dlc' || !task.targetGameId) return {};
+    return {
+      activeTasks: s.activeTasks.filter((t) => t.id !== taskId),
+      activeGames: s.activeGames.map((g) =>
+        g.id === task.targetGameId
+          ? { ...g, dlcCount: g.dlcCount + 1, dlcSalesBoost: g.dlcSalesBoost + 0.5, dlcIds: [...g.dlcIds, taskId] }
+          : g
+      ),
       employees: s.employees.map((e) =>
         e.assignedTaskId === taskId ? { ...e, assignedTaskId: null } : e
       ),

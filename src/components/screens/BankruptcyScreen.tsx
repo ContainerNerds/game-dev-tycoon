@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useGameStore } from '@/lib/store/gameStore';
-import { deleteSave } from '@/lib/store/saveLoad';
+// Save slot cleanup is handled by the main menu
 import { Skull } from 'lucide-react';
 
 interface BankruptcyScreenProps {
@@ -16,7 +16,6 @@ export default function BankruptcyScreen({ onRestart }: BankruptcyScreenProps) {
   const totalLifetimeMoney = useGameStore((s) => s.totalLifetimeMoney);
 
   const handleRestart = () => {
-    deleteSave();
     onRestart();
   };
 

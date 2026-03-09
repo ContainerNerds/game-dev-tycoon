@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect, useRef, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StudioHeader from '@/components/game/StudioHeader';
 import DevMenu from '@/components/game/DevMenu';
+import GameMenu from '@/components/game/GameMenu';
 import TaskBar from '@/components/game/TaskBar';
 import ActiveGamesBar from '@/components/game/ActiveGamesBar';
 import DashboardTab from '@/components/game/tabs/DashboardTab';
@@ -16,16 +18,34 @@ import OfficeTab from '@/components/game/tabs/OfficeTab';
 import FinancesTab from '@/components/game/tabs/FinancesTab';
 import { useGameTick } from '@/lib/game/useGameTick';
 import { useGameStore } from '@/lib/store/gameStore';
+import { loadSettings } from '@/lib/store/saveLoad';
 import BankruptcyScreen from '@/components/screens/BankruptcyScreen';
 
 interface GameScreenProps {
+  slotId: number;
   onQuit: () => void;
 }
 
-export default function GameScreen({ onQuit }: GameScreenProps) {
+export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
   useGameTick();
 
   const isBankrupt = useGameStore((s) => s.isBankrupt);
+  const saveToSlot = useGameStore((s) => s.saveToSlot);
+
+  const handleSave = useCallback(() => {
+    saveToSlot(slotId);
+  }, [slotId, saveToSlot]);
+
+  // Auto-save
+  useEffect(() => {
+    const settings = loadSettings();
+    if (!settings.autoSaveEnabled) return;
+    const ms = settings.autoSaveIntervalMinutes * 60 * 1000;
+    const interval = setInterval(() => {
+      handleSave();
+    }, ms);
+    return () => clearInterval(interval);
+  }, [handleSave]);
 
   if (isBankrupt) {
     return <BankruptcyScreen onRestart={onQuit} />;
@@ -33,7 +53,7 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
-      <StudioHeader />
+      <StudioHeader slotId={slotId} />
       <TaskBar />
       <ActiveGamesBar />
 
@@ -65,6 +85,7 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
         </Tabs>
       </div>
 
+      <GameMenu slotId={slotId} onQuit={onQuit} />
       <DevMenu />
     </div>
   );

@@ -107,6 +107,8 @@ export function convertTaskToActiveGame(task: StudioTask, state: StudioState): A
     gamePrice,
     bugs: [],
     dlcIds: [],
+    dlcCount: 0,
+    dlcSalesBoost: 0,
     isLiveService: mode === 'liveservice',
     unlockedGameUpgrades: [],
     totalRevenue: 0,

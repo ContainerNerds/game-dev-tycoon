@@ -165,20 +165,32 @@ export function processTick(store: GameStore): void {
     }
   }
 
-  // 2b. Bugfix employees auto-fix bugs
+  // 2b. Bugfix employees incrementally fix bugs
   const bugfixEmployees = state.employees.filter((e) => e.assignedTaskId === 'bugfix');
   if (bugfixEmployees.length > 0) {
+    const progressPerTick = 0.005; // per Devel point per tick
     for (const game of state.activeGames) {
-      if (game.bugs.length > 0) {
-        const totalDevelSkill = bugfixEmployees.reduce((sum, e) => sum + e.skills.devel, 0);
-        const fixRate = totalDevelSkill / GAME_CONFIG.bugfixTicksPerDevelPoint;
-        if (Math.random() < fixRate) {
-          const oldestBug = game.bugs[0];
-          if (oldestBug) {
-            store.removeBug(game.id, oldestBug.id);
-          }
+      if (game.bugs.length === 0) continue;
+      const updatedBugs = [...game.bugs];
+      const bugsToRemove: string[] = [];
+
+      let empIdx = 0;
+      for (let i = 0; i < updatedBugs.length && empIdx < bugfixEmployees.length; i++) {
+        const bug = updatedBugs[i];
+        const fixer = bugfixEmployees[empIdx];
+        const progress = bug.fixProgress + fixer.skills.devel * progressPerTick;
+        if (progress >= 1) {
+          bugsToRemove.push(bug.id);
+        } else {
+          updatedBugs[i] = { ...bug, fixProgress: progress, assignedFixerId: fixer.id };
         }
-        break; // fix bugs on first game with bugs
+        empIdx++;
+      }
+
+      if (bugsToRemove.length > 0 || empIdx > 0) {
+        store.updateGame(game.id, {
+          bugs: updatedBugs.filter((b) => !bugsToRemove.includes(b.id)),
+        });
       }
     }
   }
@@ -218,8 +230,9 @@ export function processTick(store: GameStore): void {
     let phaseTicks = game.phaseTicks + 1;
     const newBugs: Bug[] = [];
 
-    // Sales
-    const saleRate = getSaleRatePerTick(game, state);
+    // Sales (with DLC boost)
+    let saleRate = getSaleRatePerTick(game, state);
+    if (game.dlcSalesBoost > 0) saleRate *= (1 + game.dlcSalesBoost);
     let actualCopies = Math.max(0, Math.round(saleRate * 100) / 100);
     const doubleSaleChance = getUpgradeMultiplier('doubleSaleChance', state.unlockedStudioUpgrades, game.unlockedGameUpgrades) - 1;
     if (doubleSaleChance > 0 && Math.random() < doubleSaleChance) actualCopies *= 2;
@@ -280,7 +293,7 @@ export function processTick(store: GameStore): void {
         name: randomBugName(),
         fixCost: Math.round(GAME_CONFIG.bugFixBaseCost * severityCostMultiplier(severity)),
         fixTimeHours: Math.round(GAME_CONFIG.bugFixBaseHours * severityCostMultiplier(severity)),
-        fixProgressHours: 0, spawnedAt: Date.now(),
+        fixProgressHours: 0, fixProgress: 0, assignedFixerId: null, spawnedAt: Date.now(),
       });
     }
 
@@ -297,6 +310,12 @@ export function processTick(store: GameStore): void {
       mergedRegionalFans[region as RegionId] = (mergedRegionalFans[region as RegionId] ?? 0) + count;
     }
 
+    // DLC sales boost decay (~0.02 per game-day)
+    let dlcSalesBoost = game.dlcSalesBoost;
+    if (dlcSalesBoost > 0 && phaseTicks % 24 === 0) {
+      dlcSalesBoost = Math.max(0, dlcSalesBoost - 0.02);
+    }
+
     store.updateGame(game.id, {
       platformReleases: platforms,
       totalRevenue: game.totalRevenue + tickRevenue,
@@ -304,6 +323,7 @@ export function processTick(store: GameStore): void {
       bugs: newBugs.length > 0 ? [...game.bugs, ...newBugs] : game.bugs,
       bugRateDecay,
       regionalFans: mergedRegionalFans,
+      dlcSalesBoost,
     });
 
     if (tickRevenue > 0) store.earnMoney(tickRevenue);

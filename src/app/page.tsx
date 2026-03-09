@@ -5,11 +5,11 @@ import MainMenu from '@/components/screens/MainMenu';
 import GameScreen from '@/components/screens/GameScreen';
 
 export default function Home() {
-  const [inGame, setInGame] = useState(false);
+  const [activeSlotId, setActiveSlotId] = useState<number | null>(null);
 
-  if (inGame) {
-    return <GameScreen onQuit={() => setInGame(false)} />;
+  if (activeSlotId !== null) {
+    return <GameScreen slotId={activeSlotId} onQuit={() => setActiveSlotId(null)} />;
   }
 
-  return <MainMenu onStartGame={() => setInGame(true)} />;
+  return <MainMenu onStartGame={(slotId) => setActiveSlotId(slotId)} />;
 }

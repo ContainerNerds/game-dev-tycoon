@@ -22,7 +22,7 @@ const SPEED_LABELS: Record<GameSpeed, string> = {
   4: '4x',
 };
 
-export default function StudioHeader() {
+export default function StudioHeader({ slotId }: { slotId: number }) {
   const studioName = useGameStore((s) => s.studioName);
   const money = useGameStore((s) => s.money);
   const studioFans = useGameStore((s) => s.studioFans);
@@ -31,7 +31,7 @@ export default function StudioHeader() {
   const calendar = useGameStore((s) => s.calendar);
   const speed = useGameStore((s) => s.calendar.speed);
   const setSpeed = useGameStore((s) => s.setSpeed);
-  const save = useGameStore((s) => s.save);
+  const saveToSlot = useGameStore((s) => s.saveToSlot);
 
   const activeGames = useGameStore((s) => s.activeGames);
   const activeTasks = useGameStore((s) => s.activeTasks);
@@ -141,7 +141,7 @@ export default function StudioHeader() {
           size="sm"
           variant="outline"
           className="text-xs cursor-pointer"
-          onClick={save}
+          onClick={() => saveToSlot(slotId)}
         >
           Save
         </Button>

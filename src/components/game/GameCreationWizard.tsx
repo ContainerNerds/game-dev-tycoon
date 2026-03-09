@@ -19,9 +19,10 @@ import { Shuffle } from 'lucide-react';
 interface GameCreationWizardProps {
   onStart: () => void;
   onBack: () => void;
+  targetSlotId?: number;
 }
 
-export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps) {
+export function GameCreationWizard({ onStart, onBack, targetSlotId }: GameCreationWizardProps) {
   const [step, setStep] = useState<'studio' | 'game'>('studio');
 
   // Studio setup
@@ -82,6 +83,7 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
       polish: Math.round((pillars.polish / 100) * baseComplexity),
     };
 
+    const cal = useGameStore.getState().calendar;
     const task: StudioTask = {
       id: `task-${Date.now()}`,
       type: 'game',
@@ -93,6 +95,8 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
       bugsFound: 0,
       assignedEmployeeIds: [],
       autoAssign: true,
+      startMonth: cal.month,
+      startYear: cal.year,
       isCrunching: false,
       genre,
       style,

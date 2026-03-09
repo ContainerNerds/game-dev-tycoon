@@ -14,7 +14,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { useGameStore } from '@/lib/store/gameStore';
-import { convertTaskToActiveGame } from '@/lib/game/developmentSystem';
+import ReleaseModal from '@/components/game/ReleaseModal';
 import { ALL_GENRES, ALL_STYLES, getComboMultiplier } from '@/lib/config/genreStyleConfig';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { randomGameName } from '@/lib/config/nameConfig';
@@ -37,7 +37,7 @@ const TASK_TYPE_COLORS: Record<TaskType, string> = {
   patch: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
 };
 
-function TaskRow({ task }: { task: StudioTask }) {
+function TaskRow({ task, onRelease }: { task: StudioTask; onRelease: (task: StudioTask) => void }) {
   const store = useGameStore;
   const activeGames = store((s) => s.activeGames);
   const maxActiveGames = store((s) => s.maxActiveGames);
@@ -47,15 +47,12 @@ function TaskRow({ task }: { task: StudioTask }) {
   const isComplete = task.progressPercent >= 100;
   const assignedCount = employees.filter((e) => e.assignedTaskId === task.id).length;
 
-  const canRelease = isComplete && task.type === 'game' && activeGames.length < maxActiveGames;
+  const canReleaseGame = isComplete && task.type === 'game' && activeGames.length < maxActiveGames;
+  const canReleaseDLC = isComplete && task.type === 'dlc' && task.targetGameId;
   const needsServers = task.mode === 'liveservice' && servers.length === 0;
 
-  const handleRelease = () => {
-    if (task.type === 'game') {
-      const state = store.getState();
-      const activeGame = convertTaskToActiveGame(task, state);
-      state.releaseGame(task.id, activeGame);
-    }
+  const handleReleaseDLC = () => {
+    store.getState().releaseDLC(task.id);
   };
 
   const handleCancel = () => {
@@ -107,11 +104,16 @@ function TaskRow({ task }: { task: StudioTask }) {
           {task.type === 'game' && (
             <Button
               size="sm" className="text-xs h-7 cursor-pointer"
-              disabled={!canRelease || needsServers}
-              onClick={handleRelease}
+              disabled={!canReleaseGame || needsServers}
+              onClick={() => onRelease(task)}
               title={needsServers ? 'Live Service games need servers' : ''}
             >
               <Rocket className="h-3 w-3 mr-1" />Release
+            </Button>
+          )}
+          {task.type === 'dlc' && canReleaseDLC && (
+            <Button size="sm" className="text-xs h-7 cursor-pointer" onClick={handleReleaseDLC}>
+              <Rocket className="h-3 w-3 mr-1" />Release DLC
             </Button>
           )}
           <Button size="sm" variant="ghost" className="text-xs h-7 text-red-400 cursor-pointer" onClick={handleCancel}>
@@ -130,6 +132,7 @@ export default function TaskBar() {
   const addTask = useGameStore((s) => s.addTask);
 
   const [showNewTask, setShowNewTask] = useState(false);
+  const [releaseTask, setReleaseTask] = useState<StudioTask | null>(null);
   const [taskType, setTaskType] = useState<TaskType>('game');
   const [gameName, setGameName] = useState(randomGameName);
   const [genre, setGenre] = useState<Genre>('RPG');
@@ -158,6 +161,7 @@ export default function TaskBar() {
   };
 
   const handleCreate = () => {
+    const cal = useGameStore.getState().calendar;
     const baseComplexity = taskType === 'game' ? 100 : taskType === 'dlc' ? 60 : 30;
     const task: StudioTask = {
       id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -165,6 +169,8 @@ export default function TaskBar() {
       name: gameName,
       targetGameId: taskType !== 'game' ? (targetGameId || null) : null,
       pillarProgress: { graphics: 0, gameplay: 0, sound: 0, polish: 0 },
+      startMonth: cal.month,
+      startYear: cal.year,
       pillarTargets: {
         graphics: Math.round((pillars.graphics / 100) * baseComplexity),
         gameplay: Math.round((pillars.gameplay / 100) * baseComplexity),
@@ -191,8 +197,10 @@ export default function TaskBar() {
   return (
     <>
       {activeTasks.map((task) => (
-        <TaskRow key={task.id} task={task} />
+        <TaskRow key={task.id} task={task} onRelease={setReleaseTask} />
       ))}
+
+      <ReleaseModal task={releaseTask} open={releaseTask !== null} onClose={() => setReleaseTask(null)} />
 
       {canAddTask && (
         <div className="border-b border-border bg-card/30 px-4 py-1.5 shrink-0">
