@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { useGameStore } from '@/lib/store/gameStore';
 import { processTick } from '@/lib/game/gameLoop';
-import { convertDevToActiveGame } from '@/lib/game/developmentSystem';
+import { convertTaskToActiveGame } from '@/lib/game/developmentSystem';
 import type { GameStore } from '@/lib/store/gameStore';
 import { Wrench, X, Zap, FastForward, CheckCircle } from 'lucide-react';
 
@@ -17,9 +17,10 @@ export default function DevMenu() {
   const [devSpeed, setDevSpeed] = useState(10);
 
   const money = useGameStore((s) => s.money);
-  const gameInDev = useGameStore((s) => s.gameInDevelopment);
-  const currentGame = useGameStore((s) => s.currentGame);
+  const activeTasks = useGameStore((s) => s.activeTasks);
   const earnMoney = useGameStore((s) => s.earnMoney);
+
+  const firstTask = activeTasks[0] ?? null;
 
   const handleSimulateTicks = (count: number) => {
     for (let i = 0; i < count; i++) {
@@ -34,20 +35,22 @@ export default function DevMenu() {
 
   const handleFinishDev = () => {
     const store = useGameStore.getState();
-    if (!store.gameInDevelopment) return;
-    const dev = store.gameInDevelopment;
-    // Max out all pillars
+    const task = store.activeTasks[0];
+    if (!task) return;
+
     const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
     for (const p of pillars) {
-      const remaining = dev.pillarTargets[p] - dev.pillarProgress[p];
+      const remaining = task.pillarTargets[p] - task.pillarProgress[p];
       if (remaining > 0) {
-        store.contributePillarPoints(p, remaining);
+        store.contributeToTask(task.id, p, remaining);
       }
     }
+
     const updated = useGameStore.getState();
-    if (updated.gameInDevelopment) {
-      const activeGame = convertDevToActiveGame(updated.gameInDevelopment, updated);
-      store.releaseGame(activeGame);
+    const updatedTask = updated.activeTasks.find((t) => t.id === task.id);
+    if (updatedTask) {
+      const activeGame = convertTaskToActiveGame(updatedTask, updated);
+      store.releaseGame(task.id, activeGame);
     }
   };
 
@@ -128,8 +131,7 @@ export default function DevMenu() {
 
         <Separator />
 
-        {/* Game dev shortcuts */}
-        {gameInDev && (
+        {firstTask && (
           <div className="space-y-2">
             <span className="text-xs text-muted-foreground">Development</span>
             <Button

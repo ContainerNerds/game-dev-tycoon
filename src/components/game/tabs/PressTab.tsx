@@ -15,17 +15,18 @@ function scoreColor(score: number): string {
 }
 
 export default function PressTab() {
-  const currentGame = useGameStore((s) => s.currentGame);
+  const activeGames = useGameStore((s) => s.activeGames);
   const studioFans = useGameStore((s) => s.studioFans);
   const completedGames = useGameStore((s) => s.completedGames);
 
-  const gameFans = currentGame?.gameFans ?? 0;
-  const reviewScore = currentGame?.reviewScore ?? 0;
-  const blogReviews = currentGame?.blogReviews ?? [];
-  const totalPlayers = currentGame?.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0) ?? 0;
-  const totalSold = currentGame?.platformReleases.reduce((sum, p) => sum + p.totalCopiesSold, 0) ?? 0;
-  const phase = currentGame?.phase;
-  const monthlyHistory = currentGame?.monthlyHistory ?? [];
+  const primaryGame = activeGames[0] ?? null;
+  const gameFans = activeGames.reduce((sum, g) => sum + g.gameFans, 0);
+  const reviewScore = primaryGame?.reviewScore ?? 0;
+  const blogReviews = primaryGame?.blogReviews ?? [];
+  const totalPlayers = activeGames.reduce((sum, g) => sum + g.platformReleases.reduce((s2, p) => s2 + p.activePlayers, 0), 0);
+  const totalSold = activeGames.reduce((sum, g) => sum + g.platformReleases.reduce((s2, p) => s2 + p.totalCopiesSold, 0), 0);
+  const phase = primaryGame?.phase;
+  const monthlyHistory = primaryGame?.monthlyHistory ?? [];
 
   const sentiment = reviewScore >= 8 ? 'Overwhelmingly Positive' :
                     reviewScore >= 6 ? 'Mostly Positive' :

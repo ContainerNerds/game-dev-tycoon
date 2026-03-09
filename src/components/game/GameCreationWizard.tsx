@@ -13,7 +13,7 @@ import { useGameStore } from '@/lib/store/gameStore';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { ALL_GENRES, ALL_STYLES, getComboMultiplier } from '@/lib/config/genreStyleConfig';
 import { randomStudioName, randomGameName, randomPlayerName } from '@/lib/config/nameConfig';
-import type { Genre, Style, Platform, PillarWeights, GameInDev, GameMode } from '@/lib/game/types';
+import type { Genre, Style, Platform, PillarWeights, StudioTask, GameMode } from '@/lib/game/types';
 import { Shuffle } from 'lucide-react';
 
 interface GameCreationWizardProps {
@@ -39,10 +39,10 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
     sound: 25,
     polish: 25,
   });
-  const [gameMode, setGameMode] = useState<GameMode>('singleplayer');
+  const [gameMode, setGameMode] = useState<GameMode>('standard');
 
   const newGame = useGameStore((s) => s.newGame);
-  const startDevelopment = useGameStore((s) => s.startDevelopment);
+  const addTask = useGameStore((s) => s.addTask);
   const setSpeed = useGameStore((s) => s.setSpeed);
 
   const handlePillarChange = (key: keyof PillarWeights, newValue: number) => {
@@ -82,24 +82,27 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
       polish: Math.round((pillars.polish / 100) * baseComplexity),
     };
 
-    const gameInDev: GameInDev = {
-      id: `game-${Date.now()}`,
+    const task: StudioTask = {
+      id: `task-${Date.now()}`,
+      type: 'game',
       name: gameName,
+      targetGameId: null,
+      pillarProgress: { graphics: 0, gameplay: 0, sound: 0, polish: 0 },
+      pillarTargets,
+      progressPercent: 0,
+      bugsFound: 0,
+      assignedEmployeeIds: [],
+      autoAssign: true,
+      isCrunching: false,
       genre,
       style,
       mode: gameMode,
       platforms: ['PC'],
       pillarWeights: pillars,
-      pillarProgress: { graphics: 0, gameplay: 0, sound: 0, polish: 0 },
-      pillarTargets,
-      progressPercent: 0,
-      bugsFound: 0,
       devCostSpent: 0,
-      isCrunching: false,
-      crunchBugPenalty: 0,
     };
 
-    startDevelopment(gameInDev);
+    addTask(task);
     setSpeed(1);
     onStart();
   };
@@ -279,24 +282,24 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
             <div className="flex gap-2">
               <Button
                 type="button"
-                variant={gameMode === 'singleplayer' ? 'default' : 'outline'}
+                variant={gameMode === 'standard' ? 'default' : 'outline'}
                 className="flex-1 cursor-pointer"
-                onClick={() => setGameMode('singleplayer')}
+                onClick={() => setGameMode('standard')}
               >
-                Single Player
+                Standard
               </Button>
               <Button
                 type="button"
-                variant={gameMode === 'multiplayer' ? 'default' : 'outline'}
+                variant={gameMode === 'liveservice' ? 'default' : 'outline'}
                 className="flex-1 cursor-pointer"
-                onClick={() => setGameMode('multiplayer')}
+                onClick={() => setGameMode('liveservice')}
               >
-                Multiplayer
+                Live Service
               </Button>
             </div>
-            {gameMode === 'multiplayer' && (
+            {gameMode === 'liveservice' && (
               <p className="text-xs text-muted-foreground">
-                Multiplayer games require servers. You&apos;ll need at least 1 server before release.
+                Live Service games require servers. You&apos;ll need at least 1 server before release.
               </p>
             )}
           </div>

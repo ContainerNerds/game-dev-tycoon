@@ -1,4 +1,4 @@
-import type { ActiveGame, RegionId, Server } from './types';
+import type { RegionId, Server } from './types';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
 
 export function getRegionDefinition(regionId: RegionId) {
@@ -17,11 +17,9 @@ export function getTotalMonthlyCost(servers: Server[]): number {
   return servers.reduce((sum, s) => sum + s.monthlyCost, 0);
 }
 
-export function getLoadByRegion(game: ActiveGame): Record<string, number> {
-  const capacityByRegion = getTotalCapacityByRegion(game.servers);
+export function getLoadByRegion(totalPlayers: number, servers: Server[]): Record<string, number> {
+  const capacityByRegion = getTotalCapacityByRegion(servers);
   const result: Record<string, number> = {};
-
-  const totalPlayers = game.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0);
 
   for (const region of SERVER_CONFIG.regions) {
     const regionCapacity = capacityByRegion[region.id] ?? 0;

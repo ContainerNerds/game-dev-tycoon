@@ -136,10 +136,9 @@ export function getSaleRatePerTick(
   return Math.max(0, baseRate);
 }
 
-export function getServerLoad(game: ActiveGame): number {
-  const totalCapacity = game.servers.reduce((sum, s) => sum + s.capacity, 0);
-  if (totalCapacity === 0) return Infinity;
-  const totalPlayers = game.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0);
+export function getServerLoad(totalPlayers: number, servers: { capacity: number }[]): number {
+  const totalCapacity = servers.reduce((sum, s) => sum + s.capacity, 0);
+  if (totalCapacity === 0) return totalPlayers > 0 ? Infinity : 0;
   return totalPlayers / totalCapacity;
 }
 

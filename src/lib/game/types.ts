@@ -34,7 +34,7 @@ export type EmployeeTitle =
 
 export type GameSpeed = 0 | 1 | 2 | 4;
 
-export type GameLifecyclePhase = 'development' | 'growth' | 'peak' | 'decline' | 'retired';
+export type GameLifecyclePhase = 'growth' | 'peak' | 'decline' | 'retired';
 
 export type BugSeverity = 'low' | 'medium' | 'high' | 'critical';
 
@@ -44,28 +44,30 @@ export type OfficeTier = 0 | 1 | 2 | 3 | 4;
 
 export type ServerType = 'colocated' | 'datacenter';
 
-export type GameMode = 'singleplayer' | 'multiplayer';
+export type GameMode = 'standard' | 'liveservice';
+
+export type TaskType = 'game' | 'dlc' | 'patch';
 
 // ============================================================
 // Development Pillars
 // ============================================================
 
 export interface PillarWeights {
-  graphics: number;   // 0–100, all four must sum to 100
+  graphics: number;
   gameplay: number;
   sound: number;
   polish: number;
 }
 
 export interface PillarProgress {
-  graphics: number;   // current accumulated points
+  graphics: number;
   gameplay: number;
   sound: number;
   polish: number;
 }
 
 export interface PillarTargets {
-  graphics: number;   // points needed to complete
+  graphics: number;
   gameplay: number;
   sound: number;
   polish: number;
@@ -82,21 +84,44 @@ export interface EmployeeSkills {
   management: number;
 }
 
-export type EmployeeAssignment = 'development' | 'bugfix';
-
 export interface Employee {
   id: string;
   name: string;
   title: EmployeeTitle;
   skills: EmployeeSkills;
-  assignment: EmployeeAssignment;
-  isPlayer: boolean;            // true for the player character
+  assignedTaskId: string | null;  // null = unassigned, 'bugfix' = bug duty, or a task ID
+  isPlayer: boolean;
   hireCost: number;
   monthlySalary: number;
 }
 
 // ============================================================
-// Rate Tracking (per-day deltas for HUD)
+// Studio Task (unified: game dev, DLC, patch)
+// ============================================================
+
+export interface StudioTask {
+  id: string;
+  type: TaskType;
+  name: string;
+  targetGameId: string | null;    // which active game this DLC/patch is for (null for game tasks)
+  pillarProgress: PillarProgress;
+  pillarTargets: PillarTargets;
+  progressPercent: number;
+  bugsFound: number;
+  assignedEmployeeIds: string[];
+  autoAssign: boolean;
+  isCrunching: boolean;
+  // Game task fields
+  genre?: Genre;
+  style?: Style;
+  mode?: GameMode;
+  platforms?: Platform[];
+  pillarWeights?: PillarWeights;
+  devCostSpent?: number;
+}
+
+// ============================================================
+// Rate Tracking
 // ============================================================
 
 export interface DailyRates {
@@ -108,6 +133,8 @@ export interface DailyRates {
 export interface StaffContribution {
   employeeId: string;
   employeeName: string;
+  taskId: string;
+  taskName: string;
   graphics: number;
   gameplay: number;
   sound: number;
@@ -122,16 +149,17 @@ export interface StaffContribution {
 
 export interface Bug {
   id: string;
+  gameId: string;               // which active game this bug belongs to
   severity: BugSeverity;
   name: string;
   fixCost: number;
-  fixTimeHours: number;       // in-game hours to fix
-  fixProgressHours: number;   // hours of fix work completed
-  spawnedAt: number;          // calendar tick when spawned
+  fixTimeHours: number;
+  fixProgressHours: number;
+  spawnedAt: number;
 }
 
 // ============================================================
-// Servers
+// Servers (studio-wide)
 // ============================================================
 
 export interface Server {
@@ -150,30 +178,6 @@ export interface ServerRack {
 }
 
 // ============================================================
-// DLC
-// ============================================================
-
-export interface DLC {
-  id: string;
-  name: string;
-  devCost: number;
-  price: number;
-  status: 'developing' | 'released';
-  progressPercent: number;
-  copiesSold: number;
-}
-
-export interface LivePatch {
-  id: string;
-  name: string;
-  pillarProgress: PillarProgress;
-  pillarTargets: PillarTargets;
-  progressPercent: number;
-  status: 'developing' | 'released';
-}
-
-
-// ============================================================
 // Skill Tree
 // ============================================================
 
@@ -183,15 +187,15 @@ export interface UpgradeNode {
   description: string;
   category: UpgradeCategory;
   tier: number;
-  prerequisites: string[];     // ids of required upgrades
-  cost: number;                // money cost
-  researchCost: number;        // research points cost
+  prerequisites: string[];
+  cost: number;
+  researchCost: number;
   effects: UpgradeEffect[];
 }
 
 export interface UpgradeEffect {
-  type: string;                // e.g. 'serverCostMultiplier', 'bugRateMultiplier', etc.
-  value: number;               // multiplier or flat value
+  type: string;
+  value: number;
 }
 
 // ============================================================
@@ -202,35 +206,18 @@ export interface PlatformRelease {
   platform: Platform;
   portingCost: number;
   audienceMultiplier: number;
-  revenueCut: number;          // 0–1, fraction taken by platform
+  revenueCut: number;
   activePlayers: number;
   totalCopiesSold: number;
 }
 
 // ============================================================
-// Active Game (released or in development)
+// Blog Reviews
 // ============================================================
-
-export interface GameInDev {
-  id: string;
-  name: string;
-  genre: Genre;
-  style: Style;
-  mode: GameMode;
-  platforms: Platform[];
-  pillarWeights: PillarWeights;
-  pillarProgress: PillarProgress;
-  pillarTargets: PillarTargets;
-  progressPercent: number;
-  bugsFound: number;
-  devCostSpent: number;
-  isCrunching: boolean;
-  crunchBugPenalty: number;
-}
 
 export interface BlogReview {
   blogName: string;
-  score: number;          // 1.0–10.0
+  score: number;
   summary: string;
 }
 
@@ -241,6 +228,10 @@ export interface MonthlySnapshot {
   activePlayers: number;
   revenue: number;
 }
+
+// ============================================================
+// Active Game (released, live)
+// ============================================================
 
 export interface ActiveGame {
   id: string;
@@ -261,16 +252,14 @@ export interface ActiveGame {
   regionalFans: Partial<Record<RegionId, number>>;
   gamePrice: number;
   bugs: Bug[];
-  dlcs: DLC[];
-  patches: LivePatch[];
-  isLiveService: boolean;      // true if actively patching — slows decline
-  servers: Server[];
-  racks: ServerRack[];
+  dlcIds: string[];                 // IDs of released DLC tasks
+  isLiveService: boolean;
   unlockedGameUpgrades: string[];
   totalRevenue: number;
   monthlyHistory: MonthlySnapshot[];
   bugRateDecay: number;
   averageLatencyMs: number;
+  devCostTotal: number;             // total money spent developing this game
 }
 
 export interface GameSummary {
@@ -306,9 +295,9 @@ export interface OfficeState {
 
 export interface CalendarState {
   year: number;
-  month: number;        // 1–12
-  day: number;          // 1–N
-  hour: number;         // 0–23
+  month: number;
+  day: number;
+  hour: number;
   speed: GameSpeed;
   monthEndPending: boolean;
   lastMonthReport: MonthlyReport | null;
@@ -320,7 +309,7 @@ export interface CalendarState {
 
 export interface MonthlyReportLineItem {
   label: string;
-  amount: number;       // positive = income, negative = expense
+  amount: number;
 }
 
 export interface MonthlyReport {
@@ -347,9 +336,15 @@ export interface StudioState {
   researchPoints: number;
   unlockedStudioUpgrades: string[];
 
-  currentGame: ActiveGame | null;
-  gameInDevelopment: GameInDev | null;
+  activeGames: ActiveGame[];
+  activeTasks: StudioTask[];
   completedGames: GameSummary[];
+  maxParallelTasks: number;       // starts at 1, max 3
+  maxActiveGames: number;         // starts at 1, max 3
+
+  // Studio-wide infrastructure
+  servers: Server[];
+  racks: ServerRack[];
 
   employees: Employee[];
   candidatePool: Employee[];

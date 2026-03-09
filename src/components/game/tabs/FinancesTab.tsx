@@ -11,15 +11,14 @@ export default function FinancesTab() {
   const money = useGameStore((s) => s.money);
   const employees = useGameStore((s) => s.employees);
   const office = useGameStore((s) => s.office);
-  const currentGame = useGameStore((s) => s.currentGame);
+  const servers = useGameStore((s) => s.servers);
+  const racks = useGameStore((s) => s.racks);
   const monthlyReports = useGameStore((s) => s.monthlyReports);
   const dailyRates = useGameStore((s) => s.dailyRates);
 
   const totalMonthlySalary = employees.reduce((sum, e) => sum + e.monthlySalary, 0);
-  const serverMonthlyCost = currentGame
-    ? currentGame.servers.reduce((sum, s) => sum + s.monthlyCost, 0)
-    + (currentGame.racks?.reduce((sum, r) => sum + r.monthlyCost, 0) ?? 0)
-    : 0;
+  const serverMonthlyCost = servers.reduce((sum, s) => sum + s.monthlyCost, 0)
+    + racks.reduce((sum, r) => sum + r.monthlyCost, 0);
   const projectedMonthlyExpenses = totalMonthlySalary + serverMonthlyCost + office.monthlyOverhead;
   const netPerMonth = Math.round(dailyRates.moneyPerDay * 30);
 

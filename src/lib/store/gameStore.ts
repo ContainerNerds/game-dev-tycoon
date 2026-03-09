@@ -2,28 +2,23 @@ import { create } from 'zustand';
 import type {
   StudioState,
   ActiveGame,
-  GameInDev,
   Employee,
   GameSummary,
   CalendarState,
   OfficeState,
   GameSpeed,
   MonthlyReport,
-  Genre,
-  Style,
-  Platform,
-  PillarWeights,
   Bug,
   Server,
-  RegionId,
-  ServerType,
   OfficeTier,
-  DLC,
+  StudioTask,
+  PillarProgress,
+  ServerRack,
+  StaffContribution,
 } from '@/lib/game/types';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { OFFICE_CONFIG } from '@/lib/config/officeConfig';
-import { GAME_CONFIG } from '@/lib/config/gameConfig';
-import { saveGame, loadGame, hasSavedGame } from './saveLoad';
+import { saveGame, loadGame } from './saveLoad';
 
 // ============================================================
 // Initial State Factory
@@ -43,20 +38,16 @@ function createInitialCalendar(): CalendarState {
 
 function createInitialOffice(): OfficeState {
   const tier0 = OFFICE_CONFIG.tiers[0];
-  return {
-    tier: tier0.tier,
-    maxSeats: tier0.maxSeats,
-    monthlyOverhead: tier0.monthlyOverhead,
-  };
+  return { tier: tier0.tier, maxSeats: tier0.maxSeats, monthlyOverhead: tier0.monthlyOverhead };
 }
 
-export function createPlayerEmployee(playerName: string): import('@/lib/game/types').Employee {
+export function createPlayerEmployee(playerName: string): Employee {
   return {
     id: 'player',
     name: playerName,
     title: 'CEO',
     skills: { devel: 2, infra: 1, project: 1, management: 1 },
-    assignment: 'development',
+    assignedTaskId: null,
     isPlayer: true,
     hireCost: 0,
     monthlySalary: 0,
@@ -73,9 +64,13 @@ export function createInitialState(studioName: string, playerName: string, start
     studioFans: 0,
     researchPoints: 0,
     unlockedStudioUpgrades: [],
-    currentGame: null,
-    gameInDevelopment: null,
+    activeGames: [],
+    activeTasks: [],
     completedGames: [],
+    maxParallelTasks: 1,
+    maxActiveGames: 1,
+    servers: [],
+    racks: [],
     employees: [player],
     candidatePool: [],
     office: createInitialOffice(),
@@ -97,7 +92,6 @@ export function createInitialState(studioName: string, playerName: string, start
 // ============================================================
 
 interface GameActions {
-  // Game lifecycle
   newGame: (studioName: string, playerName: string, startingMoney: number) => void;
   loadSavedGame: () => boolean;
   save: () => void;
@@ -112,65 +106,57 @@ interface GameActions {
   spendMoney: (amount: number) => boolean;
   earnMoney: (amount: number) => void;
 
-  // Game development
-  startDevelopment: (game: GameInDev) => void;
-  updateDevProgress: (progressDelta: number) => void;
-  contributePillarPoints: (pillar: keyof import('@/lib/game/types').PillarProgress, points: number) => void;
-  addDevBugs: (count: number) => void;
-  toggleCrunch: () => void;
-  releaseGame: (activeGame: ActiveGame) => void;
-  retireGame: () => void;
+  // Tasks (unified: game dev, DLC, patch)
+  addTask: (task: StudioTask) => void;
+  removeTask: (taskId: string) => void;
+  contributeToTask: (taskId: string, pillar: keyof PillarProgress, points: number) => void;
+  addTaskBugs: (taskId: string, count: number) => void;
+  toggleTaskCrunch: (taskId: string) => void;
+  resetPatchTask: (taskId: string) => void;
 
-  // Servers & Racks
+  // Game lifecycle
+  releaseGame: (taskId: string, activeGame: ActiveGame) => void;
+  retireGame: (gameId: string) => void;
+  updateGame: (gameId: string, updates: Partial<ActiveGame>) => void;
+  addCompletedGame: (summary: GameSummary) => void;
+
+  // Servers & Racks (studio-wide)
   addServer: (server: Server) => void;
   removeServer: (serverId: string) => void;
-  addRack: (rack: import('@/lib/game/types').ServerRack) => void;
+  addRack: (rack: ServerRack) => void;
   addServerToRack: (rackId: string, server: Server) => void;
 
   // Employees
   setCandidatePool: (pool: Employee[]) => void;
   hireEmployee: (employee: Employee) => void;
   fireEmployee: (employeeId: string) => void;
-  toggleEmployeeAssignment: (employeeId: string) => void;
+  assignEmployee: (employeeId: string, taskId: string | null) => void;
 
   // Office
   upgradeOffice: (tier: OfficeTier) => void;
+  upgradeParallelTasks: () => void;
+  upgradeActiveGames: () => void;
 
   // Upgrades
   unlockStudioUpgrade: (upgradeId: string) => void;
-  unlockGameUpgrade: (upgradeId: string) => void;
+  unlockGameUpgrade: (gameId: string, upgradeId: string) => void;
 
   // Bugs
-  addBug: (bug: Bug) => void;
-  removeBug: (bugId: string) => void;
-  updateBugProgress: (bugId: string, hoursWorked: number) => void;
-
-  // DLC
-  addDLC: (dlc: DLC) => void;
-  updateDLCProgress: (dlcId: string, progressDelta: number) => void;
-  releaseDLC: (dlcId: string) => void;
-
-  // Live Patches
-  addPatch: (patch: import('@/lib/game/types').LivePatch) => void;
-  updatePatchProgress: (patchId: string, pillar: keyof import('@/lib/game/types').PillarProgress, points: number) => void;
-  releasePatch: (patchId: string) => void;
-  setLiveService: (active: boolean) => void;
+  addBug: (gameId: string, bug: Bug) => void;
+  removeBug: (gameId: string, bugId: string) => void;
 
   // Fans
-  addGameFans: (count: number) => void;
+  addGameFans: (gameId: string, count: number) => void;
   addStudioFans: (count: number) => void;
   addResearchPoints: (points: number) => void;
 
-  // Game state updates (called by game loop)
-  updateCurrentGame: (updates: Partial<ActiveGame>) => void;
-  addCompletedGame: (summary: GameSummary) => void;
+  // Tracking
   setBankrupt: () => void;
   trackDailyRate: (moneyDelta: number, fansDelta: number, rpDelta: number) => void;
   pushMonthlyReport: (report: MonthlyReport) => void;
   refreshCandidatePool: () => void;
-  updateStaffContributions: (contributions: import('@/lib/game/types').StaffContribution[]) => void;
+  updateStaffContributions: (contributions: StaffContribution[]) => void;
 
-  // Full state replacement (for load)
   setState: (state: StudioState) => void;
 }
 
@@ -181,11 +167,10 @@ interface GameActions {
 export type GameStore = StudioState & GameActions;
 
 export const useGameStore = create<GameStore>((set, get) => ({
-  // Initial state (will be overwritten by newGame or loadSavedGame)
   ...createInitialState('', '', 0),
 
   // ----------------------------------------------------------
-  // Game lifecycle
+  // Lifecycle
   // ----------------------------------------------------------
 
   newGame: (studioName, playerName, startingMoney) => {
@@ -194,39 +179,38 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   loadSavedGame: () => {
     const saved = loadGame();
-    if (saved) {
-      set(saved);
-      return true;
-    }
+    if (saved) { set(saved); return true; }
     return false;
   },
 
   save: () => {
     const state = get();
+    const { ...rest } = state;
     const stateOnly: StudioState = {
-      studioName: state.studioName,
-      playerName: state.playerName,
-      money: state.money,
-      totalLifetimeMoney: state.totalLifetimeMoney,
-      studioFans: state.studioFans,
-      researchPoints: state.researchPoints,
-      unlockedStudioUpgrades: state.unlockedStudioUpgrades,
-      currentGame: state.currentGame,
-      gameInDevelopment: state.gameInDevelopment,
-      completedGames: state.completedGames,
-      employees: state.employees,
-      candidatePool: state.candidatePool,
-      office: state.office,
-      calendar: state.calendar,
-      dailyRates: state.dailyRates,
-      staffContributions: state.staffContributions,
-      monthlyReports: state.monthlyReports,
-      lastCandidateRefreshDay: state.lastCandidateRefreshDay,
-      _dayAccMoney: 0,
-      _dayAccFans: 0,
-      _dayAccRP: 0,
-      _dayTickCounter: 0,
-      isBankrupt: state.isBankrupt,
+      studioName: rest.studioName,
+      playerName: rest.playerName,
+      money: rest.money,
+      totalLifetimeMoney: rest.totalLifetimeMoney,
+      studioFans: rest.studioFans,
+      researchPoints: rest.researchPoints,
+      unlockedStudioUpgrades: rest.unlockedStudioUpgrades,
+      activeGames: rest.activeGames,
+      activeTasks: rest.activeTasks,
+      completedGames: rest.completedGames,
+      maxParallelTasks: rest.maxParallelTasks,
+      maxActiveGames: rest.maxActiveGames,
+      servers: rest.servers,
+      racks: rest.racks,
+      employees: rest.employees,
+      candidatePool: rest.candidatePool,
+      office: rest.office,
+      calendar: rest.calendar,
+      dailyRates: rest.dailyRates,
+      staffContributions: rest.staffContributions,
+      monthlyReports: rest.monthlyReports,
+      lastCandidateRefreshDay: rest.lastCandidateRefreshDay,
+      _dayAccMoney: 0, _dayAccFans: 0, _dayAccRP: 0, _dayTickCounter: 0,
+      isBankrupt: rest.isBankrupt,
     };
     saveGame(stateOnly);
   },
@@ -240,24 +224,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   advanceTick: () => set((s) => {
     const cal = { ...s.calendar };
     cal.hour += CALENDAR_CONFIG.hoursPerTick;
-
     if (cal.hour >= CALENDAR_CONFIG.hoursPerDay) {
       cal.hour = 0;
       cal.day += 1;
-
       const daysInCurrentMonth = CALENDAR_CONFIG.daysInMonth[cal.month];
       if (cal.day > daysInCurrentMonth) {
         cal.day = 1;
         cal.monthEndPending = true;
         cal.month += 1;
-
-        if (cal.month > 12) {
-          cal.month = 1;
-          cal.year += 1;
-        }
+        if (cal.month > 12) { cal.month = 1; cal.year += 1; }
       }
     }
-
     return { calendar: cal };
   }),
 
@@ -286,124 +263,115 @@ export const useGameStore = create<GameStore>((set, get) => ({
   })),
 
   // ----------------------------------------------------------
-  // Game development
+  // Tasks
   // ----------------------------------------------------------
 
-  startDevelopment: (game) => set({ gameInDevelopment: game }),
-
-  updateDevProgress: (progressDelta) => set((s) => {
-    if (!s.gameInDevelopment) return {};
-    const newProgress = Math.min(100, s.gameInDevelopment.progressPercent + progressDelta);
-    return {
-      gameInDevelopment: { ...s.gameInDevelopment, progressPercent: newProgress },
-    };
+  addTask: (task) => set((s) => {
+    if (s.activeTasks.length >= s.maxParallelTasks) return {};
+    return { activeTasks: [...s.activeTasks, task] };
   }),
 
-  contributePillarPoints: (pillar, points) => set((s) => {
-    if (!s.gameInDevelopment) return {};
-    const dev = s.gameInDevelopment;
-    const newProgress = {
-      ...dev.pillarProgress,
-      [pillar]: Math.min(dev.pillarTargets[pillar], dev.pillarProgress[pillar] + points),
-    };
+  removeTask: (taskId) => set((s) => ({
+    activeTasks: s.activeTasks.filter((t) => t.id !== taskId),
+    employees: s.employees.map((e) =>
+      e.assignedTaskId === taskId ? { ...e, assignedTaskId: null } : e
+    ),
+  })),
 
-    // Recalculate overall % from pillar completion
-    const targets = dev.pillarTargets;
-    const totalTarget = targets.graphics + targets.gameplay + targets.sound + targets.polish;
-    const totalDone = Math.min(newProgress.graphics, targets.graphics)
-      + Math.min(newProgress.gameplay, targets.gameplay)
-      + Math.min(newProgress.sound, targets.sound)
-      + Math.min(newProgress.polish, targets.polish);
-    const pct = totalTarget > 0 ? (totalDone / totalTarget) * 100 : 0;
+  contributeToTask: (taskId, pillar, points) => set((s) => ({
+    activeTasks: s.activeTasks.map((t) => {
+      if (t.id !== taskId) return t;
+      const newProgress = {
+        ...t.pillarProgress,
+        [pillar]: Math.min(t.pillarTargets[pillar], t.pillarProgress[pillar] + points),
+      };
+      const targets = t.pillarTargets;
+      const totalTarget = targets.graphics + targets.gameplay + targets.sound + targets.polish;
+      const totalDone = Math.min(newProgress.graphics, targets.graphics)
+        + Math.min(newProgress.gameplay, targets.gameplay)
+        + Math.min(newProgress.sound, targets.sound)
+        + Math.min(newProgress.polish, targets.polish);
+      return { ...t, pillarProgress: newProgress, progressPercent: totalTarget > 0 ? Math.min(100, (totalDone / totalTarget) * 100) : 0 };
+    }),
+  })),
 
-    return {
-      gameInDevelopment: {
-        ...dev,
-        pillarProgress: newProgress,
-        progressPercent: Math.min(100, pct),
-      },
-    };
-  }),
+  addTaskBugs: (taskId, count) => set((s) => ({
+    activeTasks: s.activeTasks.map((t) =>
+      t.id === taskId ? { ...t, bugsFound: t.bugsFound + count } : t
+    ),
+  })),
 
-  addDevBugs: (count) => set((s) => {
-    if (!s.gameInDevelopment) return {};
-    return {
-      gameInDevelopment: {
-        ...s.gameInDevelopment,
-        bugsFound: s.gameInDevelopment.bugsFound + count,
-      },
-    };
-  }),
+  toggleTaskCrunch: (taskId) => set((s) => ({
+    activeTasks: s.activeTasks.map((t) =>
+      t.id === taskId ? { ...t, isCrunching: !t.isCrunching } : t
+    ),
+  })),
 
-  toggleCrunch: () => set((s) => {
-    if (!s.gameInDevelopment) return {};
-    return {
-      gameInDevelopment: {
-        ...s.gameInDevelopment,
-        isCrunching: !s.gameInDevelopment.isCrunching,
-      },
-    };
-  }),
-
-  releaseGame: (activeGame) => set({
-    currentGame: activeGame,
-    gameInDevelopment: null,
-  }),
-
-  retireGame: () => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: { ...s.currentGame, phase: 'retired' as const },
-    };
-  }),
+  resetPatchTask: (taskId) => set((s) => ({
+    activeTasks: s.activeTasks.map((t) =>
+      t.id === taskId ? {
+        ...t,
+        pillarProgress: { graphics: 0, gameplay: 0, sound: 0, polish: 0 },
+        progressPercent: 0,
+        bugsFound: 0,
+      } : t
+    ),
+  })),
 
   // ----------------------------------------------------------
-  // Servers
+  // Game lifecycle
   // ----------------------------------------------------------
 
-  addServer: (server) => set((s) => {
-    if (!s.currentGame) return {};
+  releaseGame: (taskId, activeGame) => set((s) => {
+    if (s.activeGames.length >= s.maxActiveGames) return {};
     return {
-      currentGame: {
-        ...s.currentGame,
-        servers: [...s.currentGame.servers, server],
-      },
+      activeGames: [...s.activeGames, activeGame],
+      activeTasks: s.activeTasks.filter((t) => t.id !== taskId),
+      employees: s.employees.map((e) =>
+        e.assignedTaskId === taskId ? { ...e, assignedTaskId: null } : e
+      ),
     };
   }),
 
-  removeServer: (serverId) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        servers: s.currentGame.servers.filter((sv) => sv.id !== serverId),
-      },
-    };
-  }),
+  retireGame: (gameId) => set((s) => ({
+    activeGames: s.activeGames.filter((g) => g.id !== gameId),
+  })),
 
-  addRack: (rack) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        racks: [...s.currentGame.racks, rack],
-      },
-    };
-  }),
+  updateGame: (gameId, updates) => set((s) => ({
+    activeGames: s.activeGames.map((g) =>
+      g.id === gameId ? { ...g, ...updates } : g
+    ),
+  })),
+
+  addCompletedGame: (summary) => set((s) => ({
+    completedGames: [...s.completedGames, summary],
+  })),
+
+  // ----------------------------------------------------------
+  // Servers & Racks (studio-wide)
+  // ----------------------------------------------------------
+
+  addServer: (server) => set((s) => ({
+    servers: [...s.servers, server],
+  })),
+
+  removeServer: (serverId) => set((s) => ({
+    servers: s.servers.filter((sv) => sv.id !== serverId),
+  })),
+
+  addRack: (rack) => set((s) => ({
+    racks: [...s.racks, rack],
+  })),
 
   addServerToRack: (rackId, server) => set((s) => {
-    if (!s.currentGame) return {};
-    const updatedRacks = s.currentGame.racks.map((r) =>
+    const updatedRacks = s.racks.map((r) =>
       r.id === rackId ? { ...r, servers: [...r.servers, server] } : r
     );
-    const allServers = updatedRacks.flatMap((r) => r.servers);
-    const dcServers = s.currentGame.servers.filter((sv) => sv.type === 'datacenter');
+    const allRackServers = updatedRacks.flatMap((r) => r.servers);
+    const dcServers = s.servers.filter((sv) => sv.type === 'datacenter');
     return {
-      currentGame: {
-        ...s.currentGame,
-        racks: updatedRacks,
-        servers: [...dcServers, ...allServers],
-      },
+      racks: updatedRacks,
+      servers: [...dcServers, ...allRackServers],
     };
   }),
 
@@ -423,11 +391,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     employees: s.employees.filter((e) => e.id !== employeeId),
   })),
 
-  toggleEmployeeAssignment: (employeeId) => set((s) => ({
+  assignEmployee: (employeeId, taskId) => set((s) => ({
     employees: s.employees.map((e) =>
-      e.id === employeeId
-        ? { ...e, assignment: e.assignment === 'development' ? 'bugfix' as const : 'development' as const }
-        : e
+      e.id === employeeId ? { ...e, assignedTaskId: taskId } : e
     ),
   })),
 
@@ -438,13 +404,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   upgradeOffice: (tier) => set(() => {
     const def = OFFICE_CONFIG.tiers.find((t) => t.tier === tier);
     if (!def) return {};
-    return {
-      office: {
-        tier: def.tier,
-        maxSeats: def.maxSeats,
-        monthlyOverhead: def.monthlyOverhead,
-      },
-    };
+    return { office: { tier: def.tier, maxSeats: def.maxSeats, monthlyOverhead: def.monthlyOverhead } };
+  }),
+
+  upgradeParallelTasks: () => set((s) => {
+    if (s.maxParallelTasks >= 3) return {};
+    return { maxParallelTasks: s.maxParallelTasks + 1 };
+  }),
+
+  upgradeActiveGames: () => set((s) => {
+    if (s.maxActiveGames >= 3) return {};
+    return { maxActiveGames: s.maxActiveGames + 1 };
   }),
 
   // ----------------------------------------------------------
@@ -455,156 +425,39 @@ export const useGameStore = create<GameStore>((set, get) => ({
     unlockedStudioUpgrades: [...s.unlockedStudioUpgrades, upgradeId],
   })),
 
-  unlockGameUpgrade: (upgradeId) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        unlockedGameUpgrades: [...s.currentGame.unlockedGameUpgrades, upgradeId],
-      },
-    };
-  }),
+  unlockGameUpgrade: (gameId, upgradeId) => set((s) => ({
+    activeGames: s.activeGames.map((g) =>
+      g.id === gameId
+        ? { ...g, unlockedGameUpgrades: [...g.unlockedGameUpgrades, upgradeId] }
+        : g
+    ),
+  })),
 
   // ----------------------------------------------------------
   // Bugs
   // ----------------------------------------------------------
 
-  addBug: (bug) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        bugs: [...s.currentGame.bugs, bug],
-      },
-    };
-  }),
+  addBug: (gameId, bug) => set((s) => ({
+    activeGames: s.activeGames.map((g) =>
+      g.id === gameId ? { ...g, bugs: [...g.bugs, bug] } : g
+    ),
+  })),
 
-  removeBug: (bugId) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        bugs: s.currentGame.bugs.filter((b) => b.id !== bugId),
-      },
-    };
-  }),
-
-  updateBugProgress: (bugId, hoursWorked) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        bugs: s.currentGame.bugs.map((b) =>
-          b.id === bugId
-            ? { ...b, fixProgressHours: b.fixProgressHours + hoursWorked }
-            : b
-        ),
-      },
-    };
-  }),
+  removeBug: (gameId, bugId) => set((s) => ({
+    activeGames: s.activeGames.map((g) =>
+      g.id === gameId ? { ...g, bugs: g.bugs.filter((b) => b.id !== bugId) } : g
+    ),
+  })),
 
   // ----------------------------------------------------------
-  // DLC
+  // Fans
   // ----------------------------------------------------------
 
-  addDLC: (dlc) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        dlcs: [...s.currentGame.dlcs, dlc],
-      },
-    };
-  }),
-
-  updateDLCProgress: (dlcId, progressDelta) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        dlcs: s.currentGame.dlcs.map((d) =>
-          d.id === dlcId
-            ? { ...d, progressPercent: Math.min(100, d.progressPercent + progressDelta) }
-            : d
-        ),
-      },
-    };
-  }),
-
-  releaseDLC: (dlcId) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        dlcs: s.currentGame.dlcs.map((d) =>
-          d.id === dlcId ? { ...d, status: 'released' as const } : d
-        ),
-      },
-    };
-  }),
-
-  // ----------------------------------------------------------
-  // Live Patches
-  // ----------------------------------------------------------
-
-  addPatch: (patch) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        patches: [...s.currentGame.patches, patch],
-        isLiveService: true,
-      },
-    };
-  }),
-
-  updatePatchProgress: (patchId, pillar, points) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        patches: s.currentGame.patches.map((p) => {
-          if (p.id !== patchId) return p;
-          const newProgress = { ...p.pillarProgress, [pillar]: p.pillarProgress[pillar] + points };
-          const targets = p.pillarTargets;
-          const totalTarget = targets.graphics + targets.gameplay + targets.sound + targets.polish;
-          const totalDone = Math.min(newProgress.graphics, targets.graphics)
-            + Math.min(newProgress.gameplay, targets.gameplay)
-            + Math.min(newProgress.sound, targets.sound)
-            + Math.min(newProgress.polish, targets.polish);
-          return { ...p, pillarProgress: newProgress, progressPercent: totalTarget > 0 ? Math.min(100, (totalDone / totalTarget) * 100) : 0 };
-        }),
-      },
-    };
-  }),
-
-  releasePatch: (patchId) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: {
-        ...s.currentGame,
-        patches: s.currentGame.patches.map((p) =>
-          p.id === patchId ? { ...p, status: 'released' as const } : p
-        ),
-      },
-    };
-  }),
-
-  setLiveService: (active) => set((s) => {
-    if (!s.currentGame) return {};
-    return { currentGame: { ...s.currentGame, isLiveService: active } };
-  }),
-
-  // ----------------------------------------------------------
-  // Fans & Research
-  // ----------------------------------------------------------
-
-  addGameFans: (count) => set((s) => {
-    if (!s.currentGame) return {};
-    return {
-      currentGame: { ...s.currentGame, gameFans: s.currentGame.gameFans + count },
-    };
-  }),
+  addGameFans: (gameId, count) => set((s) => ({
+    activeGames: s.activeGames.map((g) =>
+      g.id === gameId ? { ...g, gameFans: g.gameFans + count } : g
+    ),
+  })),
 
   addStudioFans: (count) => set((s) => ({
     studioFans: s.studioFans + count,
@@ -615,18 +468,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   })),
 
   // ----------------------------------------------------------
-  // Game state updates
+  // Tracking
   // ----------------------------------------------------------
-
-  updateCurrentGame: (updates) => set((s) => {
-    if (!s.currentGame) return {};
-    return { currentGame: { ...s.currentGame, ...updates } };
-  }),
-
-  addCompletedGame: (summary) => set((s) => ({
-    completedGames: [...s.completedGames, summary],
-    currentGame: null,
-  })),
 
   setBankrupt: () => set({
     isBankrupt: true,
@@ -638,7 +481,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const accMoney = s._dayAccMoney + moneyDelta;
     const accFans = s._dayAccFans + fansDelta;
     const accRP = s._dayAccRP + rpDelta;
-
     if (counter >= 24) {
       return {
         dailyRates: {
@@ -646,18 +488,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
           fansPerDay: Math.round(accFans * 10) / 10,
           rpPerDay: Math.round(accRP * 10) / 10,
         },
-        _dayAccMoney: 0,
-        _dayAccFans: 0,
-        _dayAccRP: 0,
-        _dayTickCounter: 0,
+        _dayAccMoney: 0, _dayAccFans: 0, _dayAccRP: 0, _dayTickCounter: 0,
       };
     }
-    return {
-      _dayAccMoney: accMoney,
-      _dayAccFans: accFans,
-      _dayAccRP: accRP,
-      _dayTickCounter: counter,
-    };
+    return { _dayAccMoney: accMoney, _dayAccFans: accFans, _dayAccRP: accRP, _dayTickCounter: counter };
   }),
 
   updateStaffContributions: (contributions) => set({ staffContributions: contributions }),
@@ -669,10 +503,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   refreshCandidatePool: () => set((s) => ({
     lastCandidateRefreshDay: s.calendar.day + (s.calendar.month - 1) * 30 + (s.calendar.year - 2040) * 360,
   })),
-
-  // ----------------------------------------------------------
-  // Full state replacement
-  // ----------------------------------------------------------
 
   setState: (state) => set(state),
 }));

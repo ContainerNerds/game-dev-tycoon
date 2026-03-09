@@ -32,29 +32,35 @@ export default function DashboardTab() {
   const employees = useGameStore((s) => s.employees);
   const office = useGameStore((s) => s.office);
   const calendar = useGameStore((s) => s.calendar);
-  const currentGame = useGameStore((s) => s.currentGame);
-  const gameInDev = useGameStore((s) => s.gameInDevelopment);
+  const activeGames = useGameStore((s) => s.activeGames);
+  const activeTasks = useGameStore((s) => s.activeTasks);
   const completedGames = useGameStore((s) => s.completedGames);
+  const servers = useGameStore((s) => s.servers);
 
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
 
   const officeDef = OFFICE_CONFIG.tiers.find((t) => t.tier === office.tier);
-  const totalPlayers = currentGame?.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0) ?? 0;
-  const totalSold = currentGame?.platformReleases.reduce((sum, p) => sum + p.totalCopiesSold, 0) ?? 0;
-  const serverCount = currentGame?.servers.length ?? 0;
-  const serverMonthlyCost = currentGame ? getTotalMonthlyCost(currentGame.servers) : 0;
-  const totalCapacity = currentGame?.servers.reduce((sum, s) => sum + s.capacity, 0) ?? 0;
-  const isMP = currentGame?.mode === 'multiplayer';
-  const serverLoad = isMP && totalCapacity > 0 ? (totalPlayers / totalCapacity) * 100 : 0;
-  const capacityByRegion = currentGame ? getTotalCapacityByRegion(currentGame.servers) : {};
+
+  const totalPlayers = activeGames.reduce(
+    (sum, g) => sum + g.platformReleases.reduce((s2, p) => s2 + p.activePlayers, 0), 0
+  );
+  const totalSold = activeGames.reduce(
+    (sum, g) => sum + g.platformReleases.reduce((s2, p) => s2 + p.totalCopiesSold, 0), 0
+  );
+  const serverCount = servers.length;
+  const serverMonthlyCost = getTotalMonthlyCost(servers);
+  const totalCapacity = servers.reduce((sum, s) => sum + s.capacity, 0);
+  const hasLiveServiceGames = activeGames.some((g) => g.mode === 'liveservice');
+  const serverLoad = hasLiveServiceGames && totalCapacity > 0 ? (totalPlayers / totalCapacity) * 100 : 0;
+  const capacityByRegion = getTotalCapacityByRegion(servers);
   const activeRegions = Object.keys(capacityByRegion).length;
 
   const totalMonthlySalary = employees.reduce((sum, e) => sum + e.monthlySalary, 0);
 
-  const allGames = [
-    ...(gameInDev ? [{ id: gameInDev.id, name: gameInDev.name, phase: 'development' as const, genre: gameInDev.genre, style: gameInDev.style }] : []),
-    ...(currentGame ? [{ id: currentGame.id, name: currentGame.name, phase: currentGame.phase, genre: currentGame.genre, style: currentGame.style }] : []),
-    ...completedGames.map((g) => ({ id: g.id, name: g.name, phase: 'retired' as const, genre: g.genre, style: g.style })),
+  const allGames: { id: string; name: string; phase: string; genre: string; style: string }[] = [
+    ...activeTasks.map((t) => ({ id: t.id, name: t.name, phase: 'development', genre: t.genre ?? '', style: t.style ?? '' })),
+    ...activeGames.map((g) => ({ id: g.id, name: g.name, phase: g.phase, genre: g.genre, style: g.style })),
+    ...completedGames.map((g) => ({ id: g.id, name: g.name, phase: 'retired', genre: g.genre, style: g.style })),
   ];
 
   return (
@@ -171,7 +177,7 @@ export default function DashboardTab() {
               <span className="text-muted-foreground">Total Capacity</span>
               <span>{totalCapacity.toLocaleString()} players</span>
             </div>
-            {isMP ? (
+            {hasLiveServiceGames ? (
               <div className="space-y-1">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Server Load</span>
@@ -184,7 +190,7 @@ export default function DashboardTab() {
             ) : (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Server Load</span>
-                <span className="text-muted-foreground/60">N/A (Single Player)</span>
+                <span className="text-muted-foreground/60">N/A (No Live Service Games)</span>
               </div>
             )}
             <div className="flex justify-between text-sm">

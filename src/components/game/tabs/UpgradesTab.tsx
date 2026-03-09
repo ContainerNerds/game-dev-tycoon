@@ -14,7 +14,9 @@ export default function UpgradesTab() {
   const money = useGameStore((s) => s.money);
   const researchPoints = useGameStore((s) => s.researchPoints);
   const studioUpgrades = useGameStore((s) => s.unlockedStudioUpgrades);
-  const gameUpgrades = useGameStore((s) => s.currentGame?.unlockedGameUpgrades ?? EMPTY_ARRAY);
+  const activeGames = useGameStore((s) => s.activeGames);
+  const gameUpgrades = activeGames.length > 0 ? activeGames[0].unlockedGameUpgrades : EMPTY_ARRAY;
+  const primaryGameId = activeGames.length > 0 ? activeGames[0].id : null;
   const spendMoney = useGameStore((s) => s.spendMoney);
   const addResearchPoints = useGameStore((s) => s.addResearchPoints);
   const unlockStudioUpgrade = useGameStore((s) => s.unlockStudioUpgrade);
@@ -38,8 +40,8 @@ export default function UpgradesTab() {
     addResearchPoints(-node.researchCost);
     if (node.category === 'studio') {
       unlockStudioUpgrade(node.id);
-    } else {
-      unlockGameUpgrade(node.id);
+    } else if (primaryGameId) {
+      unlockGameUpgrade(primaryGameId, node.id);
     }
   };
 

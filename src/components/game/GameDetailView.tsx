@@ -32,7 +32,7 @@ interface GameDetailViewProps {
 }
 
 export default function GameDetailView({ gameId, open, onClose }: GameDetailViewProps) {
-  const currentGame = useGameStore((s) => s.currentGame);
+  const activeGames = useGameStore((s) => s.activeGames);
   const completedGames = useGameStore((s) => s.completedGames);
 
   if (!gameId) return null;
@@ -52,20 +52,21 @@ export default function GameDetailView({ gameId, open, onClose }: GameDetailView
   let releaseYear = 0;
   let phase = '';
 
-  if (currentGame && currentGame.id === gameId) {
-    name = currentGame.name;
-    genre = currentGame.genre;
-    style = currentGame.style;
-    mode = currentGame.mode;
-    reviewScore = currentGame.reviewScore;
-    blogReviews = currentGame.blogReviews;
-    totalRevenue = currentGame.totalRevenue;
-    totalCopiesSold = currentGame.platformReleases.reduce((s, p) => s + p.totalCopiesSold, 0);
-    activePlayers = currentGame.platformReleases.reduce((s, p) => s + p.activePlayers, 0);
-    monthlyHistory = currentGame.monthlyHistory;
-    releaseMonth = currentGame.releaseMonth;
-    releaseYear = currentGame.releaseYear;
-    phase = currentGame.phase;
+  const activeMatch = activeGames.find((g) => g.id === gameId);
+  if (activeMatch) {
+    name = activeMatch.name;
+    genre = activeMatch.genre;
+    style = activeMatch.style;
+    mode = activeMatch.mode;
+    reviewScore = activeMatch.reviewScore;
+    blogReviews = activeMatch.blogReviews;
+    totalRevenue = activeMatch.totalRevenue;
+    totalCopiesSold = activeMatch.platformReleases.reduce((s, p) => s + p.totalCopiesSold, 0);
+    activePlayers = activeMatch.platformReleases.reduce((s, p) => s + p.activePlayers, 0);
+    monthlyHistory = activeMatch.monthlyHistory;
+    releaseMonth = activeMatch.releaseMonth;
+    releaseYear = activeMatch.releaseYear;
+    phase = activeMatch.phase;
   } else {
     const completed = completedGames.find((g) => g.id === gameId);
     if (!completed) return null;
@@ -93,7 +94,7 @@ export default function GameDetailView({ gameId, open, onClose }: GameDetailView
             <Gamepad2 className="h-5 w-5" />
             {name}
             <Badge variant="outline" className="text-xs">{genre} / {style}</Badge>
-            <Badge variant="outline" className="text-xs uppercase">{mode === 'multiplayer' ? 'MP' : 'SP'}</Badge>
+            <Badge variant="outline" className="text-xs uppercase">{mode === 'liveservice' ? 'Live' : 'Std'}</Badge>
             {phase && <Badge variant="outline" className="text-xs capitalize">{phase}</Badge>}
           </DialogTitle>
         </DialogHeader>

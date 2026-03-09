@@ -48,7 +48,7 @@ export function generateEmployee(): Employee {
     name: generateName(),
     title,
     skills,
-    assignment: 'development' as const,
+    assignedTaskId: null,
     isPlayer: false,
     hireCost: totalPoints * EMPLOYEE_CONFIG.hireCostPerSkillPoint,
     monthlySalary: EMPLOYEE_CONFIG.salaryBaseline + totalPoints * EMPLOYEE_CONFIG.salaryPerSkillPoint,

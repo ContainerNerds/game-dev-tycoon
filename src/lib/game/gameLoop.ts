@@ -8,10 +8,9 @@ import {
   getLifecyclePhaseTicks,
 } from './calculations';
 import { calculateFanConversion } from './fanSystem';
-import { getLoadByRegion, isRegionOverloaded, calculatePlayerLossFromOverload } from './serverSystem';
 import { buildMonthlyReport, getTotalMonthlyCosts } from './calendarSystem';
 import { getEmployeePillarContribution, getBugChancePerContribution, generateCandidatePool } from './employeeSystem';
-import type { Bug, BugSeverity, RegionId, StaffContribution } from './types';
+import type { Bug, BugSeverity, RegionId, StaffContribution, ActiveGame } from './types';
 
 function generateBugId(): string {
   return `bug-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -48,12 +47,12 @@ function severityCostMultiplier(severity: BugSeverity): number {
   }
 }
 
-function getRegionalSaleWeights(game: { servers: { regionId: string }[]; mode: string }): Record<string, number> {
+function getRegionalSaleWeights(game: ActiveGame, servers: { regionId: string }[]): Record<string, number> {
   const weights: Record<string, number> = {};
   let total = 0;
   for (const region of SERVER_CONFIG.regions) {
-    const hasServer = game.servers.some((s) => s.regionId === region.id);
-    const w = region.playerDemandWeight * (game.mode === 'multiplayer' && hasServer ? 10 : 1);
+    const hasServer = servers.some((s) => s.regionId === region.id);
+    const w = region.playerDemandWeight * (game.mode === 'liveservice' && hasServer ? 10 : 1);
     weights[region.id] = w;
     total += w;
   }
@@ -73,10 +72,6 @@ function pickWeightedRegion(weights: Record<string, number>): string {
   return 'us-east';
 }
 
-/**
- * Process one game tick. Called by the React tick hook.
- * Reads from and writes to the Zustand store via the provided actions.
- */
 export function processTick(store: GameStore): void {
   const state = store;
 
@@ -85,15 +80,13 @@ export function processTick(store: GameStore): void {
 
   // 1. Advance calendar
   store.advanceTick();
-
-  // Re-read fresh state after advanceTick mutated the store
   const fresh = useGameStore.getState();
   if (fresh.calendar.monthEndPending) {
     handleMonthEnd(fresh as GameStore);
     return;
   }
 
-  // Weekly candidate pool refresh (every 7 days at hour 0)
+  // Weekly candidate pool refresh
   if (fresh.calendar.hour === 0 && fresh.calendar.day % 7 === 1) {
     const currentDay = fresh.calendar.day + (fresh.calendar.month - 1) * 30 + (fresh.calendar.year - 2040) * 360;
     if (currentDay > fresh.lastCandidateRefreshDay) {
@@ -102,94 +95,120 @@ export function processTick(store: GameStore): void {
     }
   }
 
-  // 2. Development progress via employee contributions (only dev-assigned employees)
-  const devEmployees = state.employees.filter((e) => e.assignment === 'development');
-  const bugfixEmployees = state.employees.filter((e) => e.assignment === 'bugfix');
+  // 2. Process all active tasks (dev contributions)
+  const contribs: StaffContribution[] = [];
 
-  // Build contribution tracker map
-  const contribMap = new Map<string, StaffContribution>();
-  for (const emp of state.employees) {
-    contribMap.set(emp.id, {
-      employeeId: emp.id,
-      employeeName: emp.name,
-      graphics: 0, gameplay: 0, sound: 0, polish: 0,
-      bugsIntroduced: 0, bugsFixed: 0,
-    });
-  }
+  for (const task of state.activeTasks) {
+    if (task.progressPercent >= 100 && task.type !== 'patch') continue;
 
-  if (state.gameInDevelopment && state.gameInDevelopment.progressPercent < 100) {
-    const dev = state.gameInDevelopment;
-    const crunchMultiplier = dev.isCrunching ? GAME_CONFIG.crunchSpeedMultiplier : 1;
+    const crunchMultiplier = task.isCrunching ? GAME_CONFIG.crunchSpeedMultiplier : 1;
 
-    if (devEmployees.length > 0) {
-      for (const emp of devEmployees) {
+    // Get employees assigned to this task (or auto-assign unassigned ones)
+    let taskEmployees = state.employees.filter((e) => e.assignedTaskId === task.id);
+    if (task.autoAssign) {
+      const unassigned = state.employees.filter((e) => e.assignedTaskId === null && e.assignedTaskId !== 'bugfix');
+      taskEmployees = [...taskEmployees, ...unassigned];
+    }
+
+    if (taskEmployees.length > 0) {
+      for (const emp of taskEmployees) {
         const contrib = getEmployeePillarContribution(emp);
         const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
-        const c = contribMap.get(emp.id)!;
+        const c: StaffContribution = {
+          employeeId: emp.id, employeeName: emp.name,
+          taskId: task.id, taskName: task.name,
+          graphics: 0, gameplay: 0, sound: 0, polish: 0,
+          bugsIntroduced: 0, bugsFixed: 0,
+        };
 
         for (const pillar of pillars) {
           const points = contrib[pillar] * crunchMultiplier * 0.1;
           if (points > 0) {
-            store.contributePillarPoints(pillar, points);
+            store.contributeToTask(task.id, pillar, points);
             c[pillar] += points;
           }
         }
 
-        const bugChance = getBugChancePerContribution(emp) * (dev.isCrunching ? 1.5 : 1);
+        const bugChance = getBugChancePerContribution(emp) * (task.isCrunching ? 1.5 : 1);
         if (Math.random() < bugChance) {
-          store.addDevBugs(1);
+          store.addTaskBugs(task.id, 1);
           c.bugsIntroduced += 1;
         }
+
+        contribs.push(c);
       }
     } else {
+      // Solo dev fallback
       const soloRate = GAME_CONFIG.baseDevProgressPerTick * 0.3 * crunchMultiplier;
       const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
       for (const pillar of pillars) {
-        store.contributePillarPoints(pillar, soloRate);
+        store.contributeToTask(task.id, pillar, soloRate);
       }
     }
   }
 
-  // 2b. Bugfix employees auto-fix bugs on the active game
-  if (state.currentGame && bugfixEmployees.length > 0 && state.currentGame.bugs.length > 0) {
-    const totalDevelSkill = bugfixEmployees.reduce((sum, e) => sum + e.skills.devel, 0);
-    const fixRate = totalDevelSkill / GAME_CONFIG.bugfixTicksPerDevelPoint;
-    if (Math.random() < fixRate) {
-      const oldestBug = state.currentGame.bugs[0];
-      if (oldestBug) {
-        store.removeBug(oldestBug.id);
-        // Credit bug fix to the highest-devel bugfix employee
-        const bestFixer = bugfixEmployees.sort((a, b) => b.skills.devel - a.skills.devel)[0];
-        if (bestFixer) {
-          const c = contribMap.get(bestFixer.id);
-          if (c) c.bugsFixed += 1;
+  // Check for completed patch tasks — auto-reset
+  const freshAfterTasks = useGameStore.getState();
+  for (const task of freshAfterTasks.activeTasks) {
+    if (task.type === 'patch' && task.progressPercent >= 100) {
+      store.resetPatchTask(task.id);
+      // Boost the target game's player retention
+      if (task.targetGameId) {
+        const targetGame = freshAfterTasks.activeGames.find((g) => g.id === task.targetGameId);
+        if (targetGame) {
+          store.updateGame(task.targetGameId, {
+            isLiveService: true,
+            bugRateDecay: Math.min(1.0, targetGame.bugRateDecay + 0.1),
+          });
         }
       }
     }
   }
 
-  // Update staff contributions (accumulated across ticks, blended with previous)
-  const newContribs = Array.from(contribMap.values());
-  const prevContribs = state.staffContributions;
+  // 2b. Bugfix employees auto-fix bugs
+  const bugfixEmployees = state.employees.filter((e) => e.assignedTaskId === 'bugfix');
+  if (bugfixEmployees.length > 0) {
+    for (const game of state.activeGames) {
+      if (game.bugs.length > 0) {
+        const totalDevelSkill = bugfixEmployees.reduce((sum, e) => sum + e.skills.devel, 0);
+        const fixRate = totalDevelSkill / GAME_CONFIG.bugfixTicksPerDevelPoint;
+        if (Math.random() < fixRate) {
+          const oldestBug = game.bugs[0];
+          if (oldestBug) {
+            store.removeBug(game.id, oldestBug.id);
+          }
+        }
+        break; // fix bugs on first game with bugs
+      }
+    }
+  }
+
+  // Blend contributions with previous
+  const prev = state.staffContributions;
   const blendFactor = 0.95;
-  const merged = newContribs.map((nc) => {
-    const prev = prevContribs.find((p) => p.employeeId === nc.employeeId);
-    if (!prev) return nc;
+  const merged = contribs.map((nc) => {
+    const p = prev.find((pc) => pc.employeeId === nc.employeeId && pc.taskId === nc.taskId);
+    if (!p) return nc;
     return {
       ...nc,
-      graphics: prev.graphics * blendFactor + nc.graphics,
-      gameplay: prev.gameplay * blendFactor + nc.gameplay,
-      sound: prev.sound * blendFactor + nc.sound,
-      polish: prev.polish * blendFactor + nc.polish,
-      bugsIntroduced: prev.bugsIntroduced * blendFactor + nc.bugsIntroduced,
-      bugsFixed: prev.bugsFixed * blendFactor + nc.bugsFixed,
+      graphics: p.graphics * blendFactor + nc.graphics,
+      gameplay: p.gameplay * blendFactor + nc.gameplay,
+      sound: p.sound * blendFactor + nc.sound,
+      polish: p.polish * blendFactor + nc.polish,
+      bugsIntroduced: p.bugsIntroduced * blendFactor + nc.bugsIntroduced,
+      bugsFixed: p.bugsFixed * blendFactor + nc.bugsFixed,
     };
   });
   store.updateStaffContributions(merged);
 
-  // 3. Active game processing — accumulate all mutations locally, write once
-  const game = state.currentGame;
-  if (game && game.phase !== 'retired') {
+  // 3. Process all active games
+  let totalTickRevenue = 0;
+  let totalNewFans = 0;
+  let totalRP = 0;
+
+  for (const game of state.activeGames) {
+    if (game.phase === 'retired') continue;
+
     const platforms = game.platformReleases.map((pr) => ({ ...pr }));
     let tickRevenue = 0;
     let newGameFans = 0;
@@ -199,184 +218,114 @@ export function processTick(store: GameStore): void {
     let phaseTicks = game.phaseTicks + 1;
     const newBugs: Bug[] = [];
 
-    // --- Sales ---
+    // Sales
     const saleRate = getSaleRatePerTick(game, state);
-    const copiesSold = Math.max(0, Math.round(saleRate * 100) / 100);
-
-    const doubleSaleChance = getUpgradeMultiplier(
-      'doubleSaleChance',
-      state.unlockedStudioUpgrades,
-      game.unlockedGameUpgrades
-    ) - 1;
-    let actualCopies = copiesSold;
-    if (doubleSaleChance > 0 && Math.random() < doubleSaleChance) {
-      actualCopies *= 2;
-    }
+    let actualCopies = Math.max(0, Math.round(saleRate * 100) / 100);
+    const doubleSaleChance = getUpgradeMultiplier('doubleSaleChance', state.unlockedStudioUpgrades, game.unlockedGameUpgrades) - 1;
+    if (doubleSaleChance > 0 && Math.random() < doubleSaleChance) actualCopies *= 2;
 
     if (actualCopies > 0) {
       const platformCount = platforms.length || 1;
       const copiesPerPlatform = actualCopies / platformCount;
-
       for (const pr of platforms) {
         const netRevenue = copiesPerPlatform * game.gamePrice * (1 - pr.revenueCut);
         tickRevenue += netRevenue;
         pr.totalCopiesSold += copiesPerPlatform;
         pr.activePlayers += copiesPerPlatform * 0.5;
       }
-
-      const fans = calculateFanConversion(
-        actualCopies,
-        state.unlockedStudioUpgrades,
-        game.unlockedGameUpgrades
-      );
+      const fans = calculateFanConversion(actualCopies, state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
       newGameFans += fans.newGameFans;
       newStudioFans += fans.newStudioFans;
 
-      // Distribute fans across regions weighted by server presence
-      const regionWeights = getRegionalSaleWeights(game);
-      const totalNewFans = fans.newGameFans;
-      for (let i = 0; i < Math.ceil(totalNewFans); i++) {
+      const regionWeights = getRegionalSaleWeights(game, state.servers);
+      for (let i = 0; i < Math.ceil(fans.newGameFans); i++) {
         const region = pickWeightedRegion(regionWeights);
         regionalFansDelta[region] = (regionalFansDelta[region] ?? 0) + 1;
       }
     }
 
-    // --- Player decay ---
+    // Player decay
     const totalPlayers = platforms.reduce((sum, p) => sum + p.activePlayers, 0);
     let playerDecayRate = 0;
     if (game.phase === 'decline') {
-      const declineMultiplier = getUpgradeMultiplier(
-        'declineRateMultiplier',
-        state.unlockedStudioUpgrades,
-        game.unlockedGameUpgrades
-      );
+      const declineMultiplier = getUpgradeMultiplier('declineRateMultiplier', state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
       playerDecayRate = 0.002 * declineMultiplier;
-      if (game.isLiveService) {
-        playerDecayRate *= GAME_CONFIG.liveServiceDeclineSlowdown;
-      }
+      if (game.isLiveService) playerDecayRate *= GAME_CONFIG.liveServiceDeclineSlowdown;
     } else if (game.phase === 'peak') {
       playerDecayRate = 0.0005;
     }
 
-    // Server overload only matters for multiplayer games
-    let overloadLoss = 0;
-    let avgLatency = 0;
-    if (game.mode === 'multiplayer' && game.servers.length > 0) {
-      const loadByRegion = getLoadByRegion({ ...game, platformReleases: platforms });
-      const overloaded = Object.entries(loadByRegion)
-        .filter(([, load]) => isRegionOverloaded(load))
-        .map(([regionId]) => regionId);
-      overloadLoss = calculatePlayerLossFromOverload(totalPlayers, overloaded);
-
-      // Average latency across active regions
-      let latencySum = 0;
-      let latencyCount = 0;
-      for (const region of SERVER_CONFIG.regions) {
-        const hasServer = game.servers.some((s) => s.regionId === region.id);
-        if (hasServer) {
-          const baseLat = region.latencyTier === 1 ? 25 : region.latencyTier === 2 ? 80 : 150;
-          const load = loadByRegion[region.id] ?? 0;
-          latencySum += baseLat * (1 + Math.max(0, load - 0.5));
-          latencyCount++;
-        }
-      }
-      avgLatency = latencyCount > 0 ? Math.round(latencySum / latencyCount) : 0;
-    }
-
-    if (playerDecayRate > 0 || overloadLoss > 0) {
+    if (playerDecayRate > 0) {
       const decayLoss = totalPlayers * playerDecayRate;
-      const totalLoss = decayLoss + overloadLoss;
       const platformCount = platforms.length || 1;
-      const lossPerPlatform = totalLoss / platformCount;
+      const lossPerPlatform = decayLoss / platformCount;
       for (const pr of platforms) {
         pr.activePlayers = Math.max(0, pr.activePlayers - lossPerPlatform);
       }
     }
 
-    // --- Bug spawning with decay ---
+    // Bug spawning with decay
     let bugRateDecay = game.bugRateDecay;
-    // Decay once per game-day (every 24 ticks)
     if (phaseTicks % 24 === 0) {
       bugRateDecay = Math.max(GAME_CONFIG.bugMinDecay, bugRateDecay * GAME_CONFIG.bugDecayPerDay);
     }
-
     const bugRateMultiplier = getBugRateMultiplier(state.employees);
-    const bugUpgradeMultiplier = getUpgradeMultiplier(
-      'bugRateMultiplier',
-      state.unlockedStudioUpgrades,
-      game.unlockedGameUpgrades
-    );
+    const bugUpgradeMultiplier = getUpgradeMultiplier('bugRateMultiplier', state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
     const bugChance = (GAME_CONFIG.bugBaseRatePerTick + totalPlayers * GAME_CONFIG.bugPlayerScaling) *
       bugRateMultiplier * bugUpgradeMultiplier * bugRateDecay;
-
     if (Math.random() < bugChance) {
       const severity = randomBugSeverity();
       newBugs.push({
-        id: generateBugId(),
-        severity,
+        id: generateBugId(), gameId: game.id, severity,
         name: randomBugName(),
         fixCost: Math.round(GAME_CONFIG.bugFixBaseCost * severityCostMultiplier(severity)),
         fixTimeHours: Math.round(GAME_CONFIG.bugFixBaseHours * severityCostMultiplier(severity)),
-        fixProgressHours: 0,
-        spawnedAt: Date.now(),
+        fixProgressHours: 0, spawnedAt: Date.now(),
       });
     }
 
-    // --- Phase progression ---
-    const maxTicks = getLifecyclePhaseTicks(
-      game.phase,
-      state.unlockedStudioUpgrades,
-      game.unlockedGameUpgrades
-    );
-
+    // Phase progression
+    const maxTicks = getLifecyclePhaseTicks(game.phase, state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
     if (phaseTicks >= maxTicks) {
       if (phase === 'growth') phase = 'peak';
       else if (phase === 'peak') phase = 'decline';
       phaseTicks = 0;
     }
 
-    // --- Merge regional fan deltas ---
     const mergedRegionalFans = { ...game.regionalFans };
     for (const [region, count] of Object.entries(regionalFansDelta)) {
       mergedRegionalFans[region as RegionId] = (mergedRegionalFans[region as RegionId] ?? 0) + count;
     }
 
-    // --- Single atomic write for all game state changes ---
-    store.updateCurrentGame({
+    store.updateGame(game.id, {
       platformReleases: platforms,
       totalRevenue: game.totalRevenue + tickRevenue,
-      phase,
-      phaseTicks,
+      phase, phaseTicks,
       bugs: newBugs.length > 0 ? [...game.bugs, ...newBugs] : game.bugs,
       bugRateDecay,
       regionalFans: mergedRegionalFans,
-      averageLatencyMs: avgLatency,
     });
 
     if (tickRevenue > 0) store.earnMoney(tickRevenue);
-    if (newGameFans > 0) store.addGameFans(newGameFans);
+    if (newGameFans > 0) store.addGameFans(game.id, newGameFans);
     if (newStudioFans > 0) store.addStudioFans(newStudioFans);
+
+    totalTickRevenue += tickRevenue;
+    totalNewFans += newGameFans + newStudioFans;
 
     const researchPerTick = GAME_CONFIG.researchPointsPerGameDay / 24;
     if (researchPerTick > 0) {
       store.addResearchPoints(researchPerTick);
-    }
-
-    const monthlyCosts = getTotalMonthlyCosts(state);
-    const hourlyCostRate = monthlyCosts / (30 * 24);
-    store.trackDailyRate(tickRevenue - hourlyCostRate, newGameFans + newStudioFans, researchPerTick);
-  }
-
-  // If no active game, still track costs in daily rate
-  if (!game || game.phase === 'retired') {
-    const monthlyCosts = getTotalMonthlyCosts(state);
-    if (monthlyCosts > 0) {
-      const hourlyCostRate = monthlyCosts / (30 * 24);
-      store.trackDailyRate(-hourlyCostRate, 0, 0);
+      totalRP += researchPerTick;
     }
   }
 
-  // 4. Bankruptcy check
+  // Daily rate tracking
+  const monthlyCosts = getTotalMonthlyCosts(state);
+  const hourlyCostRate = monthlyCosts / (30 * 24);
+  store.trackDailyRate(totalTickRevenue - hourlyCostRate, totalNewFans, totalRP);
+
+  // Bankruptcy check
   if (store.money <= GAME_CONFIG.bankruptcyThreshold) {
     store.setBankrupt();
   }
@@ -386,41 +335,37 @@ function handleMonthEnd(store: GameStore): void {
   const state = store;
   const report = buildMonthlyReport(state);
 
-  if (state.currentGame) {
-    const totalPlayers = state.currentGame.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0);
-    const totalSold = state.currentGame.platformReleases.reduce((sum, p) => sum + p.totalCopiesSold, 0);
-    const history = state.currentGame.monthlyHistory;
+  let totalMonthlyRevenue = 0;
+  for (const game of state.activeGames) {
+    if (game.phase === 'retired') continue;
+    const totalPlayers = game.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0);
+    const totalSold = game.platformReleases.reduce((sum, p) => sum + p.totalCopiesSold, 0);
+    const history = game.monthlyHistory;
     const prevRevenue = history.length > 0 ? history[history.length - 1].revenue : 0;
     const prevSold = history.length > 0 ? history[history.length - 1].copiesSold : 0;
+    const monthlyRevenue = Math.max(0, game.totalRevenue - prevRevenue);
+    totalMonthlyRevenue += monthlyRevenue;
 
-    const monthlyRevenue = Math.max(0, state.currentGame.totalRevenue - prevRevenue);
-    const monthlyCopies = Math.floor(totalSold - prevSold);
+    report.lineItems.push({ label: `Revenue: ${game.name}`, amount: monthlyRevenue });
 
-    report.lineItems.unshift({
-      label: 'Game revenue',
-      amount: monthlyRevenue,
-    });
-    report.income = monthlyRevenue;
-
-    store.updateCurrentGame({
+    store.updateGame(game.id, {
       monthlyHistory: [
         ...history,
         {
-          month: report.month,
-          year: report.year,
-          copiesSold: monthlyCopies,
+          month: report.month, year: report.year,
+          copiesSold: Math.floor(totalSold - prevSold),
           activePlayers: Math.floor(totalPlayers),
-          revenue: state.currentGame.totalRevenue,
+          revenue: game.totalRevenue,
         },
       ],
     });
   }
 
+  report.income = totalMonthlyRevenue;
   report.netCashFlow = report.income - report.employeeCosts - report.computeCosts - report.devOverheadCosts;
 
   const totalCosts = getTotalMonthlyCosts(state);
   store.spendMoney(totalCosts);
-
   store.pushMonthlyReport(report);
   store.dismissMonthEnd();
 }

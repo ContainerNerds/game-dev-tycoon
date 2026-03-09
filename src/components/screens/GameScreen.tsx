@@ -3,6 +3,8 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StudioHeader from '@/components/game/StudioHeader';
 import DevMenu from '@/components/game/DevMenu';
+import TaskBar from '@/components/game/TaskBar';
+import ActiveGamesBar from '@/components/game/ActiveGamesBar';
 import DashboardTab from '@/components/game/tabs/DashboardTab';
 import UpgradesTab from '@/components/game/tabs/UpgradesTab';
 import BugsTab from '@/components/game/tabs/BugsTab';
@@ -12,9 +14,6 @@ import PressTab from '@/components/game/tabs/PressTab';
 import StaffTab from '@/components/game/tabs/StaffTab';
 import OfficeTab from '@/components/game/tabs/OfficeTab';
 import FinancesTab from '@/components/game/tabs/FinancesTab';
-import DevelopmentPanel from '@/components/game/DevelopmentPanel';
-import GameManagementPanel from '@/components/game/GameManagementPanel';
-import NewProjectPanel from '@/components/game/NewProjectPanel';
 import { useGameTick } from '@/lib/game/useGameTick';
 import { useGameStore } from '@/lib/store/gameStore';
 import BankruptcyScreen from '@/components/screens/BankruptcyScreen';
@@ -27,8 +26,6 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
   useGameTick();
 
   const isBankrupt = useGameStore((s) => s.isBankrupt);
-  const gameInDev = useGameStore((s) => s.gameInDevelopment);
-  const currentGame = useGameStore((s) => s.currentGame);
 
   if (isBankrupt) {
     return <BankruptcyScreen onRestart={onQuit} />;
@@ -37,10 +34,8 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
       <StudioHeader />
-
-      {gameInDev && <DevelopmentPanel />}
-      {currentGame && currentGame.phase !== 'retired' && <GameManagementPanel />}
-      <NewProjectPanel />
+      <TaskBar />
+      <ActiveGamesBar />
 
       <div className="flex-1 min-h-0">
         <Tabs defaultValue="dashboard" className="h-full flex flex-col">

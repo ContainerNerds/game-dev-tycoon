@@ -24,67 +24,57 @@ export function getDaysInMonth(month: number): number {
 
 export function buildMonthlyReport(state: StudioState): MonthlyReport {
   const lineItems: MonthlyReportLineItem[] = [];
-  let totalIncome = 0;
   let employeeCosts = 0;
   let computeCosts = 0;
   let devOverheadCosts = 0;
 
-  // Employee salaries
   for (const emp of state.employees) {
-    lineItems.push({ label: `Salary: ${emp.name}`, amount: -emp.monthlySalary });
-    employeeCosts += emp.monthlySalary;
+    if (emp.monthlySalary > 0) {
+      lineItems.push({ label: `Salary: ${emp.name}`, amount: -emp.monthlySalary });
+      employeeCosts += emp.monthlySalary;
+    }
   }
 
-  // Office overhead
   if (state.office.monthlyOverhead > 0) {
     lineItems.push({ label: 'Office overhead', amount: -state.office.monthlyOverhead });
     devOverheadCosts += state.office.monthlyOverhead;
   }
 
-  // Server costs
-  if (state.currentGame) {
-    for (const server of state.currentGame.servers) {
-      lineItems.push({
-        label: `Server (${server.regionId}, ${server.type})`,
-        amount: -server.monthlyCost,
-      });
-      computeCosts += server.monthlyCost;
+  // Studio-wide server costs
+  for (const server of state.servers) {
+    lineItems.push({
+      label: `Server (${server.regionId}, ${server.type})`,
+      amount: -server.monthlyCost,
+    });
+    computeCosts += server.monthlyCost;
+  }
+  for (const rack of state.racks) {
+    if (rack.monthlyCost > 0) {
+      lineItems.push({ label: `Rack lease (${rack.regionId})`, amount: -rack.monthlyCost });
+      computeCosts += rack.monthlyCost;
     }
   }
 
-  // Income is tracked cumulatively in the game — for the monthly report
-  // we report the last month's total revenue separately via the game loop.
-  // Here we just capture the cost side. Income line items are added by the
-  // game loop before displaying the report.
-
-  const netCashFlow = totalIncome - employeeCosts - computeCosts - devOverheadCosts;
-
-  // Determine which month this report is for (the month that just ended)
   const reportMonth = state.calendar.month === 1 ? 12 : state.calendar.month - 1;
   const reportYear = state.calendar.month === 1 ? state.calendar.year - 1 : state.calendar.year;
 
   return {
     month: reportMonth,
     year: reportYear,
-    income: totalIncome,
+    income: 0,
     employeeCosts,
     computeCosts,
     devOverheadCosts,
-    netCashFlow,
+    netCashFlow: 0,
     lineItems,
   };
 }
 
 export function getTotalMonthlyCosts(state: StudioState): number {
   let total = 0;
-  for (const emp of state.employees) {
-    total += emp.monthlySalary;
-  }
+  for (const emp of state.employees) total += emp.monthlySalary;
   total += state.office.monthlyOverhead;
-  if (state.currentGame) {
-    for (const server of state.currentGame.servers) {
-      total += server.monthlyCost;
-    }
-  }
+  for (const server of state.servers) total += server.monthlyCost;
+  for (const rack of state.racks) total += rack.monthlyCost;
   return total;
 }

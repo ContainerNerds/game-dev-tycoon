@@ -8,9 +8,9 @@ import { FlaskConical } from 'lucide-react';
 
 export default function ResearchTab() {
   const researchPoints = useGameStore((s) => s.researchPoints);
-  const currentGame = useGameStore((s) => s.currentGame);
+  const activeGames = useGameStore((s) => s.activeGames);
 
-  const isEarning = currentGame !== null && currentGame.phase !== 'retired';
+  const isEarning = activeGames.some((g) => g.phase !== 'retired');
   const ratePerDay = GAME_CONFIG.researchPointsPerGameDay;
 
   return (

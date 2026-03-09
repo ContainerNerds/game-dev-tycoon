@@ -8,15 +8,16 @@ import { useGameStore } from '@/lib/store/gameStore';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
 import { createColocatedServer, createDatacenter, getLoadByRegion, isRegionOverloaded, getTotalMonthlyCost } from '@/lib/game/serverSystem';
 import { getUpgradeMultiplier, getServerCostMultiplier } from '@/lib/game/calculations';
-import type { RegionId, ServerRack, ActiveGame } from '@/lib/game/types';
+import type { RegionId, ServerRack } from '@/lib/game/types';
 import { Server, Globe, HardDrive, Wifi, AlertTriangle } from 'lucide-react';
 
 export default function DeliveryTab() {
-  const currentGame = useGameStore((s) => s.currentGame);
-  const gameInDev = useGameStore((s) => s.gameInDevelopment);
+  const activeGames = useGameStore((s) => s.activeGames);
   const money = useGameStore((s) => s.money);
   const studioUpgrades = useGameStore((s) => s.unlockedStudioUpgrades);
   const employees = useGameStore((s) => s.employees);
+  const servers = useGameStore((s) => s.servers);
+  const racks = useGameStore((s) => s.racks);
   const addRack = useGameStore((s) => s.addRack);
   const addServerToRack = useGameStore((s) => s.addServerToRack);
   const addServer = useGameStore((s) => s.addServer);
@@ -27,15 +28,13 @@ export default function DeliveryTab() {
     getUpgradeMultiplier('serverCostMultiplier', studioUpgrades, []);
   const regionCostMultiplier = getUpgradeMultiplier('regionUnlockCostMultiplier', studioUpgrades, []);
 
-  const isMP = currentGame?.mode === 'multiplayer' || gameInDev?.mode === 'multiplayer';
-  const needsServersForDev = gameInDev?.mode === 'multiplayer' && !currentGame;
-
-  const servers = currentGame?.servers ?? [];
-  const racks = currentGame?.racks ?? [];
+  const hasLiveServiceGames = activeGames.some((g) => g.mode === 'liveservice');
+  const totalPlayers = activeGames.reduce(
+    (sum, g) => sum + g.platformReleases.reduce((s2, p) => s2 + p.activePlayers, 0), 0
+  );
   const totalMonthlyCost = getTotalMonthlyCost(servers);
-  const totalPlayers = currentGame?.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0) ?? 0;
 
-  const loadByRegion = currentGame ? getLoadByRegion(currentGame) : {};
+  const loadByRegion = getLoadByRegion(totalPlayers, servers);
 
   const getRackCost = (regionId: RegionId) =>
     Math.round(SERVER_CONFIG.colocated.rackLeaseCostPerMonth * SERVER_CONFIG.regions.find(r => r.id === regionId)!.costMultiplier);
@@ -80,47 +79,34 @@ export default function DeliveryTab() {
           <p className="text-sm text-muted-foreground">
             {servers.length > 0 ? (
               <>
-                {isMP && <>{Math.floor(totalPlayers).toLocaleString()} total players &middot; </>}
+                {hasLiveServiceGames && <>{Math.floor(totalPlayers).toLocaleString()} total players &middot; </>}
                 ${totalMonthlyCost.toLocaleString()}/mo
-                {isMP && currentGame?.averageLatencyMs ? (
-                  <> &middot; <Wifi className="inline h-3 w-3" /> {currentGame.averageLatencyMs}ms avg</>
-                ) : null}
               </>
             ) : (
               'No servers provisioned yet'
             )}
           </p>
         </div>
-        {!isMP && (
+        {!hasLiveServiceGames && (
           <Badge variant="outline" className="text-xs text-muted-foreground">
-            Single Player — servers optional
+            No Live Service Games — servers optional
           </Badge>
         )}
       </div>
 
-      {needsServersForDev && (
-        <Card className="border-yellow-500/50">
-          <CardContent className="p-3 flex items-center gap-2 text-sm text-yellow-400">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
-            Your multiplayer game needs at least 1 server before you can release it. Provision servers below.
-          </CardContent>
-        </Card>
-      )}
-
       <div className="grid gap-4">
         {SERVER_CONFIG.regions.map((region) => {
           const load = loadByRegion[region.id] ?? 0;
-          const overloaded = isRegionOverloaded(load) && isMP;
-          const regionPlayers = isMP ? Math.floor(totalPlayers * region.playerDemandWeight) : 0;
+          const overloaded = isRegionOverloaded(load) && hasLiveServiceGames;
+          const regionPlayers = hasLiveServiceGames ? Math.floor(totalPlayers * region.playerDemandWeight) : 0;
           const regionRacks = racks.filter(r => r.regionId === region.id);
           const regionDCs = servers.filter(s => s.regionId === region.id && s.type === 'datacenter');
           const totalCapacity = regionRacks.reduce((sum, r) => sum + r.servers.reduce((s2, sv) => s2 + sv.capacity, 0), 0) +
             regionDCs.reduce((sum, dc) => sum + dc.capacity, 0);
-          const loadPercent = totalCapacity > 0 && isMP ? Math.min(100, (regionPlayers / totalCapacity) * 100) : 0;
+          const loadPercent = totalCapacity > 0 && hasLiveServiceGames ? Math.min(100, (regionPlayers / totalCapacity) * 100) : 0;
           const isUnlocked = region.unlockCost === 0 || totalCapacity > 0 || regionRacks.length > 0;
           const unlockCost = Math.round(region.unlockCost * regionCostMultiplier);
           const canAddRack = regionRacks.length < SERVER_CONFIG.colocated.maxRacksPerRegion;
-          const regionalFans = currentGame?.regionalFans[region.id as RegionId] ?? 0;
 
           const rackCost = getRackCost(region.id as RegionId);
           const srvCost = getServerCost(region.id as RegionId);
@@ -140,13 +126,12 @@ export default function DeliveryTab() {
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground text-right">
-                    {isMP && <div>{regionPlayers.toLocaleString()} players / {totalCapacity.toLocaleString()} cap</div>}
-                    {!isMP && totalCapacity > 0 && <div>{totalCapacity.toLocaleString()} capacity</div>}
-                    {regionalFans > 0 && <div>{Math.floor(regionalFans).toLocaleString()} fans</div>}
+                    {hasLiveServiceGames && <div>{regionPlayers.toLocaleString()} players / {totalCapacity.toLocaleString()} cap</div>}
+                    {!hasLiveServiceGames && totalCapacity > 0 && <div>{totalCapacity.toLocaleString()} capacity</div>}
                   </div>
                 </div>
 
-                {isMP && isUnlocked && totalCapacity > 0 && (
+                {hasLiveServiceGames && isUnlocked && totalCapacity > 0 && (
                   <Progress value={loadPercent} className={`h-2 ${overloaded ? '[&>div]:bg-red-500' : ''}`} />
                 )}
 
