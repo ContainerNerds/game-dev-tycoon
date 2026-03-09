@@ -182,6 +182,20 @@ export interface GameInDev {
   crunchBugPenalty: number;
 }
 
+export interface BlogReview {
+  blogName: string;
+  score: number;          // 1.0–10.0
+  summary: string;
+}
+
+export interface MonthlySnapshot {
+  month: number;
+  year: number;
+  copiesSold: number;
+  activePlayers: number;
+  revenue: number;
+}
+
 export interface ActiveGame {
   id: string;
   name: string;
@@ -190,7 +204,8 @@ export interface ActiveGame {
   comboMultiplier: number;
   phase: GameLifecyclePhase;
   pillarWeights: PillarWeights;
-  reviewScore: number;          // 0–10
+  reviewScore: number;          // 0–10, average of blog reviews
+  blogReviews: BlogReview[];
   releaseMonth: number;
   releaseYear: number;
   phaseTicks: number;           // ticks spent in current phase
@@ -202,6 +217,7 @@ export interface ActiveGame {
   servers: Server[];
   unlockedGameUpgrades: string[];
   totalRevenue: number;
+  monthlyHistory: MonthlySnapshot[];
 }
 
 export interface GameSummary {

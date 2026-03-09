@@ -242,18 +242,36 @@ function handleMonthEnd(store: GameStore): void {
   const state = store;
   const report = buildMonthlyReport(state);
 
-  // Add income line item for the month
   if (state.currentGame) {
     report.lineItems.unshift({
       label: 'Game revenue',
       amount: state.currentGame.totalRevenue,
     });
     report.income = state.currentGame.totalRevenue;
+
+    // Snapshot monthly metrics for the popularity chart
+    const totalPlayers = state.currentGame.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0);
+    const totalSold = state.currentGame.platformReleases.reduce((sum, p) => sum + p.totalCopiesSold, 0);
+    const prevSold = state.currentGame.monthlyHistory.length > 0
+      ? state.currentGame.monthlyHistory[state.currentGame.monthlyHistory.length - 1].copiesSold
+      : 0;
+
+    store.updateCurrentGame({
+      monthlyHistory: [
+        ...state.currentGame.monthlyHistory,
+        {
+          month: report.month,
+          year: report.year,
+          copiesSold: Math.floor(totalSold - prevSold),
+          activePlayers: Math.floor(totalPlayers),
+          revenue: Math.floor(state.currentGame.totalRevenue),
+        },
+      ],
+    });
   }
 
   report.netCashFlow = report.income - report.employeeCosts - report.computeCosts - report.devOverheadCosts;
 
-  // Deduct monthly costs atomically
   const totalCosts = getTotalMonthlyCosts(state);
   store.spendMoney(totalCosts);
 

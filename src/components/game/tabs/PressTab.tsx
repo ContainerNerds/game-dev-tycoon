@@ -2,9 +2,45 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { useGameStore } from '@/lib/store/gameStore';
-import { Newspaper, Star, Users, TrendingUp, TrendingDown } from 'lucide-react';
+import type { MonthlySnapshot } from '@/lib/game/types';
+import { Newspaper, Star, Users, TrendingUp, TrendingDown, Quote } from 'lucide-react';
+
+function scoreColor(score: number): string {
+  if (score >= 8) return 'text-green-400';
+  if (score >= 6) return 'text-blue-400';
+  if (score >= 4) return 'text-yellow-400';
+  if (score >= 2) return 'text-orange-400';
+  return 'text-red-400';
+}
+
+function MiniChart({ data, dataKey }: { data: MonthlySnapshot[]; dataKey: 'copiesSold' | 'activePlayers' | 'revenue' }) {
+  if (data.length < 2) return null;
+
+  const values = data.map((d) => d[dataKey]);
+  const max = Math.max(...values, 1);
+  const width = 300;
+  const height = 60;
+  const padding = 4;
+
+  const points = values.map((v, i) => {
+    const x = padding + (i / (values.length - 1)) * (width - padding * 2);
+    const y = height - padding - (v / max) * (height - padding * 2);
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-16">
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        className="text-blue-400"
+      />
+    </svg>
+  );
+}
 
 export default function PressTab() {
   const currentGame = useGameStore((s) => s.currentGame);
@@ -13,35 +49,64 @@ export default function PressTab() {
 
   const gameFans = currentGame?.gameFans ?? 0;
   const reviewScore = currentGame?.reviewScore ?? 0;
+  const blogReviews = currentGame?.blogReviews ?? [];
   const totalPlayers = currentGame?.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0) ?? 0;
   const totalSold = currentGame?.platformReleases.reduce((sum, p) => sum + p.totalCopiesSold, 0) ?? 0;
   const phase = currentGame?.phase;
+  const monthlyHistory = currentGame?.monthlyHistory ?? [];
 
   const sentiment = reviewScore >= 8 ? 'Overwhelmingly Positive' :
                     reviewScore >= 6 ? 'Mostly Positive' :
                     reviewScore >= 4 ? 'Mixed' :
                     reviewScore >= 2 ? 'Mostly Negative' : 'Overwhelmingly Negative';
 
-  const sentimentColor = reviewScore >= 8 ? 'text-green-400' :
-                         reviewScore >= 6 ? 'text-blue-400' :
-                         reviewScore >= 4 ? 'text-yellow-400' :
-                         reviewScore >= 2 ? 'text-orange-400' : 'text-red-400';
+  const sentimentColor = scoreColor(reviewScore);
 
   return (
     <div className="p-4 space-y-6">
-      {/* Review & Sentiment */}
+      {/* Blog Reviews */}
+      {blogReviews.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Launch Reviews
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {blogReviews.map((review, i) => (
+              <Card key={i}>
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold">{review.blogName}</span>
+                    <Badge
+                      variant="outline"
+                      className={`font-mono font-bold ${scoreColor(review.score)}`}
+                    >
+                      {review.score.toFixed(1)}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground italic flex gap-1">
+                    <Quote className="h-3 w-3 shrink-0 mt-0.5" />
+                    {review.summary}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Scores & Phase */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-border bg-card">
+        <Card>
           <CardContent className="p-4 flex items-center gap-4">
             <Star className="h-8 w-8 text-yellow-400" />
             <div>
-              <p className="text-2xl font-bold text-foreground">{reviewScore.toFixed(1)}/10</p>
-              <p className="text-sm text-muted-foreground">Review Score</p>
+              <p className="text-2xl font-bold">{reviewScore.toFixed(1)}/10</p>
+              <p className="text-sm text-muted-foreground">Avg. Review Score</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card">
+        <Card>
           <CardContent className="p-4 flex items-center gap-4">
             <Newspaper className={`h-8 w-8 ${sentimentColor}`} />
             <div>
@@ -51,7 +116,7 @@ export default function PressTab() {
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card">
+        <Card>
           <CardContent className="p-4 flex items-center gap-4">
             {phase === 'decline' ? (
               <TrendingDown className="h-8 w-8 text-red-400" />
@@ -59,17 +124,36 @@ export default function PressTab() {
               <TrendingUp className="h-8 w-8 text-green-400" />
             )}
             <div>
-              <p className="text-lg font-semibold text-foreground capitalize">{phase ?? 'N/A'}</p>
+              <p className="text-lg font-semibold capitalize">{phase ?? 'N/A'}</p>
               <p className="text-sm text-muted-foreground">Game Phase</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Popularity Chart */}
+      {monthlyHistory.length >= 2 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Popularity Over Time</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Copies Sold / Month</p>
+              <MiniChart data={monthlyHistory} dataKey="copiesSold" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Active Players</p>
+              <MiniChart data={monthlyHistory} dataKey="activePlayers" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Fan breakdown */}
-      <Card className="border-border bg-card">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-foreground flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Fan Base
           </CardTitle>
@@ -95,7 +179,7 @@ export default function PressTab() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Copies Sold</p>
-              <p className="text-xl font-bold text-foreground">{Math.floor(totalSold).toLocaleString()}</p>
+              <p className="text-xl font-bold">{Math.floor(totalSold).toLocaleString()}</p>
             </div>
           </div>
         </CardContent>
@@ -103,16 +187,16 @@ export default function PressTab() {
 
       {/* Past games */}
       {completedGames.length > 0 && (
-        <Card className="border-border bg-card">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-foreground">Past Releases</CardTitle>
+            <CardTitle>Past Releases</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {completedGames.map((game) => (
                 <div key={game.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                   <div>
-                    <span className="text-sm font-medium text-foreground">{game.name}</span>
+                    <span className="text-sm font-medium">{game.name}</span>
                     <span className="text-xs text-muted-foreground ml-2">{game.genre} / {game.style}</span>
                   </div>
                   <div className="flex items-center gap-3 text-xs">
