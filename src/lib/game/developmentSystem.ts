@@ -149,6 +149,7 @@ export function convertDevToActiveGame(
     bugs: [],
     dlcs: [],
     servers: [],
+    racks: [],
     unlockedGameUpgrades: [],
     totalRevenue: 0,
     monthlyHistory: [],

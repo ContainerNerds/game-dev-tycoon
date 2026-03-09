@@ -119,6 +119,13 @@ export interface Server {
   monthlyCost: number;
 }
 
+export interface ServerRack {
+  id: string;
+  regionId: RegionId;
+  servers: Server[];
+  monthlyCost: number;
+}
+
 // ============================================================
 // DLC
 // ============================================================
@@ -222,7 +229,8 @@ export interface ActiveGame {
   gamePrice: number;
   bugs: Bug[];
   dlcs: DLC[];
-  servers: Server[];
+  servers: Server[];           // flat list for game loop calculations (derived from racks)
+  racks: ServerRack[];         // source of truth for colocated racks
   unlockedGameUpgrades: string[];
   totalRevenue: number;
   monthlyHistory: MonthlySnapshot[];

@@ -13,6 +13,9 @@ export const SERVER_CONFIG = {
   colocated: {
     baseCostPerMonth: 200,      // dollars per server per month
     baseCapacity: 500,          // players per server
+    maxRacksPerRegion: 4,
+    serversPerRack: 8,
+    rackLeaseCostPerMonth: 100, // cost to lease an empty rack
   },
 
   datacenter: {

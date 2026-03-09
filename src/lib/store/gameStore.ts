@@ -98,9 +98,11 @@ interface GameActions {
   releaseGame: (activeGame: ActiveGame) => void;
   retireGame: () => void;
 
-  // Servers
+  // Servers & Racks
   addServer: (server: Server) => void;
   removeServer: (serverId: string) => void;
+  addRack: (rack: import('@/lib/game/types').ServerRack) => void;
+  addServerToRack: (rackId: string, server: Server) => void;
 
   // Employees
   setCandidatePool: (pool: Employee[]) => void;
@@ -331,6 +333,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentGame: {
         ...s.currentGame,
         servers: s.currentGame.servers.filter((sv) => sv.id !== serverId),
+      },
+    };
+  }),
+
+  addRack: (rack) => set((s) => {
+    if (!s.currentGame) return {};
+    return {
+      currentGame: {
+        ...s.currentGame,
+        racks: [...s.currentGame.racks, rack],
+      },
+    };
+  }),
+
+  addServerToRack: (rackId, server) => set((s) => {
+    if (!s.currentGame) return {};
+    const updatedRacks = s.currentGame.racks.map((r) =>
+      r.id === rackId ? { ...r, servers: [...r.servers, server] } : r
+    );
+    const allServers = updatedRacks.flatMap((r) => r.servers);
+    const dcServers = s.currentGame.servers.filter((sv) => sv.type === 'datacenter');
+    return {
+      currentGame: {
+        ...s.currentGame,
+        racks: updatedRacks,
+        servers: [...dcServers, ...allServers],
       },
     };
   }),

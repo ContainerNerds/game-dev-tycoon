@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -8,13 +8,16 @@ import { useGameStore } from '@/lib/store/gameStore';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
 import { createColocatedServer, createDatacenter, getLoadByRegion, isRegionOverloaded, getTotalCapacityByRegion, getTotalMonthlyCost } from '@/lib/game/serverSystem';
 import { getUpgradeMultiplier, getServerCostMultiplier } from '@/lib/game/calculations';
-import { Server, Globe } from 'lucide-react';
+import type { RegionId, ServerRack } from '@/lib/game/types';
+import { Server, Globe, HardDrive, Wifi } from 'lucide-react';
 
 export default function DeliveryTab() {
   const currentGame = useGameStore((s) => s.currentGame);
   const money = useGameStore((s) => s.money);
   const studioUpgrades = useGameStore((s) => s.unlockedStudioUpgrades);
   const employees = useGameStore((s) => s.employees);
+  const addRack = useGameStore((s) => s.addRack);
+  const addServerToRack = useGameStore((s) => s.addServerToRack);
   const addServer = useGameStore((s) => s.addServer);
   const spendMoney = useGameStore((s) => s.spendMoney);
 
@@ -33,23 +36,37 @@ export default function DeliveryTab() {
     );
   }
 
+  const isMP = currentGame.mode === 'multiplayer';
   const loadByRegion = getLoadByRegion(currentGame);
-  const capacityByRegion = getTotalCapacityByRegion(currentGame.servers);
   const totalMonthlyCost = getTotalMonthlyCost(currentGame.servers);
   const totalPlayers = currentGame.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0);
+  const racks = currentGame.racks ?? [];
 
-  const handleBuyColocated = (regionId: string) => {
-    const cost = Math.round(SERVER_CONFIG.colocated.baseCostPerMonth * SERVER_CONFIG.regions.find(r => r.id === regionId)!.costMultiplier * serverCostMultiplier);
-    const server = createColocatedServer(regionId as any, serverCostMultiplier);
-    if (spendMoney(cost)) {
-      addServer(server);
+  const handleLeaseRack = (regionId: RegionId) => {
+    const region = SERVER_CONFIG.regions.find(r => r.id === regionId)!;
+    const cost = Math.round(SERVER_CONFIG.colocated.rackLeaseCostPerMonth * region.costMultiplier);
+    const rack: ServerRack = {
+      id: `rack-${regionId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      regionId,
+      servers: [],
+      monthlyCost: cost,
+    };
+    addRack(rack);
+  };
+
+  const handleAddServerToRack = (rackId: string, regionId: RegionId) => {
+    const server = createColocatedServer(regionId, serverCostMultiplier);
+    const region = SERVER_CONFIG.regions.find(r => r.id === regionId)!;
+    const serverCost = Math.round(SERVER_CONFIG.colocated.baseCostPerMonth * region.costMultiplier * serverCostMultiplier);
+    if (spendMoney(serverCost)) {
+      addServerToRack(rackId, server);
     }
   };
 
-  const handleBuyDatacenter = (regionId: string) => {
+  const handleBuyDatacenter = (regionId: RegionId) => {
     const region = SERVER_CONFIG.regions.find(r => r.id === regionId)!;
     const cost = Math.round(SERVER_CONFIG.datacenter.purchaseCost * region.costMultiplier);
-    const server = createDatacenter(regionId as any, serverCostMultiplier);
+    const server = createDatacenter(regionId, serverCostMultiplier);
     if (spendMoney(cost)) {
       addServer(server);
     }
@@ -59,99 +76,143 @@ export default function DeliveryTab() {
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-foreground">Server Infrastructure</h3>
+          <h3 className="text-lg font-semibold">Server Infrastructure</h3>
           <p className="text-sm text-muted-foreground">
             {Math.floor(totalPlayers).toLocaleString()} total players &middot; ${totalMonthlyCost.toLocaleString()}/mo
+            {isMP && currentGame.averageLatencyMs > 0 && (
+              <> &middot; <Wifi className="inline h-3 w-3" /> {currentGame.averageLatencyMs}ms avg</>
+            )}
           </p>
         </div>
+        {!isMP && (
+          <Badge variant="outline" className="text-xs text-muted-foreground">
+            Single Player — servers optional
+          </Badge>
+        )}
       </div>
 
-      <div className="grid gap-3">
+      <div className="grid gap-4">
         {SERVER_CONFIG.regions.map((region) => {
           const load = loadByRegion[region.id] ?? 0;
-          const capacity = capacityByRegion[region.id] ?? 0;
           const overloaded = isRegionOverloaded(load);
           const regionPlayers = Math.floor(totalPlayers * region.playerDemandWeight);
-          const loadPercent = capacity > 0 ? Math.min(100, (load * 100)) : 0;
-          const isUnlocked = region.unlockCost === 0 || capacity > 0;
-
-          const coloCost = Math.round(SERVER_CONFIG.colocated.baseCostPerMonth * region.costMultiplier * serverCostMultiplier);
-          const dcCost = Math.round(SERVER_CONFIG.datacenter.purchaseCost * region.costMultiplier);
+          const regionRacks = racks.filter(r => r.regionId === region.id);
+          const regionDCs = currentGame.servers.filter(s => s.regionId === region.id && s.type === 'datacenter');
+          const totalCapacity = regionRacks.reduce((sum, r) => sum + r.servers.reduce((s2, sv) => s2 + sv.capacity, 0), 0) +
+            regionDCs.reduce((sum, dc) => sum + dc.capacity, 0);
+          const loadPercent = totalCapacity > 0 ? Math.min(100, (regionPlayers / totalCapacity) * 100) : 0;
+          const isUnlocked = region.unlockCost === 0 || totalCapacity > 0 || regionRacks.length > 0;
           const unlockCost = Math.round(region.unlockCost * regionCostMultiplier);
-
-          const regionServers = currentGame.servers.filter(s => s.regionId === region.id);
+          const canAddRack = regionRacks.length < SERVER_CONFIG.colocated.maxRacksPerRegion;
+          const regionalFans = currentGame.regionalFans[region.id as RegionId] ?? 0;
 
           return (
-            <Card
-              key={region.id}
-              className={`border ${overloaded ? 'border-red-500 bg-red-950/20' : 'border-border bg-card'}`}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
+            <Card key={region.id} className={overloaded && isMP ? 'border-red-500' : ''}>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Server className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{region.name}</span>
-                    {overloaded && (
+                    <span className="font-medium">{region.name}</span>
+                    {overloaded && isMP && (
                       <Badge variant="destructive" className="text-xs">OVERLOADED</Badge>
                     )}
                     {!isUnlocked && (
-                      <Badge variant="outline" className="text-xs text-muted-foreground/60">Locked</Badge>
+                      <Badge variant="outline" className="text-xs text-muted-foreground">Locked</Badge>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {regionPlayers.toLocaleString()} players / {capacity.toLocaleString()} capacity
-                  </span>
+                  <div className="text-xs text-muted-foreground text-right">
+                    <div>{regionPlayers.toLocaleString()} players / {totalCapacity.toLocaleString()} cap</div>
+                    {regionalFans > 0 && <div>{Math.floor(regionalFans).toLocaleString()} fans</div>}
+                  </div>
                 </div>
 
-                {isUnlocked && (
-                  <Progress
-                    value={loadPercent}
-                    className={`h-2 mb-3 ${overloaded ? '[&>div]:bg-red-500' : ''}`}
-                  />
+                {isUnlocked && totalCapacity > 0 && (
+                  <Progress value={loadPercent} className={`h-2 ${overloaded ? '[&>div]:bg-red-500' : ''}`} />
                 )}
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  {isUnlocked ? (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs cursor-pointer"
-                        disabled={money < coloCost}
-                        onClick={() => handleBuyColocated(region.id)}
-                      >
-                        + Colocated (${coloCost}/mo)
-                      </Button>
-                      {hasDatacenterUpgrade && (
+                {isUnlocked ? (
+                  <div className="space-y-2">
+                    {/* Racks */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {regionRacks.map((rack) => (
+                        <div key={rack.id} className="border border-border rounded-md p-2 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium">
+                              <HardDrive className="inline h-3 w-3 mr-1" />
+                              Rack
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {rack.servers.length}/{SERVER_CONFIG.colocated.serversPerRack}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {Array.from({ length: SERVER_CONFIG.colocated.serversPerRack }).map((_, i) => (
+                              <div
+                                key={i}
+                                className={`h-2 w-3 rounded-sm ${
+                                  i < rack.servers.length ? 'bg-green-500' : 'bg-muted'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          {rack.servers.length < SERVER_CONFIG.colocated.serversPerRack && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full text-xs h-6 cursor-pointer"
+                              onClick={() => handleAddServerToRack(rack.id, region.id as RegionId)}
+                            >
+                              + Server
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+
+                      {canAddRack && (
+                        <Button
+                          variant="outline"
+                          className="border-dashed h-full min-h-[60px] text-xs cursor-pointer"
+                          onClick={() => handleLeaseRack(region.id as RegionId)}
+                        >
+                          + Lease Rack
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Datacenter */}
+                    {hasDatacenterUpgrade && (
+                      <div className="flex items-center gap-2 pt-1">
+                        {regionDCs.map((dc) => (
+                          <Badge key={dc.id} variant="outline" className="text-xs">
+                            DC ({dc.capacity.toLocaleString()} cap)
+                          </Badge>
+                        ))}
                         <Button
                           size="sm"
                           variant="outline"
                           className="text-xs cursor-pointer"
-                          disabled={money < dcCost}
-                          onClick={() => handleBuyDatacenter(region.id)}
+                          disabled={money < Math.round(SERVER_CONFIG.datacenter.purchaseCost * region.costMultiplier)}
+                          onClick={() => handleBuyDatacenter(region.id as RegionId)}
                         >
-                          + Datacenter (${dcCost.toLocaleString()})
+                          + Datacenter (${Math.round(SERVER_CONFIG.datacenter.purchaseCost * region.costMultiplier).toLocaleString()})
                         </Button>
-                      )}
-                      <span className="text-xs text-muted-foreground/60 ml-auto">
-                        {regionServers.length} server{regionServers.length !== 1 ? 's' : ''}
-                      </span>
-                    </>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="text-xs cursor-pointer"
-                      disabled={money < unlockCost}
-                      onClick={() => {
-                        if (spendMoney(unlockCost)) {
-                          handleBuyColocated(region.id);
-                        }
-                      }}
-                    >
-                      Unlock Region (${unlockCost.toLocaleString()})
-                    </Button>
-                  )}
-                </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="text-xs cursor-pointer"
+                    disabled={money < unlockCost}
+                    onClick={() => {
+                      if (spendMoney(unlockCost)) {
+                        handleLeaseRack(region.id as RegionId);
+                      }
+                    }}
+                  >
+                    Unlock Region (${unlockCost.toLocaleString()})
+                  </Button>
+                )}
               </CardContent>
             </Card>
           );
