@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useGameStore } from '@/lib/store/gameStore';
-import { getTotalMonthlyCosts, getMonthName } from '@/lib/game/calendarSystem';
+import { getMonthName } from '@/lib/game/calendarSystem';
 import { DollarSign, TrendingUp, TrendingDown, FileText } from 'lucide-react';
 
 export default function FinancesTab() {
@@ -21,6 +21,9 @@ export default function FinancesTab() {
     + (currentGame.racks?.reduce((sum, r) => sum + r.monthlyCost, 0) ?? 0)
     : 0;
   const projectedMonthlyExpenses = totalMonthlySalary + serverMonthlyCost + office.monthlyOverhead;
+  const netPerMonth = Math.round(dailyRates.moneyPerDay * 30);
+
+  const lastReport = monthlyReports.length > 0 ? monthlyReports[monthlyReports.length - 1] : null;
 
   return (
     <div className="p-4 space-y-6">
@@ -40,16 +43,16 @@ export default function FinancesTab() {
 
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
-            {dailyRates.moneyPerDay >= 0 ? (
+            {netPerMonth >= 0 ? (
               <TrendingUp className="h-8 w-8 text-green-400" />
             ) : (
               <TrendingDown className="h-8 w-8 text-red-400" />
             )}
             <div>
-              <p className={`text-2xl font-bold font-mono ${dailyRates.moneyPerDay >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {dailyRates.moneyPerDay >= 0 ? '+' : ''}${Math.floor(dailyRates.moneyPerDay).toLocaleString()}
+              <p className={`text-2xl font-bold font-mono ${netPerMonth >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {netPerMonth >= 0 ? '+' : ''}${Math.floor(netPerMonth).toLocaleString()}
               </p>
-              <p className="text-xs text-muted-foreground">Net / Day</p>
+              <p className="text-xs text-muted-foreground">Est. Net / Month</p>
             </div>
           </CardContent>
         </Card>
@@ -114,8 +117,15 @@ export default function FinancesTab() {
             </p>
           ) : (
             <div className="space-y-3">
-              {[...monthlyReports].reverse().map((report, i) => {
+              {[...monthlyReports].reverse().map((report, i, arr) => {
                 const totalExpenses = report.employeeCosts + report.computeCosts + report.devOverheadCosts;
+                // Calculate monthly income delta from previous report
+                const prevReport = i < arr.length - 1 ? arr[i + 1] : null;
+                const monthlyIncome = prevReport
+                  ? Math.max(0, report.income - prevReport.income)
+                  : report.income;
+                const monthlyNet = monthlyIncome - totalExpenses;
+
                 return (
                   <div key={i} className="border border-border rounded-md p-3 space-y-2">
                     <div className="flex items-center justify-between">
@@ -124,28 +134,32 @@ export default function FinancesTab() {
                       </span>
                       <Badge
                         variant="outline"
-                        className={`font-mono text-xs ${report.netCashFlow >= 0 ? 'text-green-400 border-green-500/50' : 'text-red-400 border-red-500/50'}`}
+                        className={`font-mono text-xs ${monthlyNet >= 0 ? 'text-green-400 border-green-500/50' : 'text-red-400 border-red-500/50'}`}
                       >
-                        {report.netCashFlow >= 0 ? '+' : ''}${Math.floor(report.netCashFlow).toLocaleString()}
+                        Net: {monthlyNet >= 0 ? '+' : ''}${Math.floor(monthlyNet).toLocaleString()}
                       </Badge>
                     </div>
 
                     <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Income</span>
-                        <span className="font-mono text-green-400">+${Math.floor(report.income).toLocaleString()}</span>
+                        <span className="font-mono text-green-400">+${Math.floor(monthlyIncome).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Employees</span>
-                        <span className="font-mono text-red-400">-${Math.floor(report.employeeCosts).toLocaleString()}</span>
+                        <span className="text-muted-foreground">Expenses</span>
+                        <span className="font-mono text-red-400">-${Math.floor(totalExpenses).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Compute</span>
-                        <span className="font-mono text-red-400">-${Math.floor(report.computeCosts).toLocaleString()}</span>
+                        <span className="text-muted-foreground">  Employees</span>
+                        <span className="font-mono text-muted-foreground">-${Math.floor(report.employeeCosts).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Overhead</span>
-                        <span className="font-mono text-red-400">-${Math.floor(report.devOverheadCosts).toLocaleString()}</span>
+                        <span className="text-muted-foreground">  Compute</span>
+                        <span className="font-mono text-muted-foreground">-${Math.floor(report.computeCosts).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">  Overhead</span>
+                        <span className="font-mono text-muted-foreground">-${Math.floor(report.devOverheadCosts).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>

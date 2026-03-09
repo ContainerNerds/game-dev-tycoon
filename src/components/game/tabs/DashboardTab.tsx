@@ -9,7 +9,7 @@ import { useGameStore } from '@/lib/store/gameStore';
 import { OFFICE_CONFIG } from '@/lib/config/officeConfig';
 import { getTotalMonthlyCost, getTotalCapacityByRegion } from '@/lib/game/serverSystem';
 import { formatDate } from '@/lib/game/calendarSystem';
-import GameDetailView, { toGameData, summaryToGameData, type GameData } from '@/components/game/GameDetailView';
+import GameDetailView from '@/components/game/GameDetailView';
 import {
   Building2, Server, DollarSign, Users, Gamepad2,
   TrendingUp, HardDrive, Globe,
@@ -36,7 +36,7 @@ export default function DashboardTab() {
   const gameInDev = useGameStore((s) => s.gameInDevelopment);
   const completedGames = useGameStore((s) => s.completedGames);
 
-  const [selectedGame, setSelectedGame] = useState<GameData | null>(null);
+  const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
 
   const officeDef = OFFICE_CONFIG.tiers.find((t) => t.tier === office.tier);
   const totalPlayers = currentGame?.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0) ?? 0;
@@ -52,9 +52,9 @@ export default function DashboardTab() {
   const totalMonthlySalary = employees.reduce((sum, e) => sum + e.monthlySalary, 0);
 
   const allGames = [
-    ...(gameInDev ? [{ name: gameInDev.name, phase: 'development' as const, genre: gameInDev.genre, style: gameInDev.style }] : []),
-    ...(currentGame ? [{ name: currentGame.name, phase: currentGame.phase, genre: currentGame.genre, style: currentGame.style }] : []),
-    ...completedGames.map((g) => ({ name: g.name, phase: 'retired' as const, genre: g.genre, style: g.style })),
+    ...(gameInDev ? [{ id: gameInDev.id, name: gameInDev.name, phase: 'development' as const, genre: gameInDev.genre, style: gameInDev.style }] : []),
+    ...(currentGame ? [{ id: currentGame.id, name: currentGame.name, phase: currentGame.phase, genre: currentGame.genre, style: currentGame.style }] : []),
+    ...completedGames.map((g) => ({ id: g.id, name: g.name, phase: 'retired' as const, genre: g.genre, style: g.style })),
   ];
 
   return (
@@ -208,20 +208,11 @@ export default function DashboardTab() {
             <div className="space-y-2">
               {allGames.map((game, i) => {
                 const isClickable = game.phase !== 'development';
-                const handleClick = () => {
-                  if (!isClickable) return;
-                  if (currentGame && game.name === currentGame.name && game.phase !== 'retired') {
-                    setSelectedGame(toGameData(currentGame));
-                  } else {
-                    const completed = completedGames.find((g) => g.name === game.name);
-                    if (completed) setSelectedGame(summaryToGameData(completed));
-                  }
-                };
                 return (
                   <div
-                    key={`${game.name}-${i}`}
+                    key={`${game.id}-${i}`}
                     className={`flex items-center justify-between py-2 border-b border-border last:border-0 ${isClickable ? 'cursor-pointer hover:bg-muted/50 -mx-2 px-2 rounded' : ''}`}
-                    onClick={handleClick}
+                    onClick={() => isClickable && setSelectedGameId(game.id)}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-medium">{game.name}</span>
@@ -242,9 +233,9 @@ export default function DashboardTab() {
       )}
 
       <GameDetailView
-        game={selectedGame}
-        open={selectedGame !== null}
-        onClose={() => setSelectedGame(null)}
+        gameId={selectedGameId}
+        open={selectedGameId !== null}
+        onClose={() => setSelectedGameId(null)}
       />
     </div>
   );

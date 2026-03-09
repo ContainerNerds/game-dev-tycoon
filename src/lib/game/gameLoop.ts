@@ -387,27 +387,30 @@ function handleMonthEnd(store: GameStore): void {
   const report = buildMonthlyReport(state);
 
   if (state.currentGame) {
-    report.lineItems.unshift({
-      label: 'Game revenue',
-      amount: state.currentGame.totalRevenue,
-    });
-    report.income = state.currentGame.totalRevenue;
-
     const totalPlayers = state.currentGame.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0);
     const totalSold = state.currentGame.platformReleases.reduce((sum, p) => sum + p.totalCopiesSold, 0);
-    const prevSold = state.currentGame.monthlyHistory.length > 0
-      ? state.currentGame.monthlyHistory[state.currentGame.monthlyHistory.length - 1].copiesSold
-      : 0;
+    const history = state.currentGame.monthlyHistory;
+    const prevRevenue = history.length > 0 ? history[history.length - 1].revenue : 0;
+    const prevSold = history.length > 0 ? history[history.length - 1].copiesSold : 0;
+
+    const monthlyRevenue = Math.max(0, state.currentGame.totalRevenue - prevRevenue);
+    const monthlyCopies = Math.floor(totalSold - prevSold);
+
+    report.lineItems.unshift({
+      label: 'Game revenue',
+      amount: monthlyRevenue,
+    });
+    report.income = monthlyRevenue;
 
     store.updateCurrentGame({
       monthlyHistory: [
-        ...state.currentGame.monthlyHistory,
+        ...history,
         {
           month: report.month,
           year: report.year,
-          copiesSold: Math.floor(totalSold - prevSold),
+          copiesSold: monthlyCopies,
           activePlayers: Math.floor(totalPlayers),
-          revenue: Math.floor(state.currentGame.totalRevenue),
+          revenue: state.currentGame.totalRevenue,
         },
       ],
     });
@@ -418,7 +421,6 @@ function handleMonthEnd(store: GameStore): void {
   const totalCosts = getTotalMonthlyCosts(state);
   store.spendMoney(totalCosts);
 
-  // Push to history and dismiss — no pause, no modal
   store.pushMonthlyReport(report);
   store.dismissMonthEnd();
 }

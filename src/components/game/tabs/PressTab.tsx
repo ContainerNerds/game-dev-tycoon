@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useGameStore } from '@/lib/store/gameStore';
-import type { MonthlySnapshot } from '@/lib/game/types';
+import InteractiveChart from '@/components/game/InteractiveChart';
 import { Newspaper, Star, Users, TrendingUp, TrendingDown, Quote } from 'lucide-react';
 
 function scoreColor(score: number): string {
@@ -12,34 +12,6 @@ function scoreColor(score: number): string {
   if (score >= 4) return 'text-yellow-400';
   if (score >= 2) return 'text-orange-400';
   return 'text-red-400';
-}
-
-function MiniChart({ data, dataKey }: { data: MonthlySnapshot[]; dataKey: 'copiesSold' | 'activePlayers' | 'revenue' }) {
-  if (data.length < 2) return null;
-
-  const values = data.map((d) => d[dataKey]);
-  const max = Math.max(...values, 1);
-  const width = 300;
-  const height = 60;
-  const padding = 4;
-
-  const points = values.map((v, i) => {
-    const x = padding + (i / (values.length - 1)) * (width - padding * 2);
-    const y = height - padding - (v / max) * (height - padding * 2);
-    return `${x},${y}`;
-  }).join(' ');
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-16">
-      <polyline
-        points={points}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        className="text-blue-400"
-      />
-    </svg>
-  );
 }
 
 export default function PressTab() {
@@ -140,11 +112,11 @@ export default function PressTab() {
           <CardContent className="space-y-4">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Copies Sold / Month</p>
-              <MiniChart data={monthlyHistory} dataKey="copiesSold" />
+              <InteractiveChart data={monthlyHistory} dataKey="copiesSold" color="text-blue-400" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-1">Active Players</p>
-              <MiniChart data={monthlyHistory} dataKey="activePlayers" />
+              <InteractiveChart data={monthlyHistory} dataKey="activePlayers" color="text-green-400" />
             </div>
           </CardContent>
         </Card>
