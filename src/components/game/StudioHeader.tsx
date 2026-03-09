@@ -89,15 +89,19 @@ export default function StudioHeader() {
             {' '}({Math.floor(task.progressPercent)}%)
           </span>
         ))}
-        {liveGames.map((game) => (
-          <span key={game.id}>
-            Live: <span className="text-green-400">{game.name}</span>
-            {' '}
-            <Badge variant="outline" className="text-xs">
-              {game.phase}
-            </Badge>
-          </span>
-        ))}
+        {liveGames.map((game) => {
+          const players = game.platformReleases.reduce((s, p) => s + p.activePlayers, 0);
+          return (
+            <span key={game.id} className="flex items-center gap-1.5">
+              <span className="text-green-400">{game.name}</span>
+              <Badge variant="outline" className="text-xs capitalize">{game.phase}</Badge>
+              <div className="w-12 h-2 bg-muted rounded-full overflow-hidden" title={`${Math.floor(players)} players`}>
+                <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${Math.min(100, (players / Math.max(players, 500)) * 100)}%` }} />
+              </div>
+              <span className="text-xs text-muted-foreground font-mono">{Math.floor(players).toLocaleString()}</span>
+            </span>
+          );
+        })}
         {!hasActivity && (
           <span className="text-muted-foreground/50">No active project</span>
         )}

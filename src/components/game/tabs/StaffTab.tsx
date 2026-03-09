@@ -31,10 +31,12 @@ export default function StaffTab() {
   const money = useGameStore((s) => s.money);
   const calendar = useGameStore((s) => s.calendar);
   const lastRefresh = useGameStore((s) => s.lastCandidateRefreshDay);
+  const activeTasks = useGameStore((s) => s.activeTasks);
   const spendMoney = useGameStore((s) => s.spendMoney);
   const setCandidatePool = useGameStore((s) => s.setCandidatePool);
   const hireEmployee = useGameStore((s) => s.hireEmployee);
   const fireEmployee = useGameStore((s) => s.fireEmployee);
+  const assignEmployee = useGameStore((s) => s.assignEmployee);
 
   const currentDay = calendar.day + (calendar.month - 1) * 30 + (calendar.year - 2040) * 360;
   const daysUntilRefresh = Math.max(0, 7 - (currentDay - lastRefresh) % 7);
@@ -154,17 +156,34 @@ export default function StaffTab() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    {/* Task assignment */}
+                    <div className="flex gap-1 flex-wrap">
+                      <Button size="sm" variant={emp.assignedTaskId === null ? 'default' : 'ghost'}
+                        className="h-6 text-xs px-2 cursor-pointer"
+                        onClick={() => assignEmployee(emp.id, null)}>
+                        Idle
+                      </Button>
+                      <Button size="sm" variant={emp.assignedTaskId === 'bugfix' ? 'default' : 'ghost'}
+                        className="h-6 text-xs px-2 cursor-pointer"
+                        onClick={() => assignEmployee(emp.id, 'bugfix')}>
+                        Bugs
+                      </Button>
+                      {activeTasks.map((t) => (
+                        <Button key={t.id} size="sm" variant={emp.assignedTaskId === t.id ? 'default' : 'ghost'}
+                          className="h-6 text-xs px-2 cursor-pointer truncate max-w-[80px]"
+                          onClick={() => assignEmployee(emp.id, t.id)}
+                          title={t.name}>
+                          {t.name}
+                        </Button>
+                      ))}
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">
                       {emp.isPlayer ? 'Founder' : `$${emp.monthlySalary.toLocaleString()}/mo`}
                     </span>
                     {!emp.isPlayer && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 w-7 p-0 text-red-400 hover:text-red-300 cursor-pointer"
-                        onClick={() => fireEmployee(emp.id)}
-                      >
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300 cursor-pointer shrink-0"
+                        onClick={() => fireEmployee(emp.id)}>
                         <UserMinus className="h-4 w-4" />
                       </Button>
                     )}
