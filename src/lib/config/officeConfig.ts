@@ -11,7 +11,7 @@ export interface OfficeTierDefinition {
 
 export const OFFICE_CONFIG = {
   tiers: [
-    { tier: 0, name: 'Garage',         maxSeats: 0,  purchaseCost: 0,      monthlyOverhead: 0,     devSpeedBonus: 1.0 },
+    { tier: 0, name: 'Garage',         maxSeats: 1,  purchaseCost: 0,      monthlyOverhead: 0,     devSpeedBonus: 1.0 },
     { tier: 1, name: 'Garage + Desk',  maxSeats: 1,  purchaseCost: 500,    monthlyOverhead: 50,    devSpeedBonus: 1.0 },
     { tier: 2, name: 'Small Office',   maxSeats: 4,  purchaseCost: 8_000,  monthlyOverhead: 400,   devSpeedBonus: 1.1 },
     { tier: 3, name: 'Large Office',   maxSeats: 8,  purchaseCost: 20_000, monthlyOverhead: 900,   devSpeedBonus: 1.2 },

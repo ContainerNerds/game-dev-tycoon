@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -8,6 +9,7 @@ import { useGameStore } from '@/lib/store/gameStore';
 import { OFFICE_CONFIG } from '@/lib/config/officeConfig';
 import { getTotalMonthlyCost, getTotalCapacityByRegion } from '@/lib/game/serverSystem';
 import { formatDate } from '@/lib/game/calendarSystem';
+import GameDetailView, { toGameData, summaryToGameData, type GameData } from '@/components/game/GameDetailView';
 import {
   Building2, Server, DollarSign, Users, Gamepad2,
   TrendingUp, HardDrive, Globe,
@@ -33,6 +35,8 @@ export default function DashboardTab() {
   const currentGame = useGameStore((s) => s.currentGame);
   const gameInDev = useGameStore((s) => s.gameInDevelopment);
   const completedGames = useGameStore((s) => s.completedGames);
+
+  const [selectedGame, setSelectedGame] = useState<GameData | null>(null);
 
   const officeDef = OFFICE_CONFIG.tiers.find((t) => t.tier === office.tier);
   const totalPlayers = currentGame?.platformReleases.reduce((sum, p) => sum + p.activePlayers, 0) ?? 0;
@@ -194,27 +198,46 @@ export default function DashboardTab() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {allGames.map((game, i) => (
-                <div
-                  key={`${game.name}-${i}`}
-                  className="flex items-center justify-between py-2 border-b border-border last:border-0"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium">{game.name}</span>
-                    <span className="text-xs text-muted-foreground">{game.genre} / {game.style}</span>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs capitalize ${PHASE_BADGE[game.phase] ?? ''}`}
+              {allGames.map((game, i) => {
+                const isClickable = game.phase !== 'development';
+                const handleClick = () => {
+                  if (!isClickable) return;
+                  if (currentGame && game.name === currentGame.name && game.phase !== 'retired') {
+                    setSelectedGame(toGameData(currentGame));
+                  } else {
+                    const completed = completedGames.find((g) => g.name === game.name);
+                    if (completed) setSelectedGame(summaryToGameData(completed));
+                  }
+                };
+                return (
+                  <div
+                    key={`${game.name}-${i}`}
+                    className={`flex items-center justify-between py-2 border-b border-border last:border-0 ${isClickable ? 'cursor-pointer hover:bg-muted/50 -mx-2 px-2 rounded' : ''}`}
+                    onClick={handleClick}
                   >
-                    {game.phase}
-                  </Badge>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-medium">{game.name}</span>
+                      <span className="text-xs text-muted-foreground">{game.genre} / {game.style}</span>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs capitalize ${PHASE_BADGE[game.phase] ?? ''}`}
+                    >
+                      {game.phase}
+                    </Badge>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
       )}
+
+      <GameDetailView
+        game={selectedGame}
+        open={selectedGame !== null}
+        onClose={() => setSelectedGame(null)}
+      />
     </div>
   );
 }

@@ -22,6 +22,7 @@ export type RegionId =
 export type SkillType = 'devel' | 'infra' | 'project' | 'management';
 
 export type EmployeeTitle =
+  | 'CEO'
   | 'Engineer'
   | 'Architect'
   | 'Artist'
@@ -277,11 +278,16 @@ export interface GameSummary {
   name: string;
   genre: Genre;
   style: Style;
+  mode: GameMode;
   reviewScore: number;
+  blogReviews: BlogReview[];
   totalRevenue: number;
   totalCopiesSold: number;
   peakPlayers: number;
   fansConverted: number;
+  monthlyHistory: MonthlySnapshot[];
+  releaseMonth: number;
+  releaseYear: number;
 }
 
 // ============================================================

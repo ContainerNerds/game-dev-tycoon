@@ -54,7 +54,7 @@ export function createPlayerEmployee(playerName: string): import('@/lib/game/typ
   return {
     id: 'player',
     name: playerName,
-    title: 'Generalist',
+    title: 'CEO',
     skills: { devel: 2, infra: 1, project: 1, management: 1 },
     assignment: 'development',
     isPlayer: true,
@@ -297,7 +297,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   contributePillarPoints: (pillar, points) => set((s) => {
     if (!s.gameInDevelopment) return {};
     const dev = s.gameInDevelopment;
-    const newProgress = { ...dev.pillarProgress, [pillar]: dev.pillarProgress[pillar] + points };
+    const newProgress = {
+      ...dev.pillarProgress,
+      [pillar]: Math.min(dev.pillarTargets[pillar], dev.pillarProgress[pillar] + points),
+    };
 
     // Recalculate overall % from pillar completion
     const targets = dev.pillarTargets;

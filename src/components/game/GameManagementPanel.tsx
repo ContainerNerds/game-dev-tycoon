@@ -60,11 +60,16 @@ export default function GameManagementPanel() {
       name: currentGame.name,
       genre: currentGame.genre,
       style: currentGame.style,
+      mode: currentGame.mode,
       reviewScore: currentGame.reviewScore,
+      blogReviews: currentGame.blogReviews,
       totalRevenue: currentGame.totalRevenue,
       totalCopiesSold: totalSold,
       peakPlayers: Math.floor(totalPlayers),
       fansConverted,
+      monthlyHistory: currentGame.monthlyHistory,
+      releaseMonth: currentGame.releaseMonth,
+      releaseYear: currentGame.releaseYear,
     };
 
     addStudioFans(fansConverted);

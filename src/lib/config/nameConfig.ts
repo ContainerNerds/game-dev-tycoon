@@ -71,10 +71,25 @@ export const GAME_NAMES = [
   'Orbital Decay', 'Pixel Dungeon X', 'Rogue Signal',
 ] as const;
 
+export const PLAYER_NAMES = [
+  'Alex Chen', 'Jordan Kim', 'Sam Rivera', 'Casey Morgan', 'Riley Patel',
+  'Quinn Johansson', 'Avery Williams', 'Dakota Silva', 'Drew Tanaka', 'Emerson Clark',
+  'Finley O\'Brien', 'Harper Lee', 'Jamie Garcia', 'Kendall Brown', 'Logan Nguyen',
+  'Parker Singh', 'Rowan Mueller', 'Sage Andersson', 'Blake Torres', 'Charlie Davis',
+  'Ellis Walker', 'Gray Young', 'Hayden Scott', 'Indigo Adams', 'Jules Mitchell',
+  'Kit Hall', 'Lane King', 'Micah Wright', 'Noel Taylor', 'Oakley Martinez',
+  'Peyton Jones', 'River Wilson', 'Tatum Ali', 'Val Petrov', 'Ash Cooper',
+  'Phoenix Reed', 'Storm Hayes', 'Wren Palmer', 'Remy Cruz', 'Kai Nakamura',
+] as const;
+
 export function randomStudioName(): string {
   return STUDIO_NAMES[Math.floor(Math.random() * STUDIO_NAMES.length)];
 }
 
 export function randomGameName(): string {
   return GAME_NAMES[Math.floor(Math.random() * GAME_NAMES.length)];
+}
+
+export function randomPlayerName(): string {
+  return PLAYER_NAMES[Math.floor(Math.random() * PLAYER_NAMES.length)];
 }

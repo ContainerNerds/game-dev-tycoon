@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { useGameStore } from '@/lib/store/gameStore';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { ALL_GENRES, ALL_STYLES, getComboMultiplier } from '@/lib/config/genreStyleConfig';
-import { randomStudioName, randomGameName } from '@/lib/config/nameConfig';
+import { randomStudioName, randomGameName, randomPlayerName } from '@/lib/config/nameConfig';
 import type { Genre, Style, Platform, PillarWeights, GameInDev, GameMode } from '@/lib/game/types';
 import { Shuffle } from 'lucide-react';
 
@@ -25,7 +25,7 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
   const [step, setStep] = useState<'studio' | 'game'>('studio');
 
   // Studio setup
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(randomPlayerName);
   const [studioName, setStudioName] = useState(randomStudioName);
   const [startingMoney, setStartingMoney] = useState<number>(GAME_CONFIG.defaultStartingMoney);
 
@@ -124,12 +124,25 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="playerName" className="text-muted-foreground">Your Name</Label>
-              <Input
-                id="playerName"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Enter your name..."
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="playerName"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Enter your name..."
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 cursor-pointer"
+                  onClick={() => setPlayerName(randomPlayerName())}
+                  title="Randomize"
+                >
+                  <Shuffle className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
