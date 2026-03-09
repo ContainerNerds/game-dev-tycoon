@@ -10,15 +10,20 @@ import {
 } from '@/components/ui/dialog';
 import { useGameStore } from '@/lib/store/gameStore';
 import { loadSettings, saveSettings, type GameSettings } from '@/lib/store/saveLoad';
-import { Menu, Save, Settings, LogOut } from 'lucide-react';
+import { Save, Settings, LogOut } from 'lucide-react';
 
 interface GameMenuProps {
   slotId: number;
   onQuit: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function GameMenu({ slotId, onQuit }: GameMenuProps) {
-  const [open, setOpen] = useState(false);
+export default function GameMenu({ slotId, onQuit, open: controlledOpen, onOpenChange }: GameMenuProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined && onOpenChange !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? onOpenChange : setInternalOpen;
   const [settings, setSettingsState] = useState<GameSettings>(loadSettings);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const saveToSlotAction = useGameStore((s) => s.saveToSlot);
@@ -30,12 +35,12 @@ export default function GameMenu({ slotId, onQuit }: GameMenuProps) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setOpen((prev) => !prev);
+        setOpen(!open);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [open, setOpen]);
 
   // Pause on open, restore on close
   useEffect(() => {
@@ -61,16 +66,6 @@ export default function GameMenu({ slotId, onQuit }: GameMenuProps) {
 
   return (
     <>
-      {/* Trigger button in header area */}
-      <Button
-        size="sm"
-        variant="ghost"
-        className="fixed top-2 right-32 z-40 h-7 w-7 p-0 cursor-pointer opacity-60 hover:opacity-100"
-        onClick={() => setOpen(true)}
-      >
-        <Menu className="h-4 w-4" />
-      </Button>
-
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StudioHeader from '@/components/game/StudioHeader';
 import DevMenu from '@/components/game/DevMenu';
@@ -28,6 +28,7 @@ interface GameScreenProps {
 
 export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
   useGameTick();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const isBankrupt = useGameStore((s) => s.isBankrupt);
   const saveToSlot = useGameStore((s) => s.saveToSlot);
@@ -53,7 +54,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
-      <StudioHeader slotId={slotId} />
+      <StudioHeader slotId={slotId} onMenuClick={() => setMenuOpen(true)} />
       <TaskBar />
       <ActiveGamesBar />
 
@@ -85,7 +86,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
         </Tabs>
       </div>
 
-      <GameMenu slotId={slotId} onQuit={onQuit} />
+      <GameMenu slotId={slotId} onQuit={onQuit} open={menuOpen} onOpenChange={setMenuOpen} />
       <DevMenu />
     </div>
   );
