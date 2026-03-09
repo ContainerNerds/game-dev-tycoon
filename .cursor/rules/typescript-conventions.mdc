@@ -1,0 +1,33 @@
+---
+description: TypeScript and React coding conventions for the project
+globs: "**/*.ts,**/*.tsx"
+alwaysApply: false
+---
+
+# TypeScript Conventions
+
+## General
+
+- Use `interface` for object shapes, `type` for unions/intersections/utilities.
+- Prefer `const` over `let`. Never use `var`.
+- Use explicit return types on exported functions.
+- Avoid `any`. Use `unknown` and narrow with type guards.
+
+## React Components
+
+- Functional components only, default export per file.
+- Props interface named `{ComponentName}Props`.
+- Use ShadCN components from `@/components/ui/` — do not reimplement primitives.
+- Colocate component-specific types in the same file.
+
+## Zustand
+
+- Single store: `src/lib/store/gameStore.ts`.
+- Access state via selectors: `useGameStore((s) => s.money)`.
+- All mutations through named actions defined in the store.
+- Never mutate state directly — always use `set()` or `setState()`.
+
+## Imports
+
+- Use `@/*` path alias for all project imports.
+- Group: 1) React/Next, 2) external libraries, 3) `@/components`, 4) `@/lib`.

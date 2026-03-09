@@ -1,0 +1,31 @@
+---
+description: Project architecture, tech stack, and directory layout for Game Dev Tycoon
+alwaysApply: true
+---
+
+# Game Dev Tycoon — Project Overview
+
+Browser-based idle/incremental game where you run a game development studio. Built with Next.js 15 (App Router), React 19, TypeScript, ShadCN/UI, Tailwind CSS v4, and Zustand.
+
+## Directory Layout
+
+```
+src/
+  app/              — Next.js pages (/ = main menu, /game = gameplay)
+  components/
+    ui/             — ShadCN primitives (do not edit directly)
+    screens/        — Full-screen components (MainMenu, BankruptcyScreen)
+    game/           — Gameplay UI (StudioHeader, MonthEndModal, tabs/)
+      tabs/         — One component per game tab
+  lib/
+    config/         — ALL tunable constants, flags, and balance numbers
+    game/           — Pure game logic (no React, no side effects)
+    store/          — Zustand store and save/load serialization
+```
+
+## Key Principles
+
+- **Config-driven**: Every magic number lives in `src/lib/config/`. Never hardcode balance values in components or game logic.
+- **Pure game logic**: Files in `src/lib/game/` are pure functions with no React imports. They take state in, return new state out.
+- **Zustand store**: Single store in `src/lib/store/gameStore.ts`. Components read via selectors. Mutations happen through store actions only.
+- **ShadCN components**: Treat `src/components/ui/` as a library — import from it, don't modify it.

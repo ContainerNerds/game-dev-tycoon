@@ -1,0 +1,28 @@
+---
+description: How config files are structured and guidelines for tuning game balance
+globs: "**/config/*.ts"
+alwaysApply: false
+---
+
+# Config File Guidelines
+
+All config files live in `src/lib/config/`. They export plain objects or arrays — no classes, no side effects, no imports from React or Zustand.
+
+## Structure
+
+Each config file exports a single `const` object (UPPER_SNAKE_CASE) with `as const` for literal types where useful:
+
+```typescript
+export const SERVER_CONFIG = {
+  regions: [ ... ],
+  colocatedCostPerMonth: 200,
+  // ...
+} as const;
+```
+
+## Rules
+
+- Every number that affects gameplay balance MUST live in a config file.
+- Use descriptive key names. Include units in comments when ambiguous (e.g. `// dollars`, `// per tick`, `// percentage 0-1`).
+- Config values are read by pure functions in `lib/game/`. Never import config directly in React components.
+- When adding a new tunable, add it to the relevant config file, not inline in game logic.

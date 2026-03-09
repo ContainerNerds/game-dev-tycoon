@@ -1,0 +1,34 @@
+---
+description: Game systems, loop mechanics, and inter-system relationships
+alwaysApply: true
+---
+
+# Game Systems
+
+## Core Loop
+
+Calendar ticks drive everything. 1 tick = 1 in-game hour at 1x speed. Speed options: Stop (0) | 1x | 2x | 4x.
+
+Each tick: advance calendar → update dev progress → process sales → decay players → spawn bugs → accrue research → check server load.
+
+At month-end: auto-pause, show MonthlyReport modal, deduct all monthly costs atomically, then wait for player to Resume.
+
+## Systems and Their Config Files
+
+| System | Logic file | Config file |
+|--------|-----------|-------------|
+| Calendar & tick | `calendarSystem.ts` | `calendarConfig.ts` |
+| Game development | `developmentSystem.ts` | `gameConfig.ts` |
+| Server/delivery | `serverSystem.ts` | `serverConfig.ts` |
+| Fans | `fanSystem.ts` | `gameConfig.ts` |
+| Employees | `employeeSystem.ts` | `employeeConfig.ts` |
+| Offices | (store actions) | `officeConfig.ts` |
+| Skill tree | (store actions) | `skillTreeConfig.ts` |
+| Genre/style combos | `calculations.ts` | `genreStyleConfig.ts` |
+| Platforms | `calculations.ts` | `platformConfig.ts` |
+
+## Data Flow
+
+Config → pure functions in `lib/game/` → called by Zustand actions in `gameStore.ts` → React components read via selectors.
+
+Components never call game logic directly. They dispatch store actions.
