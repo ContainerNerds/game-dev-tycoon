@@ -148,6 +148,8 @@ export function convertDevToActiveGame(
     gamePrice: PLATFORM_CONFIG.basePriceByPlatform[dev.platforms[0] ?? 'PC'],
     bugs: [],
     dlcs: [],
+    patches: [],
+    isLiveService: false,
     servers: [],
     racks: [],
     unlockedGameUpgrades: [],

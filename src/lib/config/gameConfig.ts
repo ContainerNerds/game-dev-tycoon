@@ -49,6 +49,11 @@ export const GAME_CONFIG = {
   sequelFanInheritRate: 0.5,      // % of game fans that carry hype to sequel
   sequelDevCostMultiplier: 1.5,   // sequels cost more to develop
 
+  // Live Service Patches
+  patchBaseComplexity: 30,        // pillar point target for a patch (smaller than a game)
+  liveServiceDeclineSlowdown: 0.3,// multiply decline rate by this while live-servicing
+  patchSalesBoostPercent: 0.15,   // temporary +15% sales rate when a patch ships
+
   // Bankruptcy
   bankruptcyThreshold: 0,         // money <= this triggers bankruptcy
 } as const;

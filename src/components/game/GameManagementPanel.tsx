@@ -16,8 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { useGameStore } from '@/lib/store/gameStore';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
-import type { DLC, GameSummary, GameInDev } from '@/lib/game/types';
-import { Archive, PlusCircle, Rocket, TriangleAlert } from 'lucide-react';
+import type { DLC, GameSummary, GameInDev, LivePatch } from '@/lib/game/types';
+import { Archive, PlusCircle, Rocket, TriangleAlert, Wrench } from 'lucide-react';
 
 export default function GameManagementPanel() {
   const currentGame = useGameStore((s) => s.currentGame);
@@ -26,6 +26,8 @@ export default function GameManagementPanel() {
   const studioFans = useGameStore((s) => s.studioFans);
   const spendMoney = useGameStore((s) => s.spendMoney);
   const addDLC = useGameStore((s) => s.addDLC);
+  const addPatch = useGameStore((s) => s.addPatch);
+  const setLiveService = useGameStore((s) => s.setLiveService);
   const retireGame = useGameStore((s) => s.retireGame);
   const addCompletedGame = useGameStore((s) => s.addCompletedGame);
   const addStudioFans = useGameStore((s) => s.addStudioFans);
@@ -34,8 +36,10 @@ export default function GameManagementPanel() {
   const [showRetireConfirm, setShowRetireConfirm] = useState(false);
   const [showDLCDialog, setShowDLCDialog] = useState(false);
   const [showSequelDialog, setShowSequelDialog] = useState(false);
+  const [showPatchDialog, setShowPatchDialog] = useState(false);
   const [dlcName, setDlcName] = useState('');
   const [sequelName, setSequelName] = useState('');
+  const [patchName, setPatchName] = useState('');
 
   if (!currentGame || currentGame.phase === 'retired') return null;
 
@@ -118,6 +122,31 @@ export default function GameManagementPanel() {
     setShowSequelDialog(false);
   };
 
+  const handleCreatePatch = () => {
+    if (!patchName.trim()) return;
+    const complexity = GAME_CONFIG.patchBaseComplexity;
+    const patch: LivePatch = {
+      id: `patch-${Date.now()}`,
+      name: patchName,
+      pillarProgress: { graphics: 0, gameplay: 0, sound: 0, polish: 0 },
+      pillarTargets: {
+        graphics: Math.round(complexity * 0.2),
+        gameplay: Math.round(complexity * 0.4),
+        sound: Math.round(complexity * 0.1),
+        polish: Math.round(complexity * 0.3),
+      },
+      progressPercent: 0,
+      status: 'developing',
+    };
+    addPatch(patch);
+    setPatchName('');
+    setShowPatchDialog(false);
+  };
+
+  const handleStopLiveService = () => {
+    setLiveService(false);
+  };
+
   return (
     <>
       <div className="border-b border-border bg-card/30 px-4 py-2">
@@ -134,6 +163,27 @@ export default function GameManagementPanel() {
             >
               <PlusCircle className="h-3 w-3 mr-1" />
               New DLC (${dlcCost.toLocaleString()})
+            </Button>
+          )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-xs cursor-pointer"
+            onClick={() => setShowPatchDialog(true)}
+          >
+            <Wrench className="h-3 w-3 mr-1" />
+            Create Patch
+          </Button>
+
+          {currentGame.isLiveService && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-yellow-400 hover:text-yellow-300 cursor-pointer"
+              onClick={handleStopLiveService}
+            >
+              Stop Live Service
             </Button>
           )}
 
@@ -248,6 +298,41 @@ export default function GameManagementPanel() {
               onClick={handleStartSequel}
             >
               Start Development
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Patch Dialog */}
+      <Dialog open={showPatchDialog} onOpenChange={setShowPatchDialog}>
+        <DialogContent className="border-border bg-card text-foreground">
+          <DialogHeader>
+            <DialogTitle>Create Live Service Patch</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Patches slow player decline and keep your game alive. Requires staff time.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Patch Name</Label>
+              <Input
+                value={patchName}
+                onChange={(e) => setPatchName(e.target.value)}
+                placeholder="e.g. v1.1 Stability Update..."
+                className="border-border bg-muted text-foreground"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="cursor-pointer" onClick={() => setShowPatchDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="cursor-pointer"
+              disabled={!patchName.trim()}
+              onClick={handleCreatePatch}
+            >
+              Start Patch
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -148,6 +148,12 @@ interface GameActions {
   updateDLCProgress: (dlcId: string, progressDelta: number) => void;
   releaseDLC: (dlcId: string) => void;
 
+  // Live Patches
+  addPatch: (patch: import('@/lib/game/types').LivePatch) => void;
+  updatePatchProgress: (patchId: string, pillar: keyof import('@/lib/game/types').PillarProgress, points: number) => void;
+  releasePatch: (patchId: string) => void;
+  setLiveService: (active: boolean) => void;
+
   // Fans
   addGameFans: (count: number) => void;
   addStudioFans: (count: number) => void;
@@ -527,6 +533,58 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ),
       },
     };
+  }),
+
+  // ----------------------------------------------------------
+  // Live Patches
+  // ----------------------------------------------------------
+
+  addPatch: (patch) => set((s) => {
+    if (!s.currentGame) return {};
+    return {
+      currentGame: {
+        ...s.currentGame,
+        patches: [...s.currentGame.patches, patch],
+        isLiveService: true,
+      },
+    };
+  }),
+
+  updatePatchProgress: (patchId, pillar, points) => set((s) => {
+    if (!s.currentGame) return {};
+    return {
+      currentGame: {
+        ...s.currentGame,
+        patches: s.currentGame.patches.map((p) => {
+          if (p.id !== patchId) return p;
+          const newProgress = { ...p.pillarProgress, [pillar]: p.pillarProgress[pillar] + points };
+          const targets = p.pillarTargets;
+          const totalTarget = targets.graphics + targets.gameplay + targets.sound + targets.polish;
+          const totalDone = Math.min(newProgress.graphics, targets.graphics)
+            + Math.min(newProgress.gameplay, targets.gameplay)
+            + Math.min(newProgress.sound, targets.sound)
+            + Math.min(newProgress.polish, targets.polish);
+          return { ...p, pillarProgress: newProgress, progressPercent: totalTarget > 0 ? Math.min(100, (totalDone / totalTarget) * 100) : 0 };
+        }),
+      },
+    };
+  }),
+
+  releasePatch: (patchId) => set((s) => {
+    if (!s.currentGame) return {};
+    return {
+      currentGame: {
+        ...s.currentGame,
+        patches: s.currentGame.patches.map((p) =>
+          p.id === patchId ? { ...p, status: 'released' as const } : p
+        ),
+      },
+    };
+  }),
+
+  setLiveService: (active) => set((s) => {
+    if (!s.currentGame) return {};
+    return { currentGame: { ...s.currentGame, isLiveService: active } };
   }),
 
   // ----------------------------------------------------------

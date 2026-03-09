@@ -242,6 +242,9 @@ export function processTick(store: GameStore): void {
         game.unlockedGameUpgrades
       );
       playerDecayRate = 0.002 * declineMultiplier;
+      if (game.isLiveService) {
+        playerDecayRate *= GAME_CONFIG.liveServiceDeclineSlowdown;
+      }
     } else if (game.phase === 'peak') {
       playerDecayRate = 0.0005;
     }

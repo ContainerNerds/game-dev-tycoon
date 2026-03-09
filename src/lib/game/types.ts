@@ -162,6 +162,16 @@ export interface DLC {
   copiesSold: number;
 }
 
+export interface LivePatch {
+  id: string;
+  name: string;
+  pillarProgress: PillarProgress;
+  pillarTargets: PillarTargets;
+  progressPercent: number;
+  status: 'developing' | 'released';
+}
+
+
 // ============================================================
 // Skill Tree
 // ============================================================
@@ -251,8 +261,10 @@ export interface ActiveGame {
   gamePrice: number;
   bugs: Bug[];
   dlcs: DLC[];
-  servers: Server[];           // flat list for game loop calculations (derived from racks)
-  racks: ServerRack[];         // source of truth for colocated racks
+  patches: LivePatch[];
+  isLiveService: boolean;      // true if actively patching — slows decline
+  servers: Server[];
+  racks: ServerRack[];
   unlockedGameUpgrades: string[];
   totalRevenue: number;
   monthlyHistory: MonthlySnapshot[];
