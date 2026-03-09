@@ -89,8 +89,19 @@ export interface Employee {
   title: EmployeeTitle;
   skills: EmployeeSkills;
   assignment: EmployeeAssignment;
+  isPlayer: boolean;            // true for the player character
   hireCost: number;
   monthlySalary: number;
+}
+
+// ============================================================
+// Rate Tracking (per-day deltas for HUD)
+// ============================================================
+
+export interface DailyRates {
+  moneyPerDay: number;
+  fansPerDay: number;
+  rpPerDay: number;
 }
 
 // ============================================================
@@ -300,6 +311,7 @@ export interface MonthlyReport {
 
 export interface StudioState {
   studioName: string;
+  playerName: string;
   money: number;
   totalLifetimeMoney: number;
   studioFans: number;
@@ -315,6 +327,13 @@ export interface StudioState {
 
   office: OfficeState;
   calendar: CalendarState;
+
+  dailyRates: DailyRates;
+  // Accumulators reset each game-day (24 ticks) to compute rates
+  _dayAccMoney: number;
+  _dayAccFans: number;
+  _dayAccRP: number;
+  _dayTickCounter: number;
 
   isBankrupt: boolean;
 }

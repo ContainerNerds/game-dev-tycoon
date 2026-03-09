@@ -25,6 +25,7 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
   const [step, setStep] = useState<'studio' | 'game'>('studio');
 
   // Studio setup
+  const [playerName, setPlayerName] = useState('');
   const [studioName, setStudioName] = useState(randomStudioName);
   const [startingMoney, setStartingMoney] = useState<number>(GAME_CONFIG.defaultStartingMoney);
 
@@ -70,7 +71,7 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
   };
 
   const handleCreate = () => {
-    newGame(studioName, startingMoney);
+    newGame(studioName, playerName || 'Player', startingMoney);
 
     // Base complexity determines total points needed
     const baseComplexity = 100;
@@ -103,7 +104,7 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
     onStart();
   };
 
-  const isStudioValid = studioName.trim().length > 0;
+  const isStudioValid = studioName.trim().length > 0 && playerName.trim().length > 0;
   const isGameValid = gameName.trim().length > 0;
 
   const comboMultiplier = getComboMultiplier(genre, style);
@@ -121,6 +122,16 @@ export function GameCreationWizard({ onStart, onBack }: GameCreationWizardProps)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="playerName" className="text-muted-foreground">Your Name</Label>
+              <Input
+                id="playerName"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="Enter your name..."
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="studioName" className="text-muted-foreground">Studio Name</Label>
               <div className="flex gap-2">

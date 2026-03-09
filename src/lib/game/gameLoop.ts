@@ -306,11 +306,12 @@ export function processTick(store: GameStore): void {
     if (newGameFans > 0) store.addGameFans(newGameFans);
     if (newStudioFans > 0) store.addStudioFans(newStudioFans);
 
-    // Research points (earned while game is online)
     const researchPerTick = GAME_CONFIG.researchPointsPerGameDay / 24;
     if (researchPerTick > 0) {
       store.addResearchPoints(researchPerTick);
     }
+
+    store.trackDailyRate(tickRevenue, newGameFans + newStudioFans, researchPerTick);
   }
 
   // 4. Bankruptcy check

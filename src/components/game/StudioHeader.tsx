@@ -27,6 +27,7 @@ export default function StudioHeader() {
   const money = useGameStore((s) => s.money);
   const studioFans = useGameStore((s) => s.studioFans);
   const researchPoints = useGameStore((s) => s.researchPoints);
+  const dailyRates = useGameStore((s) => s.dailyRates);
   const calendar = useGameStore((s) => s.calendar);
   const speed = useGameStore((s) => s.calendar.speed);
   const setSpeed = useGameStore((s) => s.setSpeed);
@@ -37,6 +38,12 @@ export default function StudioHeader() {
 
   const speedLabel = SPEED_LABELS[speed];
 
+  const formatRate = (val: number, prefix: string = '') => {
+    if (val === 0) return '';
+    const sign = val > 0 ? '+' : '';
+    return ` ${sign}${prefix}${Math.abs(val) >= 1000 ? `${(val / 1000).toFixed(1)}k` : val.toFixed(0)}/d`;
+  };
+
   return (
     <header className="flex items-center gap-4 border-b border-border bg-card px-4 py-2 shrink-0">
       <div className="font-bold text-foreground text-lg">{studioName}</div>
@@ -46,12 +53,27 @@ export default function StudioHeader() {
       <div className="flex items-center gap-4 text-sm">
         <div className="text-green-400 font-mono">
           ${Math.floor(money).toLocaleString()}
+          {dailyRates.moneyPerDay !== 0 && (
+            <span className="text-xs text-green-400/60 ml-1">
+              {formatRate(dailyRates.moneyPerDay, '$')}
+            </span>
+          )}
         </div>
         <div className="text-purple-400">
           {Math.floor(studioFans).toLocaleString()} fans
+          {dailyRates.fansPerDay > 0 && (
+            <span className="text-xs text-purple-400/60 ml-1">
+              {formatRate(dailyRates.fansPerDay)}
+            </span>
+          )}
         </div>
         <div className="text-blue-400">
           {researchPoints.toFixed(1)} RP
+          {dailyRates.rpPerDay > 0 && (
+            <span className="text-xs text-blue-400/60 ml-1">
+              {formatRate(dailyRates.rpPerDay)}
+            </span>
+          )}
         </div>
       </div>
 

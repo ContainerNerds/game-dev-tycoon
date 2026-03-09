@@ -42,12 +42,14 @@ export default function StaffTab() {
   const handleHire = (employeeId: string) => {
     const emp = candidatePool.find((c) => c.id === employeeId);
     if (!emp) return;
-    if (employees.length >= office.maxSeats) return;
+    const hiredCount = employees.filter((e) => !e.isPlayer).length;
+    if (hiredCount >= office.maxSeats) return;
     if (money < emp.hireCost) return;
     hireEmployee(emp);
   };
 
   const totalMonthlySalary = employees.reduce((sum, e) => sum + e.monthlySalary, 0);
+  const hiredCount = employees.filter((e) => !e.isPlayer).length;
 
   return (
     <div className="p-4 space-y-6">
@@ -57,7 +59,7 @@ export default function StaffTab() {
           <Users className="h-6 w-6 text-muted-foreground" />
           <div>
             <h3 className="text-lg font-semibold text-foreground">
-              Staff ({employees.length}/{office.maxSeats})
+              Staff ({hiredCount}/{office.maxSeats} hired + you)
             </h3>
             <p className="text-sm text-muted-foreground">
               Monthly salaries: ${totalMonthlySalary.toLocaleString()}
@@ -90,6 +92,9 @@ export default function StaffTab() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-foreground">{emp.name}</span>
                         <span className="text-xs text-muted-foreground">{emp.title}</span>
+                        {emp.isPlayer && (
+                          <Badge className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/50">You</Badge>
+                        )}
                       </div>
                       <div className="flex gap-1 mt-1">
                         {(Object.entries(emp.skills) as [string, number][]).map(([skill, level]) => (
@@ -106,16 +111,18 @@ export default function StaffTab() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">
-                      ${emp.monthlySalary.toLocaleString()}/mo
+                      {emp.isPlayer ? 'Founder' : `$${emp.monthlySalary.toLocaleString()}/mo`}
                     </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 w-7 p-0 text-red-400 hover:text-red-300 cursor-pointer"
-                      onClick={() => fireEmployee(emp.id)}
-                    >
-                      <UserMinus className="h-4 w-4" />
-                    </Button>
+                    {!emp.isPlayer && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-red-400 hover:text-red-300 cursor-pointer"
+                        onClick={() => fireEmployee(emp.id)}
+                      >
+                        <UserMinus className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -153,7 +160,7 @@ export default function StaffTab() {
         ) : (
           <div className="grid gap-2">
             {candidatePool.map((candidate) => {
-              const canHire = employees.length < office.maxSeats && money >= candidate.hireCost;
+              const canHire = hiredCount < office.maxSeats && money >= candidate.hireCost;
               return (
                 <Card key={candidate.id} className="border-border bg-card">
                   <CardContent className="p-3 flex items-center justify-between">

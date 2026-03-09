@@ -50,9 +50,24 @@ function createInitialOffice(): OfficeState {
   };
 }
 
-export function createInitialState(studioName: string, startingMoney: number): StudioState {
+export function createPlayerEmployee(playerName: string): import('@/lib/game/types').Employee {
+  return {
+    id: 'player',
+    name: playerName,
+    title: 'Generalist',
+    skills: { devel: 2, infra: 1, project: 1, management: 1 },
+    assignment: 'development',
+    isPlayer: true,
+    hireCost: 0,
+    monthlySalary: 0,
+  };
+}
+
+export function createInitialState(studioName: string, playerName: string, startingMoney: number): StudioState {
+  const player = createPlayerEmployee(playerName);
   return {
     studioName,
+    playerName,
     money: startingMoney,
     totalLifetimeMoney: startingMoney,
     studioFans: 0,
@@ -61,10 +76,15 @@ export function createInitialState(studioName: string, startingMoney: number): S
     currentGame: null,
     gameInDevelopment: null,
     completedGames: [],
-    employees: [],
+    employees: [player],
     candidatePool: [],
     office: createInitialOffice(),
     calendar: createInitialCalendar(),
+    dailyRates: { moneyPerDay: 0, fansPerDay: 0, rpPerDay: 0 },
+    _dayAccMoney: 0,
+    _dayAccFans: 0,
+    _dayAccRP: 0,
+    _dayTickCounter: 0,
     isBankrupt: false,
   };
 }
@@ -75,7 +95,7 @@ export function createInitialState(studioName: string, startingMoney: number): S
 
 interface GameActions {
   // Game lifecycle
-  newGame: (studioName: string, startingMoney: number) => void;
+  newGame: (studioName: string, playerName: string, startingMoney: number) => void;
   loadSavedGame: () => boolean;
   save: () => void;
 
@@ -136,6 +156,7 @@ interface GameActions {
   updateCurrentGame: (updates: Partial<ActiveGame>) => void;
   addCompletedGame: (summary: GameSummary) => void;
   setBankrupt: () => void;
+  trackDailyRate: (moneyDelta: number, fansDelta: number, rpDelta: number) => void;
 
   // Full state replacement (for load)
   setState: (state: StudioState) => void;
@@ -149,14 +170,14 @@ export type GameStore = StudioState & GameActions;
 
 export const useGameStore = create<GameStore>((set, get) => ({
   // Initial state (will be overwritten by newGame or loadSavedGame)
-  ...createInitialState('', 0),
+  ...createInitialState('', '', 0),
 
   // ----------------------------------------------------------
   // Game lifecycle
   // ----------------------------------------------------------
 
-  newGame: (studioName, startingMoney) => {
-    set(createInitialState(studioName, startingMoney));
+  newGame: (studioName, playerName, startingMoney) => {
+    set(createInitialState(studioName, playerName, startingMoney));
   },
 
   loadSavedGame: () => {
@@ -172,6 +193,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const state = get();
     const stateOnly: StudioState = {
       studioName: state.studioName,
+      playerName: state.playerName,
       money: state.money,
       totalLifetimeMoney: state.totalLifetimeMoney,
       studioFans: state.studioFans,
@@ -184,6 +206,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
       candidatePool: state.candidatePool,
       office: state.office,
       calendar: state.calendar,
+      dailyRates: state.dailyRates,
+      _dayAccMoney: 0,
+      _dayAccFans: 0,
+      _dayAccRP: 0,
+      _dayTickCounter: 0,
       isBankrupt: state.isBankrupt,
     };
     saveGame(stateOnly);
@@ -535,6 +562,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setBankrupt: () => set({
     isBankrupt: true,
     calendar: { ...createInitialCalendar(), speed: 0 },
+  }),
+
+  trackDailyRate: (moneyDelta, fansDelta, rpDelta) => set((s) => {
+    const counter = s._dayTickCounter + 1;
+    const accMoney = s._dayAccMoney + moneyDelta;
+    const accFans = s._dayAccFans + fansDelta;
+    const accRP = s._dayAccRP + rpDelta;
+
+    if (counter >= 24) {
+      return {
+        dailyRates: {
+          moneyPerDay: Math.round(accMoney),
+          fansPerDay: Math.round(accFans * 10) / 10,
+          rpPerDay: Math.round(accRP * 10) / 10,
+        },
+        _dayAccMoney: 0,
+        _dayAccFans: 0,
+        _dayAccRP: 0,
+        _dayTickCounter: 0,
+      };
+    }
+    return {
+      _dayAccMoney: accMoney,
+      _dayAccFans: accFans,
+      _dayAccRP: accRP,
+      _dayTickCounter: counter,
+    };
   }),
 
   // ----------------------------------------------------------

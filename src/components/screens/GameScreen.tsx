@@ -14,6 +14,7 @@ import StaffTab from '@/components/game/tabs/StaffTab';
 import OfficeTab from '@/components/game/tabs/OfficeTab';
 import DevelopmentPanel from '@/components/game/DevelopmentPanel';
 import GameManagementPanel from '@/components/game/GameManagementPanel';
+import NewProjectPanel from '@/components/game/NewProjectPanel';
 import { useGameTick } from '@/lib/game/useGameTick';
 import { useGameStore } from '@/lib/store/gameStore';
 import BankruptcyScreen from '@/components/screens/BankruptcyScreen';
@@ -39,6 +40,7 @@ export default function GameScreen({ onQuit }: GameScreenProps) {
 
       {gameInDev && <DevelopmentPanel />}
       {currentGame && currentGame.phase !== 'retired' && <GameManagementPanel />}
+      <NewProjectPanel />
 
       <div className="flex-1 min-h-0">
         <Tabs defaultValue="dashboard" className="h-full flex flex-col">
