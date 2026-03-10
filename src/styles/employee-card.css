@@ -43,6 +43,15 @@
   transform: rotateY(180deg);
 }
 
+/* Kill overlays & content while face-down so active animations/filters
+   (e.g. Unique's hue-rotate) can't force the browser to paint __front
+   and break backface-visibility. */
+.employee-card--face-down .employee-card__holo-a,
+.employee-card--face-down .employee-card__holo-b,
+.employee-card--face-down .employee-card__sparkles {
+  display: none;
+}
+
 .employee-card__front,
 .employee-card__back {
   position: absolute;
