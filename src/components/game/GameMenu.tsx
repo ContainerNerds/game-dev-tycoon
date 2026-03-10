@@ -10,7 +10,9 @@ import {
 } from '@/components/ui/dialog';
 import { useGameStore } from '@/lib/store/gameStore';
 import { loadSettings, saveSettings, type GameSettings } from '@/lib/store/saveLoad';
-import { Save, Settings, LogOut } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { setVolume, setMuted, playFlipSound } from '@/lib/game/sounds';
+import { Save, Settings, LogOut, Volume2, VolumeX } from 'lucide-react';
 
 interface GameMenuProps {
   slotId: number;
@@ -116,6 +118,43 @@ export default function GameMenu({ slotId, onQuit, open: controlledOpen, onOpenC
                   </Select>
                 </div>
               )}
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <Label className="text-sm text-muted-foreground">SFX Volume</Label>
+                <Button
+                  size="sm"
+                  variant={settings.sfxMuted ? 'outline' : 'ghost'}
+                  className="h-7 w-7 p-0 cursor-pointer"
+                  onClick={() => {
+                    const next = !settings.sfxMuted;
+                    handleSettingChange('sfxMuted', next);
+                    setMuted(next);
+                  }}
+                >
+                  {settings.sfxMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Slider
+                  value={[Math.round(settings.sfxVolume * 100)]}
+                  min={0}
+                  max={100}
+                  disabled={settings.sfxMuted}
+                  onValueChange={(v) => {
+                    const arr = Array.isArray(v) ? v : [v];
+                    const normalized = arr[0] / 100;
+                    handleSettingChange('sfxVolume', normalized);
+                    setVolume(normalized);
+                  }}
+                  onValueCommitted={() => playFlipSound()}
+                />
+                <span className="text-xs text-muted-foreground w-8 text-right">
+                  {settings.sfxMuted ? '---' : `${Math.round(settings.sfxVolume * 100)}%`}
+                </span>
+              </div>
             </div>
 
             <Separator />

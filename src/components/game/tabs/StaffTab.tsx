@@ -12,6 +12,7 @@ import {
   ContextMenuCheckboxItem,
   ContextMenuSeparator,
   ContextMenuLabel,
+  ContextMenuGroup,
   ContextMenuSub,
   ContextMenuSubTrigger,
   ContextMenuSubContent,
@@ -20,11 +21,11 @@ import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/lib/store/gameStore';
 import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
 import { generatePack } from '@/lib/game/employeeSystem';
-import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, Zap, Plus } from 'lucide-react';
+import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, Zap, Plus, Volume2, VolumeX } from 'lucide-react';
 import type { Employee, EmployeeActivity } from '@/lib/game/types';
 import EmployeeCard from '@/components/game/EmployeeCard';
 import EmployeeDetailModal from '@/components/game/EmployeeDetailModal';
-import { playFlipSound, playEpicRevealSound } from '@/lib/game/sounds';
+import { playFlipSound, playEpicRevealSound, isMuted, setMuted } from '@/lib/game/sounds';
 
 const ACTIVITY_COLORS: Record<EmployeeActivity, string> = {
   idle: 'text-muted-foreground',
@@ -66,6 +67,7 @@ export default function StaffTab() {
 
   const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
   const [epicShakeIds, setEpicShakeIds] = useState<Set<string>>(new Set());
+  const [sfxMuted, setSfxMuted] = useState(isMuted);
 
   const revealTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -169,6 +171,15 @@ export default function StaffTab() {
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <Package className="h-4 w-4" />
             Employee Packs
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-5 w-5 p-0 cursor-pointer text-muted-foreground"
+              onClick={() => { const next = !sfxMuted; setSfxMuted(next); setMuted(next); }}
+              title={sfxMuted ? 'Unmute pack sounds' : 'Mute pack sounds'}
+            >
+              {sfxMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            </Button>
           </h4>
           <div className="flex items-center gap-2">
             {freePackAvailable && (
@@ -311,7 +322,9 @@ export default function StaffTab() {
                 </ContextMenuTrigger>
 
                 <ContextMenuContent className="w-48">
-                  <ContextMenuLabel>{emp.name}</ContextMenuLabel>
+                  <ContextMenuGroup>
+                    <ContextMenuLabel>{emp.name}</ContextMenuLabel>
+                  </ContextMenuGroup>
                   <ContextMenuSeparator />
 
                   <ContextMenuCheckboxItem
@@ -324,40 +337,42 @@ export default function StaffTab() {
                   </ContextMenuCheckboxItem>
 
                   <ContextMenuSeparator />
-                  <ContextMenuLabel>Assign To</ContextMenuLabel>
 
-                  <ContextMenuItem
-                    disabled={emp.onVacation}
-                    onSelect={() => assignEmployee(emp.id, 'bugfix')}
-                  >
-                    <Bug className="h-3.5 w-3.5 mr-1" />
-                    Bug Fixing
-                    {!emp.autoAssign && emp.assignedTaskId === 'bugfix' && (
-                      <span className="ml-auto text-[10px] text-muted-foreground">&bull;</span>
+                  <ContextMenuGroup>
+                    <ContextMenuLabel>Assign To</ContextMenuLabel>
+                    <ContextMenuItem
+                      disabled={emp.onVacation}
+                      onSelect={() => assignEmployee(emp.id, 'bugfix')}
+                    >
+                      <Bug className="h-3.5 w-3.5 mr-1" />
+                      Bug Fixing
+                      {!emp.autoAssign && emp.assignedTaskId === 'bugfix' && (
+                        <span className="ml-auto text-[10px] text-muted-foreground">&bull;</span>
+                      )}
+                    </ContextMenuItem>
+
+                    {activeTasks.length > 0 && (
+                      <ContextMenuSub>
+                        <ContextMenuSubTrigger>
+                          Tasks
+                        </ContextMenuSubTrigger>
+                        <ContextMenuSubContent>
+                          {activeTasks.map((t) => (
+                            <ContextMenuItem
+                              key={t.id}
+                              disabled={emp.onVacation}
+                              onSelect={() => assignEmployee(emp.id, t.id)}
+                            >
+                              {t.name}
+                              {!emp.autoAssign && emp.assignedTaskId === t.id && (
+                                <span className="ml-auto text-[10px] text-muted-foreground">&bull;</span>
+                              )}
+                            </ContextMenuItem>
+                          ))}
+                        </ContextMenuSubContent>
+                      </ContextMenuSub>
                     )}
-                  </ContextMenuItem>
-
-                  {activeTasks.length > 0 && (
-                    <ContextMenuSub>
-                      <ContextMenuSubTrigger>
-                        Tasks
-                      </ContextMenuSubTrigger>
-                      <ContextMenuSubContent>
-                        {activeTasks.map((t) => (
-                          <ContextMenuItem
-                            key={t.id}
-                            disabled={emp.onVacation}
-                            onSelect={() => assignEmployee(emp.id, t.id)}
-                          >
-                            {t.name}
-                            {!emp.autoAssign && emp.assignedTaskId === t.id && (
-                              <span className="ml-auto text-[10px] text-muted-foreground">&bull;</span>
-                            )}
-                          </ContextMenuItem>
-                        ))}
-                      </ContextMenuSubContent>
-                    </ContextMenuSub>
-                  )}
+                  </ContextMenuGroup>
 
                   <ContextMenuSeparator />
 

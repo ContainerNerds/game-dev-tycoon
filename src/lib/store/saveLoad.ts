@@ -26,11 +26,15 @@ interface SaveEnvelope {
 export interface GameSettings {
   autoSaveEnabled: boolean;
   autoSaveIntervalMinutes: number;
+  sfxVolume: number;
+  sfxMuted: boolean;
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
   autoSaveEnabled: true,
   autoSaveIntervalMinutes: 5,
+  sfxVolume: 0.5,
+  sfxMuted: false,
 };
 
 function buildMeta(state: StudioState): SaveMeta {

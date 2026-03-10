@@ -20,6 +20,7 @@ import EnginesTab from '@/components/game/tabs/EnginesTab';
 import { useGameTick } from '@/lib/game/useGameTick';
 import { useGameStore } from '@/lib/store/gameStore';
 import { loadSettings } from '@/lib/store/saveLoad';
+import { initSoundSystem } from '@/lib/game/sounds';
 import BankruptcyScreen from '@/components/screens/BankruptcyScreen';
 
 interface GameScreenProps {
@@ -37,6 +38,8 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
   const handleSave = useCallback(() => {
     saveToSlot(slotId);
   }, [slotId, saveToSlot]);
+
+  useEffect(() => { initSoundSystem(); }, []);
 
   // Auto-save
   useEffect(() => {
