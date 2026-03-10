@@ -1,3 +1,5 @@
+import type { Rarity } from '@/lib/config/rarityConfig';
+
 // ============================================================
 // Enums & Literal Types
 // ============================================================
@@ -102,7 +104,7 @@ export interface PillarTargets {
 // ============================================================
 
 export interface EmployeeSkills {
-  graphics: number;   // 1–5
+  graphics: number;   // 0–31 (IVs: innate talent)
   sound: number;
   gameplay: number;
   polish: number;
@@ -112,7 +114,11 @@ export interface Employee {
   id: string;
   name: string;
   title: EmployeeTitle;
-  skills: EmployeeSkills;
+  rarity: Rarity;
+  skills: EmployeeSkills;         // IVs (0–31 per skill)
+  evs: EmployeeSkills;            // EVs (0–252 per skill, 510 total cap)
+  description?: string;           // flavor text for Unique employees
+  perkId?: string;                // placeholder for future perk system
   assignedTaskId: string | null;  // null = unassigned, 'bugfix' = bug duty, or a task ID
   activity: EmployeeActivity;
   autoAssign: boolean;            // true = auto-assigned to first active task
@@ -434,7 +440,9 @@ export interface StudioState {
   racks: ServerRack[];
 
   employees: Employee[];
-  candidatePool: Employee[];
+  currentPack: Employee[];
+  packRevealed: boolean[];
+  freePackAvailable: boolean;
   engines: GameEngine[];
 
   office: OfficeState;
@@ -443,7 +451,6 @@ export interface StudioState {
   dailyRates: DailyRates;
   staffContributions: StaffContribution[];
   monthlyReports: MonthlyReport[];
-  lastCandidateRefreshDay: number;
 
   _dayAccMoney: number;
   _dayAccFans: number;

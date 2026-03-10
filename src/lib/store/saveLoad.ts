@@ -2,7 +2,7 @@ import type { StudioState, BugSeverity } from '@/lib/game/types';
 import { formatDate } from '@/lib/game/calendarSystem';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 const SLOT_KEY_PREFIX = 'game-dev-tycoon-slot-';
 const SETTINGS_KEY = 'game-dev-tycoon-settings';
 
@@ -98,11 +98,47 @@ function migrateState(state: StudioState, fromVersion: number): StudioState {
       bugsFixed: e.bugsFixed ?? 0,
       totalBugFixPoints: e.totalBugFixPoints ?? 0,
     }));
-    raw.candidatePool = raw.candidatePool.map((e: any) => ({
+    raw.candidatePool = (raw.candidatePool ?? []).map((e: any) => ({
       ...e,
       bugsFixed: e.bugsFixed ?? 0,
       totalBugFixPoints: e.totalBugFixPoints ?? 0,
     }));
+  }
+
+  if (fromVersion < 5) {
+    // v4 → v5: Rarity system, IV/EV, pack-based hiring
+    const migrateEmployee = (e: any) => {
+      const oldTotal = (e.skills?.graphics ?? 3) + (e.skills?.sound ?? 3) +
+        (e.skills?.gameplay ?? 3) + (e.skills?.polish ?? 3);
+      const scaleSkill = (v: number) => Math.round(((v - 1) / 4) * 31);
+      let rarity: string = 'common';
+      if (oldTotal >= 16) rarity = 'legendary';
+      else if (oldTotal >= 14) rarity = 'epic';
+      else if (oldTotal >= 11) rarity = 'rare';
+      else if (oldTotal >= 8) rarity = 'uncommon';
+
+      return {
+        ...e,
+        rarity: e.rarity ?? rarity,
+        skills: e.skills ? {
+          graphics: scaleSkill(e.skills.graphics ?? 3),
+          sound: scaleSkill(e.skills.sound ?? 3),
+          gameplay: scaleSkill(e.skills.gameplay ?? 3),
+          polish: scaleSkill(e.skills.polish ?? 3),
+        } : { graphics: 15, sound: 10, gameplay: 15, polish: 10 },
+        evs: e.evs ?? { graphics: 0, sound: 0, gameplay: 0, polish: 0 },
+      };
+    };
+
+    raw.employees = (raw.employees ?? []).map(migrateEmployee);
+
+    // Migrate candidatePool → currentPack
+    const oldPool = (raw.candidatePool ?? []).map(migrateEmployee);
+    raw.currentPack = raw.currentPack ?? oldPool;
+    raw.packRevealed = raw.packRevealed ?? new Array(raw.currentPack.length).fill(true);
+    raw.freePackAvailable = raw.freePackAvailable ?? false;
+    delete raw.candidatePool;
+    delete raw.lastCandidateRefreshDay;
   }
 
   return state;

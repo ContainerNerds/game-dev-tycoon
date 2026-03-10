@@ -1,20 +1,57 @@
 import type { Employee, EmployeeSkills, EmployeeTitle } from './types';
 import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
+import { type Rarity, RARITY_TIERS, RARITY_ORDER } from '@/lib/config/rarityConfig';
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function generateSkills(): EmployeeSkills {
+// ============================================================
+// Effective Skill (IV + EV)
+// ============================================================
+
+export function getEffectiveSkill(iv: number, ev: number): number {
+  return iv + Math.floor(ev / 4);
+}
+
+export function getEffectiveSkills(emp: Employee): EmployeeSkills {
   return {
-    graphics: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
-    sound: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
-    gameplay: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
-    polish: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
+    graphics: getEffectiveSkill(emp.skills.graphics, emp.evs.graphics),
+    sound: getEffectiveSkill(emp.skills.sound, emp.evs.sound),
+    gameplay: getEffectiveSkill(emp.skills.gameplay, emp.evs.gameplay),
+    polish: getEffectiveSkill(emp.skills.polish, emp.evs.polish),
   };
 }
 
-function getTotalSkillPoints(skills: EmployeeSkills): number {
+// ============================================================
+// Rarity Rolling
+// ============================================================
+
+export function rollRarity(): Rarity {
+  const roll = Math.random();
+  let cumulative = 0;
+  for (const rarity of RARITY_ORDER) {
+    cumulative += RARITY_TIERS[rarity].weight;
+    if (roll < cumulative) return rarity;
+  }
+  return 'common';
+}
+
+// ============================================================
+// Skill Generation
+// ============================================================
+
+function generateSkillsForRarity(rarity: Rarity): EmployeeSkills {
+  const { min, max } = RARITY_TIERS[rarity].ivRange;
+  return {
+    graphics: randomInt(min, max),
+    sound: randomInt(min, max),
+    gameplay: randomInt(min, max),
+    polish: randomInt(min, max),
+  };
+}
+
+function getTotalIvPoints(skills: EmployeeSkills): number {
   return skills.graphics + skills.sound + skills.gameplay + skills.polish;
 }
 
@@ -37,22 +74,46 @@ function generateName(): string {
   return `${first} ${last}`;
 }
 
-export function generateEmployee(): Employee {
-  const skills = generateSkills();
-  const totalPoints = getTotalSkillPoints(skills);
+const ZERO_EVS: EmployeeSkills = { graphics: 0, sound: 0, gameplay: 0, polish: 0 };
+
+function computeHireCost(rarity: Rarity, totalIv: number): number {
+  const rarityMult = EMPLOYEE_CONFIG.hireCostRarityMultiplier[rarity] ?? 1;
+  return Math.round((EMPLOYEE_CONFIG.hireCostBase + totalIv * EMPLOYEE_CONFIG.hireCostPerIvPoint) * rarityMult);
+}
+
+function computeSalary(rarity: Rarity, totalIv: number): number {
+  const rarityMult = EMPLOYEE_CONFIG.salaryRarityMultiplier[rarity] ?? 1;
+  return Math.round((EMPLOYEE_CONFIG.salaryBaseline + totalIv * EMPLOYEE_CONFIG.salaryPerIvPoint) * rarityMult);
+}
+
+// ============================================================
+// Employee Generation
+// ============================================================
+
+export function generateEmployee(forcedRarity?: Rarity): Employee {
+  const rarity = forcedRarity ?? rollRarity();
+
+  if (rarity === 'unique') {
+    return generateUniqueEmployee();
+  }
+
+  const skills = generateSkillsForRarity(rarity);
+  const totalIv = getTotalIvPoints(skills);
   const title = deriveTitle(skills);
 
   return {
     id: `emp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: generateName(),
     title,
+    rarity,
     skills,
+    evs: { ...ZERO_EVS },
     assignedTaskId: null,
     activity: 'idle',
     autoAssign: true,
     isPlayer: false,
-    hireCost: totalPoints * EMPLOYEE_CONFIG.hireCostPerSkillPoint,
-    monthlySalary: EMPLOYEE_CONFIG.salaryBaseline + totalPoints * EMPLOYEE_CONFIG.salaryPerSkillPoint,
+    hireCost: computeHireCost(rarity, totalIv),
+    monthlySalary: computeSalary(rarity, totalIv),
     stamina: EMPLOYEE_CONFIG.stamina.max,
     onVacation: false,
     vacationDaysLeft: 0,
@@ -61,9 +122,54 @@ export function generateEmployee(): Employee {
   };
 }
 
-export function generateCandidatePool(): Employee[] {
-  return Array.from({ length: EMPLOYEE_CONFIG.candidatePoolSize }, () => generateEmployee());
+function generateUniqueEmployee(): Employee {
+  const pool = EMPLOYEE_CONFIG.uniqueEmployees;
+  const def = pool[randomInt(0, pool.length - 1)];
+  const skills = generateSkillsForRarity('unique');
+
+  if (def.guaranteedSkills) {
+    for (const [key, val] of Object.entries(def.guaranteedSkills)) {
+      if (val !== undefined) {
+        skills[key as keyof EmployeeSkills] = val;
+      }
+    }
+  }
+
+  const totalIv = getTotalIvPoints(skills);
+
+  return {
+    id: `emp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: def.name,
+    title: def.title,
+    rarity: 'unique',
+    skills,
+    evs: { ...ZERO_EVS },
+    description: def.description,
+    assignedTaskId: null,
+    activity: 'idle',
+    autoAssign: true,
+    isPlayer: false,
+    hireCost: computeHireCost('unique', totalIv),
+    monthlySalary: computeSalary('unique', totalIv),
+    stamina: EMPLOYEE_CONFIG.stamina.max,
+    onVacation: false,
+    vacationDaysLeft: 0,
+    bugsFixed: 0,
+    totalBugFixPoints: 0,
+  };
 }
+
+// ============================================================
+// Pack Generation (replaces candidate pool)
+// ============================================================
+
+export function generatePack(): Employee[] {
+  return Array.from({ length: EMPLOYEE_CONFIG.packSize }, () => generateEmployee());
+}
+
+// ============================================================
+// Game Logic Helpers
+// ============================================================
 
 export function getEmployeePillarContribution(emp: Employee): {
   graphics: number;
@@ -71,23 +177,27 @@ export function getEmployeePillarContribution(emp: Employee): {
   sound: number;
   polish: number;
 } {
+  const eff = getEffectiveSkills(emp);
+  const m = EMPLOYEE_CONFIG.pillarContributionMultiplier;
   return {
-    graphics: emp.skills.graphics * 0.5,
-    gameplay: emp.skills.gameplay * 0.5,
-    sound: emp.skills.sound * 0.5,
-    polish: emp.skills.polish * 0.5,
+    graphics: eff.graphics * m,
+    gameplay: eff.gameplay * m,
+    sound: eff.sound * m,
+    polish: eff.polish * m,
   };
 }
 
 export function getBugChancePerContribution(emp: Employee): number {
-  const avgSkill = (emp.skills.graphics + emp.skills.sound + emp.skills.gameplay + emp.skills.polish) / 4;
-  const baseChance = 0.08;
-  const reduction = avgSkill * 0.01;
-  return Math.max(0.01, baseChance - reduction);
+  const eff = getEffectiveSkills(emp);
+  const avgEffective = (eff.graphics + eff.sound + eff.gameplay + eff.polish) / 4;
+  return Math.max(
+    EMPLOYEE_CONFIG.bugChanceFloor,
+    EMPLOYEE_CONFIG.bugChanceBase - avgEffective * EMPLOYEE_CONFIG.bugChanceReductionPerEffective,
+  );
 }
 
 export function getStaminaEfficiency(stamina: number): number {
-  const { max, lowThreshold, lowEfficiency } = EMPLOYEE_CONFIG.stamina;
+  const { lowThreshold, lowEfficiency } = EMPLOYEE_CONFIG.stamina;
   if (stamina >= lowThreshold) {
     return 1.0;
   }

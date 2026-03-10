@@ -10,8 +10,7 @@ import {
 } from './calculations';
 import { calculateFanConversion } from './fanSystem';
 import { buildMonthlyReport, getTotalMonthlyCosts } from './calendarSystem';
-import { getEmployeePillarContribution, getBugChancePerContribution, generateCandidatePool, getStaminaEfficiency, drainStamina, processVacationDay } from './employeeSystem';
-import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
+import { getEmployeePillarContribution, getBugChancePerContribution, getStaminaEfficiency, drainStamina, processVacationDay, getEffectiveSkills } from './employeeSystem';
 import type { Bug, BugSeverity, RegionId, StaffContribution, ActiveGame, DevPhase, PhaseCategories, StudioTask } from './types';
 import { PHASE_CATEGORIES } from './types';
 
@@ -126,15 +125,6 @@ export function processTick(store: GameStore): void {
   if (fresh.calendar.monthEndPending) {
     handleMonthEnd(fresh as GameStore);
     return;
-  }
-
-  // Weekly candidate pool refresh (on day boundaries, every 7 days)
-  if (isNewDay(fresh.calendar) && fresh.calendar.day % 7 === 1) {
-    const currentDay = fresh.calendar.day + (fresh.calendar.month - 1) * 30 + (fresh.calendar.year - 1) * 360;
-    if (currentDay > fresh.lastCandidateRefreshDay) {
-      store.setCandidatePool(generateCandidatePool());
-      store.refreshCandidatePool();
-    }
   }
 
   // 1b. Process employee stamina and vacations (once per day)
@@ -315,7 +305,8 @@ export function processTick(store: GameStore): void {
       const bug = updatedBugs[i];
       const fixer = idleEmployees[empIdx];
       const eff = getStaminaEfficiency(fixer.stamina);
-      const fixSkill = (fixer.skills.gameplay + fixer.skills.polish) / 2;
+      const effSkills = getEffectiveSkills(fixer);
+      const fixSkill = (effSkills.gameplay + effSkills.polish) / 2;
       const points = GAME_CONFIG.bugFixProgressPerTick * fixSkill * eff * TICK_SCALE;
       const progress = bug.fixProgress + points;
       if (progress >= bug.fixTarget) {
@@ -450,7 +441,8 @@ export function processTick(store: GameStore): void {
         const bug = updatedBugs[i];
         const fixer = bugfixEmployees[empIdx];
         const efficiency = getStaminaEfficiency(fixer.stamina);
-        const fixSkill = (fixer.skills.gameplay + fixer.skills.polish) / 2;
+        const effSkills = getEffectiveSkills(fixer);
+        const fixSkill = (effSkills.gameplay + effSkills.polish) / 2;
         const points = GAME_CONFIG.bugFixProgressPerTick * fixSkill * efficiency * TICK_SCALE;
         const progress = bug.fixProgress + points;
         if (progress >= bug.fixTarget) {
@@ -555,5 +547,6 @@ function handleMonthEnd(store: GameStore): void {
   const totalCosts = getTotalMonthlyCosts(state);
   store.spendMoney(totalCosts);
   store.pushMonthlyReport(report);
+  store.grantFreePack();
   store.dismissMonthEnd();
 }

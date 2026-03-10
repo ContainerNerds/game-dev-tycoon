@@ -19,6 +19,7 @@ import type {
 } from '@/lib/game/types';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { OFFICE_CONFIG } from '@/lib/config/officeConfig';
+import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
 import { saveToSlot, loadFromSlot } from './saveLoad';
 
 // ============================================================
@@ -47,7 +48,9 @@ export function createPlayerEmployee(playerName: string): Employee {
     id: 'player',
     name: playerName,
     title: 'CEO',
-    skills: { graphics: 2, sound: 1, gameplay: 2, polish: 1 },
+    rarity: 'rare',
+    skills: { graphics: 15, sound: 10, gameplay: 15, polish: 10 },
+    evs: { graphics: 0, sound: 0, gameplay: 0, polish: 0 },
     assignedTaskId: null,
     activity: 'idle',
     autoAssign: true,
@@ -80,14 +83,15 @@ export function createInitialState(studioName: string, playerName: string, start
     servers: [],
     racks: [],
     employees: [player],
-    candidatePool: [],
+    currentPack: [],
+    packRevealed: [],
+    freePackAvailable: true,
     engines: [],
     office: createInitialOffice(),
     calendar: createInitialCalendar(),
     dailyRates: { moneyPerDay: 0, fansPerDay: 0, rpPerDay: 0 },
     staffContributions: [],
     monthlyReports: [],
-    lastCandidateRefreshDay: 0,
     _dayAccMoney: 0,
     _dayAccFans: 0,
     _dayAccRP: 0,
@@ -139,8 +143,11 @@ interface GameActions {
   addRack: (rack: ServerRack) => void;
   addServerToRack: (rackId: string, server: Server) => void;
 
-  // Employees
-  setCandidatePool: (pool: Employee[]) => void;
+  // Employees & Packs
+  openFreePack: (pack: Employee[]) => void;
+  buyPack: (pack: Employee[]) => void;
+  revealPackCard: (index: number) => void;
+  grantFreePack: () => void;
   hireEmployee: (employee: Employee) => void;
   fireEmployee: (employeeId: string) => void;
   assignEmployee: (employeeId: string, taskId: string | null) => void;
@@ -175,7 +182,6 @@ interface GameActions {
   setBankrupt: () => void;
   trackDailyRate: (moneyDelta: number, fansDelta: number, rpDelta: number) => void;
   pushMonthlyReport: (report: MonthlyReport) => void;
-  refreshCandidatePool: () => void;
   updateStaffContributions: (contributions: StaffContribution[]) => void;
 
   setState: (state: StudioState) => void;
@@ -222,14 +228,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
       servers: state.servers,
       racks: state.racks,
       employees: state.employees,
-      candidatePool: state.candidatePool,
+      currentPack: state.currentPack,
+      packRevealed: state.packRevealed,
+      freePackAvailable: state.freePackAvailable,
       engines: state.engines,
       office: state.office,
       calendar: state.calendar,
       dailyRates: state.dailyRates,
       staffContributions: state.staffContributions,
       monthlyReports: state.monthlyReports,
-      lastCandidateRefreshDay: state.lastCandidateRefreshDay,
       _dayAccMoney: 0, _dayAccFans: 0, _dayAccRP: 0, _dayTickCounter: 0,
       isBankrupt: state.isBankrupt,
     };
@@ -429,14 +436,35 @@ export const useGameStore = create<GameStore>((set, get) => ({
   }),
 
   // ----------------------------------------------------------
-  // Employees
+  // Employees & Packs
   // ----------------------------------------------------------
 
-  setCandidatePool: (pool) => set({ candidatePool: pool }),
+  openFreePack: (pack) => set({
+    currentPack: pack,
+    packRevealed: new Array(pack.length).fill(false),
+    freePackAvailable: false,
+  }),
+
+  buyPack: (pack) => set((s) => ({
+    currentPack: pack,
+    packRevealed: new Array(pack.length).fill(false),
+    money: s.money - EMPLOYEE_CONFIG.packBuyCost,
+  })),
+
+  revealPackCard: (index) => set((s) => {
+    const revealed = [...s.packRevealed];
+    revealed[index] = true;
+    return { packRevealed: revealed };
+  }),
+
+  grantFreePack: () => set({ freePackAvailable: true }),
 
   hireEmployee: (employee) => set((s) => ({
     employees: [...s.employees, employee],
-    candidatePool: s.candidatePool.filter((c) => c.id !== employee.id),
+    currentPack: s.currentPack.filter((c) => c.id !== employee.id),
+    packRevealed: s.currentPack
+      .filter((c) => c.id !== employee.id)
+      .map((c) => s.packRevealed[s.currentPack.indexOf(c)] ?? true),
     money: s.money - employee.hireCost,
   })),
 
@@ -591,10 +619,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   pushMonthlyReport: (report) => set((s) => ({
     monthlyReports: [...s.monthlyReports, report],
-  })),
-
-  refreshCandidatePool: () => set((s) => ({
-    lastCandidateRefreshDay: s.calendar.day + (s.calendar.month - 1) * 30 + (s.calendar.year - 1) * 360,
   })),
 
   setState: (state) => set(state),

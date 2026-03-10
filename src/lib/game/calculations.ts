@@ -4,22 +4,23 @@ import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
 import { SKILL_TREE } from '@/lib/config/skillTreeConfig';
 import { getIdealPillars, getComboMultiplier } from '@/lib/config/genreStyleConfig';
+import { getEffectiveSkills } from './employeeSystem';
 
 // ============================================================
-// Employee Skill Aggregation
+// Employee Skill Aggregation (uses effective skills: IV + EV)
 // ============================================================
 
-export function getTotalSkill(employees: Employee[], skill: keyof Employee['skills']): number {
-  return employees.reduce((sum, emp) => sum + emp.skills[skill], 0);
+export function getTotalEffectiveSkill(employees: Employee[], skill: keyof Employee['skills']): number {
+  return employees.reduce((sum, emp) => sum + getEffectiveSkills(emp)[skill], 0);
 }
 
 export function getDevSpeedMultiplier(employees: Employee[]): number {
-  const totalGameplay = getTotalSkill(employees, 'gameplay');
+  const totalGameplay = getTotalEffectiveSkill(employees, 'gameplay');
   return 1 + totalGameplay * EMPLOYEE_CONFIG.bonuses.gameplaySpeedBoost;
 }
 
 export function getBugRateMultiplier(employees: Employee[]): number {
-  const totalPolish = getTotalSkill(employees, 'polish');
+  const totalPolish = getTotalEffectiveSkill(employees, 'polish');
   return Math.max(0.1, 1 - totalPolish * EMPLOYEE_CONFIG.bonuses.polishBugReduction);
 }
 
