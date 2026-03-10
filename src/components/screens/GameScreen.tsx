@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import StudioHeader from '@/components/game/StudioHeader';
 import DevMenu from '@/components/game/DevMenu';
 import GameMenu from '@/components/game/GameMenu';
@@ -34,6 +35,11 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
 
   const isBankrupt = useGameStore((s) => s.isBankrupt);
   const saveToSlot = useGameStore((s) => s.saveToSlot);
+  const totalBugs = useGameStore((s) => {
+    const gameBugs = s.activeGames.reduce((sum, g) => sum + g.bugs.length, 0);
+    const taskBugs = s.activeTasks.reduce((sum, t) => sum + (t.bugs?.length ?? 0), 0);
+    return gameBugs + taskBugs;
+  });
 
   const handleSave = useCallback(() => {
     saveToSlot(slotId);
@@ -69,7 +75,14 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
             <TabsTrigger value="finances" className="cursor-pointer">Finances</TabsTrigger>
             <TabsTrigger value="delivery" className="cursor-pointer">Delivery</TabsTrigger>
             <TabsTrigger value="upgrades" className="cursor-pointer">Upgrades</TabsTrigger>
-            <TabsTrigger value="bugs" className="cursor-pointer">Bugs</TabsTrigger>
+            <TabsTrigger value="bugs" className="cursor-pointer">
+              Bugs
+              {totalBugs > 0 && (
+                <Badge variant="destructive" className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px] leading-none">
+                  {totalBugs}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="research" className="cursor-pointer">Research</TabsTrigger>
             <TabsTrigger value="press" className="cursor-pointer">Press</TabsTrigger>
             <TabsTrigger value="engines" className="cursor-pointer">Engines</TabsTrigger>
