@@ -1,0 +1,297 @@
+/* ============================================================
+   Employee Trading Card – Holographic Effects
+   Inspired by simeydotme/pokemon-cards-css
+   Uses CSS custom properties set by JS mouse handlers:
+     --mx: 0-1 (mouse X position within card)
+     --my: 0-1 (mouse Y position within card)
+   ============================================================ */
+
+.employee-card {
+  --mx: 0.5;
+  --my: 0.5;
+  --o: 0;          /* 1 when hovered */
+
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.15s ease-out, box-shadow 0.3s ease;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* 3D tilt on hover */
+.employee-card[data-interactive="true"]:hover {
+  transform:
+    perspective(800px)
+    rotateY(calc((var(--mx) - 0.5) * 15deg))
+    rotateX(calc((var(--my) - 0.5) * -15deg))
+    scale(1.02);
+}
+
+/* ---- Face-down / flip ---- */
+.employee-card--flippable {
+  cursor: pointer;
+  perspective: 1000px;
+}
+
+.employee-card__inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.employee-card--face-down .employee-card__inner {
+  transform: rotateY(180deg);
+}
+
+.employee-card__front,
+.employee-card__back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 12px;
+}
+
+.employee-card__back {
+  transform: rotateY(180deg);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.employee-card__back::after {
+  content: '?';
+  font-size: 3rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.15);
+}
+
+/* ---- Holographic overlay (shared base) ---- */
+.employee-card::before,
+.employee-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+/* ---- COMMON: no effect ---- */
+
+/* ---- UNCOMMON: subtle shimmer ---- */
+.employee-card[data-rarity="uncommon"]::after {
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(34, 197, 94, 0.08) 36%,
+    rgba(34, 197, 94, 0.15) 42%,
+    rgba(34, 197, 94, 0.08) 48%,
+    transparent 64%
+  );
+  background-size: 200% 200%;
+  background-position: calc(var(--mx) * 100%) calc(var(--my) * 100%);
+}
+
+.employee-card[data-rarity="uncommon"][data-interactive="true"]:hover::after {
+  opacity: 1;
+}
+
+/* ---- RARE: holographic stripe ---- */
+.employee-card[data-rarity="rare"]::after {
+  background: linear-gradient(
+    115deg,
+    transparent 10%,
+    rgba(59, 130, 246, 0.1) 28%,
+    rgba(99, 102, 241, 0.2) 38%,
+    rgba(139, 92, 246, 0.2) 46%,
+    rgba(59, 130, 246, 0.1) 56%,
+    transparent 74%
+  );
+  background-size: 200% 200%;
+  background-position: calc(var(--mx) * 100%) calc(var(--my) * 100%);
+  mix-blend-mode: color-dodge;
+}
+
+.employee-card[data-rarity="rare"][data-interactive="true"]:hover::after {
+  opacity: 1;
+}
+
+.employee-card[data-rarity="rare"][data-interactive="true"]:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.25);
+}
+
+/* ---- EPIC: reverse holo (full surface) ---- */
+.employee-card[data-rarity="epic"]::after {
+  background: radial-gradient(
+    circle at calc(var(--mx) * 100%) calc(var(--my) * 100%),
+    rgba(168, 85, 247, 0.2) 0%,
+    rgba(139, 92, 246, 0.15) 20%,
+    rgba(99, 102, 241, 0.1) 40%,
+    transparent 70%
+  );
+  mix-blend-mode: color-dodge;
+}
+
+.employee-card[data-rarity="epic"]::before {
+  background: linear-gradient(
+    calc(var(--mx) * 360deg),
+    rgba(168, 85, 247, 0.06),
+    rgba(236, 72, 153, 0.06),
+    rgba(59, 130, 246, 0.06),
+    rgba(168, 85, 247, 0.06)
+  );
+}
+
+.employee-card[data-rarity="epic"][data-interactive="true"]:hover::after,
+.employee-card[data-rarity="epic"][data-interactive="true"]:hover::before {
+  opacity: 1;
+}
+
+.employee-card[data-rarity="epic"][data-interactive="true"]:hover {
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.3);
+}
+
+/* ---- LEGENDARY: full-art holo + sparkles + glow ---- */
+.employee-card[data-rarity="legendary"]::after {
+  background:
+    radial-gradient(
+      circle at calc(var(--mx) * 100%) calc(var(--my) * 100%),
+      rgba(245, 158, 11, 0.25) 0%,
+      rgba(234, 88, 12, 0.15) 25%,
+      rgba(245, 158, 11, 0.1) 50%,
+      transparent 75%
+    );
+  mix-blend-mode: color-dodge;
+}
+
+.employee-card[data-rarity="legendary"]::before {
+  background: conic-gradient(
+    from calc(var(--mx) * 360deg) at 50% 50%,
+    rgba(245, 158, 11, 0.08),
+    rgba(234, 88, 12, 0.08),
+    rgba(239, 68, 68, 0.06),
+    rgba(245, 158, 11, 0.04),
+    rgba(234, 179, 8, 0.08),
+    rgba(245, 158, 11, 0.08)
+  );
+}
+
+.employee-card[data-rarity="legendary"][data-interactive="true"]:hover::after,
+.employee-card[data-rarity="legendary"][data-interactive="true"]:hover::before {
+  opacity: 1;
+}
+
+.employee-card[data-rarity="legendary"][data-interactive="true"]:hover {
+  box-shadow:
+    0 0 30px rgba(245, 158, 11, 0.35),
+    0 0 60px rgba(245, 158, 11, 0.1);
+}
+
+/* ---- UNIQUE: rainbow rare + max glow ---- */
+.employee-card[data-rarity="unique"]::after {
+  background:
+    radial-gradient(
+      circle at calc(var(--mx) * 100%) calc(var(--my) * 100%),
+      rgba(34, 211, 238, 0.3) 0%,
+      rgba(99, 102, 241, 0.2) 25%,
+      rgba(236, 72, 153, 0.15) 50%,
+      transparent 75%
+    );
+  mix-blend-mode: color-dodge;
+}
+
+.employee-card[data-rarity="unique"]::before {
+  background: conic-gradient(
+    from calc(var(--mx) * 360deg) at 50% 50%,
+    rgba(34, 211, 238, 0.1),
+    rgba(99, 102, 241, 0.1),
+    rgba(236, 72, 153, 0.1),
+    rgba(245, 158, 11, 0.1),
+    rgba(34, 197, 94, 0.1),
+    rgba(34, 211, 238, 0.1)
+  );
+  animation: unique-hue-rotate 4s linear infinite;
+}
+
+@keyframes unique-hue-rotate {
+  from { filter: hue-rotate(0deg); }
+  to { filter: hue-rotate(360deg); }
+}
+
+.employee-card[data-rarity="unique"]::after,
+.employee-card[data-rarity="unique"]::before {
+  opacity: 0.6;
+}
+
+.employee-card[data-rarity="unique"][data-interactive="true"]:hover::after,
+.employee-card[data-rarity="unique"][data-interactive="true"]:hover::before {
+  opacity: 1;
+}
+
+.employee-card[data-rarity="unique"][data-interactive="true"]:hover {
+  box-shadow:
+    0 0 30px rgba(34, 211, 238, 0.4),
+    0 0 60px rgba(99, 102, 241, 0.2),
+    0 0 90px rgba(236, 72, 153, 0.1);
+}
+
+/* ---- Sparkle layer for Legendary & Unique ---- */
+.employee-card[data-rarity="legendary"] .employee-card__sparkles,
+.employee-card[data-rarity="unique"] .employee-card__sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 11;
+  overflow: hidden;
+  border-radius: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.employee-card[data-rarity="legendary"][data-interactive="true"]:hover .employee-card__sparkles,
+.employee-card[data-rarity="unique"][data-interactive="true"]:hover .employee-card__sparkles {
+  opacity: 1;
+}
+
+.employee-card__sparkles::before,
+.employee-card__sparkles::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: white;
+  animation: sparkle-float 2s ease-in-out infinite;
+}
+
+.employee-card__sparkles::before {
+  top: 20%;
+  left: 30%;
+  animation-delay: 0s;
+  box-shadow:
+    40px 20px 0 rgba(255, 255, 255, 0.6),
+    80px 60px 0 rgba(255, 255, 255, 0.4),
+    20px 80px 0 rgba(255, 255, 255, 0.5);
+}
+
+.employee-card__sparkles::after {
+  top: 60%;
+  left: 70%;
+  animation-delay: 1s;
+  box-shadow:
+    -30px -20px 0 rgba(255, 255, 255, 0.5),
+    -60px 30px 0 rgba(255, 255, 255, 0.3),
+    10px -40px 0 rgba(255, 255, 255, 0.6);
+}
+
+@keyframes sparkle-float {
+  0%, 100% { opacity: 0; transform: scale(0.5) translateY(0); }
+  50% { opacity: 1; transform: scale(1) translateY(-4px); }
+}

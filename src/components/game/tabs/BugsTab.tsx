@@ -10,6 +10,7 @@ import { useGameStore } from '@/lib/store/gameStore';
 import BugMiniGame from '@/components/game/BugMiniGame';
 import { Bug as BugIcon, Wrench, Users, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Bug } from '@/lib/game/types';
+import { getEffectiveSkills } from '@/lib/game/employeeSystem';
 
 const SEVERITY_COLORS: Record<string, string> = {
   low: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
@@ -226,17 +227,20 @@ export default function BugsTab() {
             <p className="text-sm text-muted-foreground">No employees hired yet.</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {employees.map((emp) => (
-                <Button
-                  key={emp.id} size="sm"
-                  variant={emp.assignedTaskId === 'bugfix' ? 'default' : 'outline'}
-                  className="text-xs cursor-pointer"
-                  onClick={() => toggleBugfix(emp.id)}
-                >
-                  <Wrench className="h-3 w-3 mr-1" />{emp.name}
-                  <Badge variant="outline" className="ml-1 text-xs px-1">Pol {emp.skills.polish}</Badge>
-                </Button>
-              ))}
+              {employees.map((emp) => {
+                const effPolish = getEffectiveSkills(emp).polish;
+                return (
+                  <Button
+                    key={emp.id} size="sm"
+                    variant={emp.assignedTaskId === 'bugfix' ? 'default' : 'outline'}
+                    className="text-xs cursor-pointer"
+                    onClick={() => toggleBugfix(emp.id)}
+                  >
+                    <Wrench className="h-3 w-3 mr-1" />{emp.name}
+                    <span className="ml-1 text-yellow-400 font-mono">POL {effPolish}</span>
+                  </Button>
+                );
+              })}
             </div>
           )}
           <p className="text-xs text-muted-foreground mt-2">
