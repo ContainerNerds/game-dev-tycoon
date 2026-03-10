@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { motion } from 'motion/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -19,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/lib/store/gameStore';
 import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
 import { generatePack } from '@/lib/game/employeeSystem';
-import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, UserPlus, Zap, Plus } from 'lucide-react';
+import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, Zap, Plus } from 'lucide-react';
 import type { Employee, EmployeeActivity } from '@/lib/game/types';
 import EmployeeCard from '@/components/game/EmployeeCard';
 import EmployeeDetailModal from '@/components/game/EmployeeDetailModal';
@@ -57,7 +58,6 @@ export default function StaffTab() {
   const activeTasks = useGameStore((s) => s.activeTasks);
   const openFreePack = useGameStore((s) => s.openFreePack);
   const buyPack = useGameStore((s) => s.buyPack);
-  const revealPackCard = useGameStore((s) => s.revealPackCard);
   const hireEmployee = useGameStore((s) => s.hireEmployee);
   const fireEmployee = useGameStore((s) => s.fireEmployee);
   const assignEmployee = useGameStore((s) => s.assignEmployee);
@@ -67,52 +67,44 @@ export default function StaffTab() {
   const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
   const [epicShakeIds, setEpicShakeIds] = useState<Set<string>>(new Set());
 
-  // Auto-reveal: stagger flip each card when a fresh pack arrives
   const revealTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const prevPackIdRef = useRef<string>('');
 
-  const triggerReveal = useCallback((idx: number) => {
-    const emp = currentPack[idx];
-    if (!emp) return;
-
-    playFlipSound();
-    revealPackCard(idx);
-
-    if (EPIC_RARITIES.has(emp.rarity)) {
-      const shakeDelay = 700 + (REVEAL_DELAY_MS * (idx + 1));
-      setTimeout(() => {
-        playEpicRevealSound();
-        setEpicShakeIds((prev) => new Set(prev).add(emp.id));
-        setTimeout(() => {
-          setEpicShakeIds((prev) => {
-            const next = new Set(prev);
-            next.delete(emp.id);
-            return next;
-          });
-        }, 700);
-      }, shakeDelay - REVEAL_DELAY_MS * (idx + 1));
-    }
-  }, [currentPack, revealPackCard]);
-
-  useEffect(() => {
-    if (currentPack.length === 0) return;
-
-    const packId = currentPack.map((e) => e.id).join(',');
-    if (packId === prevPackIdRef.current) return;
-    prevPackIdRef.current = packId;
-
-    const allHidden = packRevealed.length > 0 && packRevealed.every((r) => !r);
-    if (!allHidden) return;
-
+  // Schedule staggered reveals for a given pack, calling the store directly
+  // so we don't depend on any React state that would cause re-render churn.
+  const scheduleReveals = useCallback((pack: Employee[]) => {
     revealTimersRef.current.forEach(clearTimeout);
-    revealTimersRef.current = currentPack.map((_, idx) =>
-      setTimeout(() => triggerReveal(idx), REVEAL_DELAY_MS * (idx + 1))
-    );
+    revealTimersRef.current = pack.map((emp, idx) =>
+      setTimeout(() => {
+        playFlipSound();
+        useGameStore.getState().revealPackCard(idx);
 
+        if (EPIC_RARITIES.has(emp.rarity)) {
+          setTimeout(() => {
+            playEpicRevealSound();
+            setEpicShakeIds((prev) => new Set(prev).add(emp.id));
+            setTimeout(() => {
+              setEpicShakeIds((prev) => {
+                const next = new Set(prev);
+                next.delete(emp.id);
+                return next;
+              });
+            }, 700);
+          }, 400);
+        }
+      }, REVEAL_DELAY_MS * (idx + 1))
+    );
+  }, []);
+
+  // On mount: if a pack was loaded from save with unrevealed cards, reveal them
+  useEffect(() => {
+    const state = useGameStore.getState();
+    if (state.currentPack.length > 0 && state.packRevealed.some((r) => !r)) {
+      scheduleReveals(state.currentPack);
+    }
     return () => {
       revealTimersRef.current.forEach(clearTimeout);
     };
-  }, [currentPack, packRevealed, triggerReveal]);
+  }, [scheduleReveals]);
 
   const hiredCount = employees.filter((e) => !e.isPlayer).length;
   const totalMonthlySalary = employees.reduce((sum, e) => sum + e.monthlySalary, 0);
@@ -120,12 +112,16 @@ export default function StaffTab() {
 
   const handleOpenFreePack = () => {
     if (!freePackAvailable) return;
-    openFreePack(generatePack());
+    const pack = generatePack();
+    openFreePack(pack);
+    scheduleReveals(pack);
   };
 
   const handleBuyPack = () => {
     if (money < EMPLOYEE_CONFIG.packBuyCost) return;
-    buyPack(generatePack());
+    const pack = generatePack();
+    buyPack(pack);
+    scheduleReveals(pack);
   };
 
   const handleHire = (employeeId: string) => {
@@ -213,16 +209,22 @@ export default function StaffTab() {
         {hasPackCards && (
           <div className="flex flex-wrap gap-3 justify-center">
             {currentPack.map((emp, idx) => (
-              <div key={emp.id} className={epicShakeIds.has(emp.id) ? 'employee-card--epic-reveal' : ''}>
+              <motion.div
+                key={emp.id}
+                animate={epicShakeIds.has(emp.id) ? {
+                  x: [0, -4, 4, -3, 3, -2, 2, -1, 1, 0],
+                  rotate: [0, -1, 1, -0.5, 0.5, -0.5, 0.5, 0, 0, 0],
+                } : {}}
+                transition={{ duration: 0.6, ease: 'easeInOut' }}
+              >
                 <EmployeeCard
                   employee={emp}
                   faceDown={!packRevealed[idx]}
-                  revealDelay={REVEAL_DELAY_MS * (idx + 1)}
                   onClick={packRevealed[idx] ? () => setDetailEmployee(emp) : undefined}
                   onHire={packRevealed[idx] ? () => handleHire(emp.id) : undefined}
                   hireDisabled={hiredCount >= office.maxSeats || money < emp.hireCost}
                 />
-              </div>
+              </motion.div>
             ))}
           </div>
         )}

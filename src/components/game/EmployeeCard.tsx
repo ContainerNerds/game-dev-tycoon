@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
+import { motion } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserPlus, User } from 'lucide-react';
@@ -24,7 +25,6 @@ function staminaColor(stamina: number): string {
 interface EmployeeCardProps {
   employee: Employee;
   faceDown?: boolean;
-  revealDelay?: number;
   onClick?: () => void;
   onHire?: () => void;
   hireDisabled?: boolean;
@@ -35,7 +35,6 @@ interface EmployeeCardProps {
 export default function EmployeeCard({
   employee,
   faceDown = false,
-  revealDelay = 0,
   onClick,
   onHire,
   hireDisabled = false,
@@ -75,9 +74,14 @@ export default function EmployeeCard({
       onMouseMove={!faceDown ? handleMouseMove : undefined}
       onMouseLeave={!faceDown ? handleMouseLeave : undefined}
       onClick={!faceDown ? onClick : undefined}
-      style={{ width: cardWidth, height: compact ? 240 : 300, '--reveal-delay': `${revealDelay}ms` } as React.CSSProperties}
+      style={{ width: cardWidth, height: compact ? 240 : 300 }}
     >
-      <div className="employee-card__inner">
+      <motion.div
+        className="employee-card__inner"
+        initial={{ rotateY: faceDown ? 180 : 0 }}
+        animate={{ rotateY: faceDown ? 180 : 0 }}
+        transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+      >
         {/* Front face — the revealed card */}
         <div className={`employee-card__front border-2 ${rarity.borderColor} ${rarity.bgColor}`}>
           <div className="employee-card__sparkles" />
@@ -167,7 +171,7 @@ export default function EmployeeCard({
 
         {/* Back face — question mark */}
         <div className="employee-card__back" />
-      </div>
+      </motion.div>
     </div>
   );
 }
