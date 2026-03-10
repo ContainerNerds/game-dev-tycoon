@@ -43,13 +43,18 @@
   transform: rotateY(180deg);
 }
 
-/* Kill overlays & content while face-down so active animations/filters
-   (e.g. Unique's hue-rotate) can't force the browser to paint __front
-   and break backface-visibility. */
-.employee-card--face-down .employee-card__holo-a,
-.employee-card--face-down .employee-card__holo-b,
-.employee-card--face-down .employee-card__sparkles {
-  display: none;
+/* Force front-face content invisible & stop animations while face-down
+   so active compositing layers (e.g. Unique's hue-rotate filter) can't
+   force the browser to paint __front and break backface-visibility.
+   Uses opacity (not display:none) so the reveal can transition smoothly. */
+.employee-card--face-down .employee-card__front > * {
+  opacity: 0 !important;
+  animation: none !important;
+  transition: opacity 0s 0s !important;
+}
+
+.employee-card__front > * {
+  transition: opacity 0.25s ease 0.4s;
 }
 
 .employee-card__front,
@@ -90,7 +95,7 @@
   border-radius: 12px;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease 0.4s;
   z-index: 10;
 }
 
