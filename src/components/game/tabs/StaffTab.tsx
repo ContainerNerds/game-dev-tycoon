@@ -21,10 +21,11 @@ import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/lib/store/gameStore';
 import { PACK_TYPES, type PackTypeId } from '@/lib/config/employeeConfig';
 import { generatePack } from '@/lib/game/employeeSystem';
-import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, Zap, Plus, Volume2, VolumeX, Crown, Gem } from 'lucide-react';
+import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, Zap, Plus, Volume2, VolumeX, Crown, Gem, BookOpen } from 'lucide-react';
 import type { Employee, EmployeeActivity } from '@/lib/game/types';
 import EmployeeCard from '@/components/game/EmployeeCard';
 import EmployeeDetailModal from '@/components/game/EmployeeDetailModal';
+import UniqueCollectionModal from '@/components/game/UniqueCollectionModal';
 import { playFlipSound, playEpicRevealSound, isMuted, setMuted } from '@/lib/game/sounds';
 
 const ACTIVITY_COLORS: Record<EmployeeActivity, string> = {
@@ -68,6 +69,7 @@ export default function StaffTab() {
   const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
   const [epicShakeIds, setEpicShakeIds] = useState<Set<string>>(new Set());
   const [sfxMuted, setSfxMuted] = useState(isMuted);
+  const [collectionOpen, setCollectionOpen] = useState(false);
 
   const revealTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -172,6 +174,15 @@ export default function StaffTab() {
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <Package className="h-4 w-4" />
             Employee Packs
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-5 w-5 p-0 cursor-pointer text-cyan-400/70 hover:text-cyan-300"
+              onClick={() => setCollectionOpen(true)}
+              title="View Named Unique collection"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+            </Button>
             <Button
               size="sm"
               variant="ghost"
@@ -441,6 +452,12 @@ export default function StaffTab() {
         employee={detailEmployee}
         open={detailEmployee !== null}
         onOpenChange={(open) => { if (!open) setDetailEmployee(null); }}
+      />
+
+      {/* Unique Collection Modal */}
+      <UniqueCollectionModal
+        open={collectionOpen}
+        onOpenChange={setCollectionOpen}
       />
     </div>
   );
