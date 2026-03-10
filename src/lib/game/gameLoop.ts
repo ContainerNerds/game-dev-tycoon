@@ -10,7 +10,8 @@ import {
 } from './calculations';
 import { calculateFanConversion } from './fanSystem';
 import { buildMonthlyReport, getTotalMonthlyCosts } from './calendarSystem';
-import { getEmployeePillarContribution, getBugChancePerContribution, generateCandidatePool } from './employeeSystem';
+import { getEmployeePillarContribution, getBugChancePerContribution, generateCandidatePool, getStaminaEfficiency, drainStamina, processVacationDay } from './employeeSystem';
+import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
 import type { Bug, BugSeverity, RegionId, StaffContribution, ActiveGame } from './types';
 
 function generateBugId(): string {
@@ -98,24 +99,54 @@ export function processTick(store: GameStore): void {
     }
   }
 
+  // 1b. Process employee stamina and vacations (once per day)
+  if (isNewDay(fresh.calendar)) {
+    const updatedEmployees = fresh.employees.map((emp) => {
+      if (emp.onVacation) {
+        const result = processVacationDay(emp.vacationDaysLeft, emp.stamina);
+        return {
+          ...emp,
+          stamina: result.stamina,
+          vacationDaysLeft: result.vacationDaysLeft,
+          onVacation: result.onVacation,
+          activity: result.onVacation ? emp.activity : 'idle' as const,
+        };
+      }
+      return emp;
+    });
+    store.updateEmployees(updatedEmployees);
+  }
+
+  // Drain stamina for working employees each tick
+  {
+    const latestState = useGameStore.getState();
+    const staminaUpdated = latestState.employees.map((emp) => {
+      if (emp.onVacation || emp.activity === 'idle') return emp;
+      const isCrunching = latestState.activeTasks.some((t) => t.id === emp.assignedTaskId && t.isCrunching);
+      return { ...emp, stamina: drainStamina(emp.stamina, isCrunching) };
+    });
+    store.updateEmployees(staminaUpdated);
+  }
+
   // 2. Process all active tasks (dev contributions)
-  // Rate multiplier: old system had 24 ticks/day, now 4 ticks/day → multiply rates by 6
   const TICK_SCALE = 6;
   const contribs: StaffContribution[] = [];
+  const currentEmployees = useGameStore.getState().employees;
 
   for (const task of state.activeTasks) {
     if (task.progressPercent >= 100 && task.type !== 'patch') continue;
 
     const crunchMultiplier = task.isCrunching ? GAME_CONFIG.crunchSpeedMultiplier : 1;
 
-    let taskEmployees = state.employees.filter((e) => e.assignedTaskId === task.id);
+    let taskEmployees = currentEmployees.filter((e) => e.assignedTaskId === task.id && !e.onVacation);
     if (task.autoAssign) {
-      const unassigned = state.employees.filter((e) => e.assignedTaskId === null && e.assignedTaskId !== 'bugfix');
+      const unassigned = currentEmployees.filter((e) => e.assignedTaskId === null && !e.onVacation);
       taskEmployees = [...taskEmployees, ...unassigned];
     }
 
     if (taskEmployees.length > 0) {
       for (const emp of taskEmployees) {
+        const efficiency = getStaminaEfficiency(emp.stamina);
         const contrib = getEmployeePillarContribution(emp);
         const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
         const c: StaffContribution = {
@@ -126,7 +157,7 @@ export function processTick(store: GameStore): void {
         };
 
         for (const pillar of pillars) {
-          const points = contrib[pillar] * crunchMultiplier * 0.1 * TICK_SCALE;
+          const points = contrib[pillar] * crunchMultiplier * efficiency * 0.1 * TICK_SCALE;
           if (points > 0) {
             store.contributeToTask(task.id, pillar, points);
             c[pillar] += points;
@@ -168,7 +199,8 @@ export function processTick(store: GameStore): void {
   }
 
   // 2b. Bugfix employees incrementally fix bugs
-  const bugfixEmployees = state.employees.filter((e) => e.assignedTaskId === 'bugfix');
+  const latestEmps = useGameStore.getState().employees;
+  const bugfixEmployees = latestEmps.filter((e) => e.assignedTaskId === 'bugfix' && !e.onVacation);
   if (bugfixEmployees.length > 0) {
     const progressPerTick = 0.005 * TICK_SCALE;
     for (const game of state.activeGames) {
@@ -180,7 +212,9 @@ export function processTick(store: GameStore): void {
       for (let i = 0; i < updatedBugs.length && empIdx < bugfixEmployees.length; i++) {
         const bug = updatedBugs[i];
         const fixer = bugfixEmployees[empIdx];
-        const progress = bug.fixProgress + fixer.skills.devel * progressPerTick;
+        const efficiency = getStaminaEfficiency(fixer.stamina);
+        const fixSkill = (fixer.skills.gameplay + fixer.skills.polish) / 2;
+        const progress = bug.fixProgress + fixSkill * progressPerTick * efficiency;
         if (progress >= 1) {
           bugsToRemove.push(bug.id);
         } else {

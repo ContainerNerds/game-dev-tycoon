@@ -7,28 +7,27 @@ function randomInt(min: number, max: number): number {
 
 function generateSkills(): EmployeeSkills {
   return {
-    devel: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
-    infra: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
-    project: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
-    management: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
+    graphics: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
+    sound: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
+    gameplay: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
+    polish: randomInt(EMPLOYEE_CONFIG.minSkill, EMPLOYEE_CONFIG.maxSkill),
   };
 }
 
 function getTotalSkillPoints(skills: EmployeeSkills): number {
-  return skills.devel + skills.infra + skills.project + skills.management;
+  return skills.graphics + skills.sound + skills.gameplay + skills.polish;
 }
 
 function deriveTitle(skills: EmployeeSkills): EmployeeTitle {
-  const max = Math.max(skills.devel, skills.infra, skills.project, skills.management);
-  const hasMultipleMax = [skills.devel, skills.infra, skills.project, skills.management].filter(s => s === max).length > 1;
+  const max = Math.max(skills.graphics, skills.sound, skills.gameplay, skills.polish);
+  const vals = [skills.graphics, skills.sound, skills.gameplay, skills.polish];
+  const hasMultipleMax = vals.filter(s => s === max).length > 1;
 
   if (hasMultipleMax) return 'Generalist';
-  if (skills.devel === max && max >= 4) return 'Architect';
-  if (skills.devel === max) return 'Engineer';
-  if (skills.infra === max) return 'DevOps';
-  if (skills.project === max && max >= 4) return 'Producer';
-  if (skills.project === max) return 'QA Lead';
-  if (skills.management === max) return 'Producer';
+  if (skills.graphics === max) return 'Artist';
+  if (skills.sound === max) return 'Sound Designer';
+  if (skills.gameplay === max) return 'Designer';
+  if (skills.polish === max) return 'QA Tester';
   return 'Generalist';
 }
 
@@ -49,9 +48,13 @@ export function generateEmployee(): Employee {
     title,
     skills,
     assignedTaskId: null,
+    activity: 'idle',
     isPlayer: false,
     hireCost: totalPoints * EMPLOYEE_CONFIG.hireCostPerSkillPoint,
     monthlySalary: EMPLOYEE_CONFIG.salaryBaseline + totalPoints * EMPLOYEE_CONFIG.salaryPerSkillPoint,
+    stamina: EMPLOYEE_CONFIG.stamina.max,
+    onVacation: false,
+    vacationDaysLeft: 0,
   };
 }
 
@@ -59,13 +62,6 @@ export function generateCandidatePool(): Employee[] {
   return Array.from({ length: EMPLOYEE_CONFIG.candidatePoolSize }, () => generateEmployee());
 }
 
-/**
- * Contribution points an employee adds per tick to each pillar.
- * Devel skill contributes to gameplay + polish.
- * Infra contributes to polish (optimization).
- * Project contributes evenly across all.
- * Management doesn't directly contribute but reduces bugs.
- */
 export function getEmployeePillarContribution(emp: Employee): {
   graphics: number;
   gameplay: number;
@@ -73,16 +69,44 @@ export function getEmployeePillarContribution(emp: Employee): {
   polish: number;
 } {
   return {
-    graphics: emp.skills.devel * 0.3 + emp.skills.project * 0.1,
-    gameplay: emp.skills.devel * 0.5 + emp.skills.project * 0.2,
-    sound: emp.skills.project * 0.2 + emp.skills.management * 0.1,
-    polish: emp.skills.devel * 0.2 + emp.skills.infra * 0.3 + emp.skills.project * 0.1,
+    graphics: emp.skills.graphics * 0.5,
+    gameplay: emp.skills.gameplay * 0.5,
+    sound: emp.skills.sound * 0.5,
+    polish: emp.skills.polish * 0.5,
   };
 }
 
 export function getBugChancePerContribution(emp: Employee): number {
-  // Higher management reduces bug chance
+  const avgSkill = (emp.skills.graphics + emp.skills.sound + emp.skills.gameplay + emp.skills.polish) / 4;
   const baseChance = 0.08;
-  const managementReduction = emp.skills.management * 0.01;
-  return Math.max(0.01, baseChance - managementReduction);
+  const reduction = avgSkill * 0.01;
+  return Math.max(0.01, baseChance - reduction);
+}
+
+export function getStaminaEfficiency(stamina: number): number {
+  const { max, lowThreshold, lowEfficiency } = EMPLOYEE_CONFIG.stamina;
+  if (stamina >= lowThreshold) {
+    return 1.0;
+  }
+  const t = stamina / lowThreshold;
+  return lowEfficiency + t * (1 - lowEfficiency);
+}
+
+export function drainStamina(currentStamina: number, isCrunching: boolean): number {
+  const drain = EMPLOYEE_CONFIG.stamina.drainPerTick * (isCrunching ? EMPLOYEE_CONFIG.stamina.crunchDrainMultiplier : 1);
+  return Math.max(0, currentStamina - drain);
+}
+
+export function processVacationDay(vacationDaysLeft: number, stamina: number): {
+  vacationDaysLeft: number;
+  stamina: number;
+  onVacation: boolean;
+} {
+  const newStamina = Math.min(EMPLOYEE_CONFIG.stamina.max, stamina + EMPLOYEE_CONFIG.vacation.recoveryPerDay);
+  const daysLeft = vacationDaysLeft - 1;
+  return {
+    vacationDaysLeft: Math.max(0, daysLeft),
+    stamina: newStamina,
+    onVacation: daysLeft > 0,
+  };
 }

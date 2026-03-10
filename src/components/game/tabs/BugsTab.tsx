@@ -74,7 +74,7 @@ export default function BugsTab() {
                   onClick={() => toggleBugfix(emp.id)}
                 >
                   <Wrench className="h-3 w-3 mr-1" />{emp.name}
-                  <Badge variant="outline" className="ml-1 text-xs px-1">Dev {emp.skills.devel}</Badge>
+                  <Badge variant="outline" className="ml-1 text-xs px-1">Pol {emp.skills.polish}</Badge>
                 </Button>
               ))}
             </div>

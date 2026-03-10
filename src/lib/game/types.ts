@@ -19,18 +19,18 @@ export type RegionId =
   | 'japan'
   | 'australia';
 
-export type SkillType = 'devel' | 'infra' | 'project' | 'management';
+export type SkillType = 'graphics' | 'sound' | 'gameplay' | 'polish';
 
 export type EmployeeTitle =
   | 'CEO'
-  | 'Engineer'
-  | 'Architect'
+  | 'Programmer'
   | 'Artist'
   | 'Sound Designer'
-  | 'Producer'
-  | 'QA Lead'
-  | 'DevOps'
+  | 'Designer'
+  | 'QA Tester'
   | 'Generalist';
+
+export type EmployeeActivity = 'idle' | 'developing' | 'researching' | 'bugfixing' | 'testing' | 'vacation';
 
 export type GameSpeed = 0 | 1 | 2;
 
@@ -78,10 +78,10 @@ export interface PillarTargets {
 // ============================================================
 
 export interface EmployeeSkills {
-  devel: number;      // 1–5
-  infra: number;
-  project: number;
-  management: number;
+  graphics: number;   // 1–5
+  sound: number;
+  gameplay: number;
+  polish: number;
 }
 
 export interface Employee {
@@ -90,9 +90,13 @@ export interface Employee {
   title: EmployeeTitle;
   skills: EmployeeSkills;
   assignedTaskId: string | null;  // null = unassigned, 'bugfix' = bug duty, or a task ID
+  activity: EmployeeActivity;
   isPlayer: boolean;
   hireCost: number;
   monthlySalary: number;
+  stamina: number;                // 0–100
+  onVacation: boolean;
+  vacationDaysLeft: number;
 }
 
 // ============================================================

@@ -1,28 +1,34 @@
 export const EMPLOYEE_CONFIG = {
   candidatePoolSize: 5,
-  refreshPoolCost: 500,          // dollars to refresh the candidate pool
+  refreshPoolCost: 500,
 
-  // Skill generation ranges
   minSkill: 1,
   maxSkill: 5,
 
-  // Cost formulas (based on total skill points across all 4 skills)
-  hireCostPerSkillPoint: 500,    // hire cost = total skill points * this
-  salaryPerSkillPoint: 100,      // monthly salary = total skill points * this
-  salaryBaseline: 500,           // minimum monthly salary regardless of skills
+  hireCostPerSkillPoint: 500,
+  salaryPerSkillPoint: 100,
+  salaryBaseline: 500,
 
-  // Passive bonus multipliers (per total skill point in that category across all employees)
-  bonuses: {
-    develBugReduction: 0.03,     // -3% bug rate per Devel point
-    develSpeedBoost: 0.02,       // +2% dev speed per Devel point
-    infraCostReduction: 0.02,    // -2% server costs per Infra point
-    infraIncidentReduction: 0.03,// -3% server incident chance per Infra point
-    projectSpeedBoost: 0.02,     // +2% DLC/sequel speed per Project point
-    projectCostReduction: 0.02,  // -2% development cost per Project point
-    managementSalaryReduction: 0.01, // -1% employee salaries per Management point
+  stamina: {
+    max: 100,
+    drainPerTick: 0.15,              // ~0.6 per day at 4 ticks/day → burnout in ~40 days
+    crunchDrainMultiplier: 2,
+    lowThreshold: 20,
+    lowEfficiency: 0.3,              // 30% efficiency at 0 stamina
   },
 
-  // Name pools for random generation
+  vacation: {
+    durationDays: 14,
+    recoveryPerDay: 7.5,             // 100% in 14 days (rounded)
+  },
+
+  bonuses: {
+    graphicsBugReduction: 0.02,
+    gameplaySpeedBoost: 0.02,
+    soundQualityBoost: 0.02,
+    polishBugReduction: 0.03,
+  },
+
   firstNames: [
     'Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Quinn', 'Avery',
     'Dakota', 'Skyler', 'Reese', 'Cameron', 'Drew', 'Emerson', 'Finley', 'Harper',
@@ -32,7 +38,7 @@ export const EMPLOYEE_CONFIG = {
   ],
   lastNames: [
     'Chen', 'Garcia', 'Kim', 'Patel', 'Nguyen', 'Singh', 'Mueller', 'Johansson',
-    'Tanaka', 'Silva', 'Petrov', 'O\'Brien', 'Martinez', 'Andersson', 'Lee', 'Ali',
+    'Tanaka', 'Silva', 'Petrov', "O'Brien", 'Martinez', 'Andersson', 'Lee', 'Ali',
     'Williams', 'Brown', 'Jones', 'Davis', 'Wilson', 'Taylor', 'Clark', 'Walker',
     'Hall', 'Young', 'King', 'Wright', 'Scott', 'Adams', 'Mitchell', 'Torres',
   ],

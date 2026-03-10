@@ -14,18 +14,17 @@ export function getTotalSkill(employees: Employee[], skill: keyof Employee['skil
 }
 
 export function getDevSpeedMultiplier(employees: Employee[]): number {
-  const totalDevel = getTotalSkill(employees, 'devel');
-  return 1 + totalDevel * EMPLOYEE_CONFIG.bonuses.develSpeedBoost;
+  const totalGameplay = getTotalSkill(employees, 'gameplay');
+  return 1 + totalGameplay * EMPLOYEE_CONFIG.bonuses.gameplaySpeedBoost;
 }
 
 export function getBugRateMultiplier(employees: Employee[]): number {
-  const totalDevel = getTotalSkill(employees, 'devel');
-  return Math.max(0.1, 1 - totalDevel * EMPLOYEE_CONFIG.bonuses.develBugReduction);
+  const totalPolish = getTotalSkill(employees, 'polish');
+  return Math.max(0.1, 1 - totalPolish * EMPLOYEE_CONFIG.bonuses.polishBugReduction);
 }
 
 export function getServerCostMultiplier(employees: Employee[]): number {
-  const totalInfra = getTotalSkill(employees, 'infra');
-  return Math.max(0.1, 1 - totalInfra * EMPLOYEE_CONFIG.bonuses.infraCostReduction);
+  return 1;
 }
 
 // ============================================================

@@ -46,11 +46,15 @@ export function createPlayerEmployee(playerName: string): Employee {
     id: 'player',
     name: playerName,
     title: 'CEO',
-    skills: { devel: 2, infra: 1, project: 1, management: 1 },
+    skills: { graphics: 2, sound: 1, gameplay: 2, polish: 1 },
     assignedTaskId: null,
+    activity: 'idle',
     isPlayer: true,
     hireCost: 0,
     monthlySalary: 0,
+    stamina: 100,
+    onVacation: false,
+    vacationDaysLeft: 0,
   };
 }
 
@@ -132,6 +136,8 @@ interface GameActions {
   hireEmployee: (employee: Employee) => void;
   fireEmployee: (employeeId: string) => void;
   assignEmployee: (employeeId: string, taskId: string | null) => void;
+  sendOnVacation: (employeeId: string) => void;
+  updateEmployees: (employees: Employee[]) => void;
 
   // Office
   upgradeOffice: (tier: OfficeTier) => void;
@@ -408,10 +414,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
   })),
 
   assignEmployee: (employeeId, taskId) => set((s) => ({
+    employees: s.employees.map((e) => {
+      if (e.id !== employeeId) return e;
+      let activity: Employee['activity'] = 'idle';
+      if (taskId === 'bugfix') activity = 'bugfixing';
+      else if (taskId) activity = 'developing';
+      return { ...e, assignedTaskId: taskId, activity };
+    }),
+  })),
+
+  sendOnVacation: (employeeId) => set((s) => ({
     employees: s.employees.map((e) =>
-      e.id === employeeId ? { ...e, assignedTaskId: taskId } : e
+      e.id === employeeId
+        ? { ...e, assignedTaskId: null, activity: 'vacation' as const, onVacation: true, vacationDaysLeft: 14 }
+        : e
     ),
   })),
+
+  updateEmployees: (employees) => set({ employees }),
 
   // ----------------------------------------------------------
   // Office
