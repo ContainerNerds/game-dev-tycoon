@@ -213,7 +213,13 @@ export function processTick(store: GameStore): void {
 
         const bugChance = getBugChancePerContribution(emp) * (task.isCrunching ? 1.5 : 1) * TICK_SCALE;
         if (Math.random() < bugChance) {
-          store.addTaskBugs(task.id, 1);
+          const severity = randomBugSeverity();
+          store.addTaskBug(task.id, {
+            id: generateBugId(), gameId: task.id, severity,
+            name: randomBugName(),
+            fixCost: Math.round(GAME_CONFIG.bugFixBaseCost * severityCostMultiplier(severity)),
+            fixProgress: 0, assignedFixerId: null, spawnedAt: Date.now(),
+          });
           c.bugsIntroduced += 1;
         }
 
@@ -271,6 +277,42 @@ export function processTick(store: GameStore): void {
         });
       }
       store.removeTask(task.id);
+    }
+  }
+
+  // 2c. Auto-fix pre-release bugs on completed game tasks
+  const freshForAutofix = useGameStore.getState();
+  for (const task of freshForAutofix.activeTasks) {
+    if (task.type !== 'game' || task.progressPercent < 100 || !task.bugs?.length) continue;
+    const idleEmployees = freshForAutofix.employees.filter(
+      (e) => (e.assignedTaskId === null || e.assignedTaskId === task.id) && !e.onVacation
+    );
+    if (idleEmployees.length === 0) continue;
+
+    const fixProgressPerTick = 0.03 * TICK_SCALE;
+    let empIdx = 0;
+    const updatedBugs = [...task.bugs];
+    const bugsToRemove: string[] = [];
+
+    for (let i = 0; i < updatedBugs.length && empIdx < idleEmployees.length; i++) {
+      const bug = updatedBugs[i];
+      const fixer = idleEmployees[empIdx];
+      const eff = getStaminaEfficiency(fixer.stamina);
+      const progress = bug.fixProgress + fixProgressPerTick * eff;
+      if (progress >= 1) {
+        bugsToRemove.push(bug.id);
+      } else {
+        updatedBugs[i] = { ...bug, fixProgress: progress, assignedFixerId: fixer.id };
+      }
+      empIdx++;
+    }
+
+    if (bugsToRemove.length > 0) {
+      for (const bugId of bugsToRemove) {
+        store.removeTaskBug(task.id, bugId);
+      }
+    } else if (empIdx > 0) {
+      store.updateTask(task.id, { bugs: updatedBugs });
     }
   }
 

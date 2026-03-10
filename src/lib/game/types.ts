@@ -198,6 +198,8 @@ export interface StudioTask {
   developmentDaysTarget?: number;
   developmentDaysElapsed?: number;
   ticksInCurrentPhase?: number;
+  // Pre-release bugs found during development
+  bugs?: Bug[];
 }
 
 // ============================================================

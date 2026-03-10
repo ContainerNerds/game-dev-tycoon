@@ -118,6 +118,8 @@ interface GameActions {
   updateTask: (taskId: string, updates: Partial<StudioTask>) => void;
   contributeToTask: (taskId: string, pillar: keyof PillarProgress, points: number) => void;
   addTaskBugs: (taskId: string, count: number) => void;
+  addTaskBug: (taskId: string, bug: Bug) => void;
+  removeTaskBug: (taskId: string, bugId: string) => void;
   toggleTaskCrunch: (taskId: string) => void;
   resetPatchTask: (taskId: string) => void;
 
@@ -316,6 +318,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
   addTaskBugs: (taskId, count) => set((s) => ({
     activeTasks: s.activeTasks.map((t) =>
       t.id === taskId ? { ...t, bugsFound: t.bugsFound + count } : t
+    ),
+  })),
+
+  addTaskBug: (taskId, bug) => set((s) => ({
+    activeTasks: s.activeTasks.map((t) =>
+      t.id === taskId ? { ...t, bugs: [...(t.bugs ?? []), bug], bugsFound: t.bugsFound + 1 } : t
+    ),
+  })),
+
+  removeTaskBug: (taskId, bugId) => set((s) => ({
+    activeTasks: s.activeTasks.map((t) =>
+      t.id === taskId ? { ...t, bugs: (t.bugs ?? []).filter((b) => b.id !== bugId), bugsFound: Math.max(0, t.bugsFound - 1) } : t
     ),
   })),
 

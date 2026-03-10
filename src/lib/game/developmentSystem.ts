@@ -105,7 +105,7 @@ export function convertTaskToActiveGame(task: StudioTask, state: StudioState): A
     gameFans: 0,
     regionalFans: {},
     gamePrice,
-    bugs: [],
+    bugs: (task.bugs ?? []).map((b) => ({ ...b, gameId: task.id, fixProgress: 0, assignedFixerId: null })),
     dlcIds: [],
     dlcCount: 0,
     dlcSalesBoost: 0,
