@@ -1,5 +1,6 @@
 import type { ActiveGame, PillarWeights, StudioState, Employee } from './types';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
+import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
 import { SKILL_TREE } from '@/lib/config/skillTreeConfig';
 import { getIdealPillars, getComboMultiplier } from '@/lib/config/genreStyleConfig';
@@ -147,7 +148,7 @@ export function getLifecyclePhaseTicks(
   studioUpgrades: string[],
   gameUpgrades: string[]
 ): number {
-  const hoursPerMonth = 24 * 30;
+  const ticksPerMonth = CALENDAR_CONFIG.ticksPerDay * 30;
   let months: number;
 
   switch (phase) {
@@ -165,5 +166,5 @@ export function getLifecyclePhaseTicks(
       return Infinity;
   }
 
-  return months * hoursPerMonth;
+  return months * ticksPerMonth;
 }

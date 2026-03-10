@@ -10,12 +10,7 @@ export function getMonthName(month: number): string {
 }
 
 export function formatDate(cal: CalendarState): string {
-  return `${getMonthName(cal.month)} ${cal.day}, ${cal.year}`;
-}
-
-export function formatDateTime(cal: CalendarState): string {
-  const hour = cal.hour.toString().padStart(2, '0');
-  return `${formatDate(cal)} ${hour}:00`;
+  return `Y${cal.year} M${cal.month} D${cal.day}`;
 }
 
 export function getDaysInMonth(month: number): number {
@@ -40,7 +35,6 @@ export function buildMonthlyReport(state: StudioState): MonthlyReport {
     devOverheadCosts += state.office.monthlyOverhead;
   }
 
-  // Studio-wide server costs
   for (const server of state.servers) {
     lineItems.push({
       label: `Server (${server.regionId}, ${server.type})`,

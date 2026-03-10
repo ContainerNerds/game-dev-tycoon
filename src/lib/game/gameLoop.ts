@@ -1,5 +1,6 @@
 import { useGameStore, type GameStore } from '@/lib/store/gameStore';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
+import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
 import {
   getSaleRatePerTick,
@@ -72,6 +73,8 @@ function pickWeightedRegion(weights: Record<string, number>): string {
   return 'us-east';
 }
 
+const isNewDay = (cal: { tickInDay: number }) => cal.tickInDay === 0;
+
 export function processTick(store: GameStore): void {
   const state = store;
 
@@ -86,9 +89,9 @@ export function processTick(store: GameStore): void {
     return;
   }
 
-  // Weekly candidate pool refresh
-  if (fresh.calendar.hour === 0 && fresh.calendar.day % 7 === 1) {
-    const currentDay = fresh.calendar.day + (fresh.calendar.month - 1) * 30 + (fresh.calendar.year - 2040) * 360;
+  // Weekly candidate pool refresh (on day boundaries, every 7 days)
+  if (isNewDay(fresh.calendar) && fresh.calendar.day % 7 === 1) {
+    const currentDay = fresh.calendar.day + (fresh.calendar.month - 1) * 30 + (fresh.calendar.year - 1) * 360;
     if (currentDay > fresh.lastCandidateRefreshDay) {
       store.setCandidatePool(generateCandidatePool());
       store.refreshCandidatePool();
@@ -96,6 +99,8 @@ export function processTick(store: GameStore): void {
   }
 
   // 2. Process all active tasks (dev contributions)
+  // Rate multiplier: old system had 24 ticks/day, now 4 ticks/day → multiply rates by 6
+  const TICK_SCALE = 6;
   const contribs: StaffContribution[] = [];
 
   for (const task of state.activeTasks) {
@@ -103,7 +108,6 @@ export function processTick(store: GameStore): void {
 
     const crunchMultiplier = task.isCrunching ? GAME_CONFIG.crunchSpeedMultiplier : 1;
 
-    // Get employees assigned to this task (or auto-assign unassigned ones)
     let taskEmployees = state.employees.filter((e) => e.assignedTaskId === task.id);
     if (task.autoAssign) {
       const unassigned = state.employees.filter((e) => e.assignedTaskId === null && e.assignedTaskId !== 'bugfix');
@@ -122,14 +126,14 @@ export function processTick(store: GameStore): void {
         };
 
         for (const pillar of pillars) {
-          const points = contrib[pillar] * crunchMultiplier * 0.1;
+          const points = contrib[pillar] * crunchMultiplier * 0.1 * TICK_SCALE;
           if (points > 0) {
             store.contributeToTask(task.id, pillar, points);
             c[pillar] += points;
           }
         }
 
-        const bugChance = getBugChancePerContribution(emp) * (task.isCrunching ? 1.5 : 1);
+        const bugChance = getBugChancePerContribution(emp) * (task.isCrunching ? 1.5 : 1) * TICK_SCALE;
         if (Math.random() < bugChance) {
           store.addTaskBugs(task.id, 1);
           c.bugsIntroduced += 1;
@@ -138,8 +142,7 @@ export function processTick(store: GameStore): void {
         contribs.push(c);
       }
     } else {
-      // Solo dev fallback
-      const soloRate = GAME_CONFIG.baseDevProgressPerTick * 0.3 * crunchMultiplier;
+      const soloRate = GAME_CONFIG.baseDevProgressPerTick * 0.3 * crunchMultiplier * TICK_SCALE;
       const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
       for (const pillar of pillars) {
         store.contributeToTask(task.id, pillar, soloRate);
@@ -152,7 +155,6 @@ export function processTick(store: GameStore): void {
   for (const task of freshAfterTasks.activeTasks) {
     if (task.type === 'patch' && task.progressPercent >= 100) {
       store.resetPatchTask(task.id);
-      // Boost the target game's player retention
       if (task.targetGameId) {
         const targetGame = freshAfterTasks.activeGames.find((g) => g.id === task.targetGameId);
         if (targetGame) {
@@ -168,7 +170,7 @@ export function processTick(store: GameStore): void {
   // 2b. Bugfix employees incrementally fix bugs
   const bugfixEmployees = state.employees.filter((e) => e.assignedTaskId === 'bugfix');
   if (bugfixEmployees.length > 0) {
-    const progressPerTick = 0.005; // per Devel point per tick
+    const progressPerTick = 0.005 * TICK_SCALE;
     for (const game of state.activeGames) {
       if (game.bugs.length === 0) continue;
       const updatedBugs = [...game.bugs];
@@ -231,7 +233,7 @@ export function processTick(store: GameStore): void {
     const newBugs: Bug[] = [];
 
     // Sales (with DLC boost)
-    let saleRate = getSaleRatePerTick(game, state);
+    let saleRate = getSaleRatePerTick(game, state) * TICK_SCALE;
     if (game.dlcSalesBoost > 0) saleRate *= (1 + game.dlcSalesBoost);
     let actualCopies = Math.max(0, Math.round(saleRate * 100) / 100);
     const doubleSaleChance = getUpgradeMultiplier('doubleSaleChance', state.unlockedStudioUpgrades, game.unlockedGameUpgrades) - 1;
@@ -262,10 +264,10 @@ export function processTick(store: GameStore): void {
     let playerDecayRate = 0;
     if (game.phase === 'decline') {
       const declineMultiplier = getUpgradeMultiplier('declineRateMultiplier', state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
-      playerDecayRate = 0.002 * declineMultiplier;
+      playerDecayRate = 0.002 * declineMultiplier * TICK_SCALE;
       if (game.isLiveService) playerDecayRate *= GAME_CONFIG.liveServiceDeclineSlowdown;
     } else if (game.phase === 'peak') {
-      playerDecayRate = 0.0005;
+      playerDecayRate = 0.0005 * TICK_SCALE;
     }
 
     if (playerDecayRate > 0) {
@@ -277,23 +279,22 @@ export function processTick(store: GameStore): void {
       }
     }
 
-    // Bug spawning with decay
+    // Bug spawning with decay (decay once per day)
     let bugRateDecay = game.bugRateDecay;
-    if (phaseTicks % 24 === 0) {
+    if (isNewDay(fresh.calendar)) {
       bugRateDecay = Math.max(GAME_CONFIG.bugMinDecay, bugRateDecay * GAME_CONFIG.bugDecayPerDay);
     }
     const bugRateMultiplier = getBugRateMultiplier(state.employees);
     const bugUpgradeMultiplier = getUpgradeMultiplier('bugRateMultiplier', state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
     const bugChance = (GAME_CONFIG.bugBaseRatePerTick + totalPlayers * GAME_CONFIG.bugPlayerScaling) *
-      bugRateMultiplier * bugUpgradeMultiplier * bugRateDecay;
+      bugRateMultiplier * bugUpgradeMultiplier * bugRateDecay * TICK_SCALE;
     if (Math.random() < bugChance) {
       const severity = randomBugSeverity();
       newBugs.push({
         id: generateBugId(), gameId: game.id, severity,
         name: randomBugName(),
         fixCost: Math.round(GAME_CONFIG.bugFixBaseCost * severityCostMultiplier(severity)),
-        fixTimeHours: Math.round(GAME_CONFIG.bugFixBaseHours * severityCostMultiplier(severity)),
-        fixProgressHours: 0, fixProgress: 0, assignedFixerId: null, spawnedAt: Date.now(),
+        fixProgress: 0, assignedFixerId: null, spawnedAt: Date.now(),
       });
     }
 
@@ -310,9 +311,9 @@ export function processTick(store: GameStore): void {
       mergedRegionalFans[region as RegionId] = (mergedRegionalFans[region as RegionId] ?? 0) + count;
     }
 
-    // DLC sales boost decay (~0.02 per game-day)
+    // DLC sales boost decay (once per day)
     let dlcSalesBoost = game.dlcSalesBoost;
-    if (dlcSalesBoost > 0 && phaseTicks % 24 === 0) {
+    if (dlcSalesBoost > 0 && isNewDay(fresh.calendar)) {
       dlcSalesBoost = Math.max(0, dlcSalesBoost - 0.02);
     }
 
@@ -333,7 +334,8 @@ export function processTick(store: GameStore): void {
     totalTickRevenue += tickRevenue;
     totalNewFans += newGameFans + newStudioFans;
 
-    const researchPerTick = GAME_CONFIG.researchPointsPerGameDay / 24;
+    // Research: scale to per-tick (ticksPerDay ticks in a day)
+    const researchPerTick = GAME_CONFIG.researchPointsPerGameDay / CALENDAR_CONFIG.ticksPerDay;
     if (researchPerTick > 0) {
       store.addResearchPoints(researchPerTick);
       totalRP += researchPerTick;
@@ -342,8 +344,8 @@ export function processTick(store: GameStore): void {
 
   // Daily rate tracking
   const monthlyCosts = getTotalMonthlyCosts(state);
-  const hourlyCostRate = monthlyCosts / (30 * 24);
-  store.trackDailyRate(totalTickRevenue - hourlyCostRate, totalNewFans, totalRP);
+  const costPerTick = monthlyCosts / (30 * CALENDAR_CONFIG.ticksPerDay);
+  store.trackDailyRate(totalTickRevenue - costPerTick, totalNewFans, totalRP);
 
   // Bankruptcy check
   if (store.money <= GAME_CONFIG.bankruptcyThreshold) {

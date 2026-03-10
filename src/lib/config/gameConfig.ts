@@ -2,8 +2,7 @@ export const GAME_CONFIG = {
   startingMoneyOptions: [5_000, 10_000, 15_000, 25_000] as const,
   defaultStartingMoney: 10_000,
 
-  // Tick timing (calendar drives everything)
-  ticksPerGameHour: 1,
+  // Tick timing (calendar drives everything — 4 ticks per day)
 
   // Game development
   baseDevProgressPerTick: 0.05,   // % per tick per total Devel skill point
@@ -27,10 +26,8 @@ export const GAME_CONFIG = {
   bugBaseRatePerTick: 0.01,       // base chance of a bug spawning per tick
   bugPlayerScaling: 0.0001,       // additional bug chance per active player
   bugFixBaseCost: 500,
-  bugFixBaseHours: 24,            // in-game hours
-  bugDecayPerDay: 0.97,           // multiply bug spawn rate by this each game-day
-  bugMinDecay: 0.1,              // floor — bugs never fully stop spawning
-  bugfixTicksPerDevelPoint: 48,   // game-hours for a bugfix employee to fix 1 bug per Devel point
+  bugDecayPerDay: 0.97,
+  bugMinDecay: 0.1,
 
   // Research
   researchPointsPerGameDay: 0.5,  // earned while a game is online

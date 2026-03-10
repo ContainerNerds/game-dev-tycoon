@@ -121,7 +121,7 @@ export default function BugsTab() {
                         <Progress value={fixPct} className="h-1.5" />
                       )}
                       <div className="text-xs text-muted-foreground">
-                        Fix cost: ${bug.fixCost.toLocaleString()} &middot; {bug.fixTimeHours}h to fix
+                        Fix cost: ${bug.fixCost.toLocaleString()}
                       </div>
                     </div>
                     <Button size="sm" variant="outline" className="cursor-pointer shrink-0" onClick={() => setMiniGameBug(bug)}>Fix</Button>

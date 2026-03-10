@@ -1,5 +1,5 @@
 import type { StudioState } from '@/lib/game/types';
-import { getMonthName } from '@/lib/game/calendarSystem';
+import { formatDate } from '@/lib/game/calendarSystem';
 
 const SAVE_VERSION = 2;
 const SLOT_KEY_PREFIX = 'game-dev-tycoon-slot-';
@@ -37,7 +37,7 @@ function buildMeta(state: StudioState): SaveMeta {
     studioName: state.studioName,
     ceoName: state.playerName,
     balance: Math.floor(state.money),
-    yearMonth: `${getMonthName(state.calendar.month)} ${state.calendar.year}`,
+    yearMonth: formatDate(state.calendar),
     gamesCompleted: state.completedGames.length,
     activeGameNames: state.activeGames.map((g) => g.name),
   };

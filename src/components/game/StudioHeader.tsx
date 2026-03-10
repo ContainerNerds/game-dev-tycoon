@@ -17,7 +17,6 @@ const SPEED_LABELS: Record<GameSpeed, string> = {
   0: 'Paused',
   1: '1x',
   2: '2x',
-  4: '2x',
 };
 
 interface StudioHeaderProps {
@@ -121,16 +120,10 @@ export default function StudioHeader({ slotId, onMenuClick }: StudioHeaderProps)
 
       {/* Row 2: Mobile-only secondary info + calendar */}
       <div className="flex items-center gap-3 text-xs">
-        {/* Fans & RP on mobile */}
         <span className="text-purple-400 sm:hidden">{Math.floor(studioFans).toLocaleString()} fans</span>
         <span className="text-blue-400 sm:hidden">{researchPoints.toFixed(1)} RP</span>
         <div className="ml-auto font-mono text-foreground text-xs sm:text-sm">
-          <span>{formatDate(calendar)}</span>
-          <span className="text-muted-foreground ml-1 sm:ml-2">
-            <span className="sm:hidden">D{calendar.day}</span>
-            <span className="hidden sm:inline">Day {calendar.day},</span>
-            {' '}{String(calendar.hour).padStart(2, '0')}:00
-          </span>
+          {formatDate(calendar)}
         </div>
       </div>
     </header>

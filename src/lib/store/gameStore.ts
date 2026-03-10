@@ -29,7 +29,7 @@ function createInitialCalendar(): CalendarState {
     year: CALENDAR_CONFIG.startYear,
     month: CALENDAR_CONFIG.startMonth,
     day: CALENDAR_CONFIG.startDay,
-    hour: CALENDAR_CONFIG.startHour,
+    tickInDay: 0,
     speed: 0,
     monthEndPending: false,
     lastMonthReport: null,
@@ -223,9 +223,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   advanceTick: () => set((s) => {
     const cal = { ...s.calendar };
-    cal.hour += CALENDAR_CONFIG.hoursPerTick;
-    if (cal.hour >= CALENDAR_CONFIG.hoursPerDay) {
-      cal.hour = 0;
+    cal.tickInDay += 1;
+    if (cal.tickInDay >= CALENDAR_CONFIG.ticksPerDay) {
+      cal.tickInDay = 0;
       cal.day += 1;
       const daysInCurrentMonth = CALENDAR_CONFIG.daysInMonth[cal.month];
       if (cal.day > daysInCurrentMonth) {
@@ -497,7 +497,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const accMoney = s._dayAccMoney + moneyDelta;
     const accFans = s._dayAccFans + fansDelta;
     const accRP = s._dayAccRP + rpDelta;
-    if (counter >= 24) {
+    if (counter >= CALENDAR_CONFIG.ticksPerDay) {
       return {
         dailyRates: {
           moneyPerDay: Math.round(accMoney),
@@ -517,7 +517,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   })),
 
   refreshCandidatePool: () => set((s) => ({
-    lastCandidateRefreshDay: s.calendar.day + (s.calendar.month - 1) * 30 + (s.calendar.year - 2040) * 360,
+    lastCandidateRefreshDay: s.calendar.day + (s.calendar.month - 1) * 30 + (s.calendar.year - 1) * 360,
   })),
 
   setState: (state) => set(state),

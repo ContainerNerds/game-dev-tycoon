@@ -32,7 +32,7 @@ export type EmployeeTitle =
   | 'DevOps'
   | 'Generalist';
 
-export type GameSpeed = 0 | 1 | 2 | 4;
+export type GameSpeed = 0 | 1 | 2;
 
 export type GameLifecyclePhase = 'growth' | 'peak' | 'decline' | 'retired';
 
@@ -155,10 +155,8 @@ export interface Bug {
   severity: BugSeverity;
   name: string;
   fixCost: number;
-  fixTimeHours: number;
-  fixProgressHours: number;
   fixProgress: number;          // 0–1, auto-fix progress by bugfix employees
-  assignedFixerId: string | null; // employee ID currently fixing this bug
+  assignedFixerId: string | null;
   spawnedAt: number;
 }
 
@@ -303,7 +301,7 @@ export interface CalendarState {
   year: number;
   month: number;
   day: number;
-  hour: number;
+  tickInDay: number;   // 0–3 (4 ticks per day)
   speed: GameSpeed;
   monthEndPending: boolean;
   lastMonthReport: MonthlyReport | null;
