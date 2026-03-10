@@ -96,7 +96,6 @@ export function GameCreationWizard({ onStart, onBack, targetSlotId }: GameCreati
       progressPercent: 0,
       bugsFound: 0,
       assignedEmployeeIds: [],
-      autoAssign: true,
       startMonth: cal.month,
       startYear: cal.year,
       isCrunching: false,

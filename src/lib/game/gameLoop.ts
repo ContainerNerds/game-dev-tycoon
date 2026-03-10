@@ -155,6 +155,21 @@ export function processTick(store: GameStore): void {
     store.updateEmployees(updatedEmployees);
   }
 
+  // Resolve auto-assigned employees to the first incomplete task
+  {
+    const latestState = useGameStore.getState();
+    const firstIncompleteTask = latestState.activeTasks.find(
+      (t) => t.progressPercent < 100 || t.type === 'patch'
+    );
+    const hasWork = !!firstIncompleteTask;
+    const updatedEmps = latestState.employees.map((emp) => {
+      if (!emp.autoAssign || emp.onVacation) return emp;
+      const activity = hasWork ? 'developing' as const : 'idle' as const;
+      return { ...emp, activity };
+    });
+    store.updateEmployees(updatedEmps);
+  }
+
   // Drain stamina for working employees each tick
   {
     const latestState = useGameStore.getState();
@@ -170,6 +185,8 @@ export function processTick(store: GameStore): void {
   const TICK_SCALE = 6;
   const contribs: StaffContribution[] = [];
   const currentEmployees = useGameStore.getState().employees;
+  const autoAssignedEmployees = currentEmployees.filter((e) => e.autoAssign && !e.onVacation && e.assignedTaskId === null);
+  let autoAssignedUsed = false;
 
   for (const task of state.activeTasks) {
     if (task.progressPercent >= 100 && task.type !== 'patch') continue;
@@ -177,9 +194,9 @@ export function processTick(store: GameStore): void {
     const crunchMultiplier = task.isCrunching ? GAME_CONFIG.crunchSpeedMultiplier : 1;
 
     let taskEmployees = currentEmployees.filter((e) => e.assignedTaskId === task.id && !e.onVacation);
-    if (task.autoAssign) {
-      const unassigned = currentEmployees.filter((e) => e.assignedTaskId === null && !e.onVacation);
-      taskEmployees = [...taskEmployees, ...unassigned];
+    if (!autoAssignedUsed && autoAssignedEmployees.length > 0) {
+      taskEmployees = [...taskEmployees, ...autoAssignedEmployees];
+      autoAssignedUsed = true;
     }
 
     // Engine bonus for game tasks

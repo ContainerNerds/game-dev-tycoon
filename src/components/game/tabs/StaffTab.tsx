@@ -63,6 +63,7 @@ export default function StaffTab() {
   const hireEmployee = useGameStore((s) => s.hireEmployee);
   const fireEmployee = useGameStore((s) => s.fireEmployee);
   const assignEmployee = useGameStore((s) => s.assignEmployee);
+  const setEmployeeAutoAssign = useGameStore((s) => s.setEmployeeAutoAssign);
   const sendOnVacation = useGameStore((s) => s.sendOnVacation);
 
   const currentDay = calendar.day + (calendar.month - 1) * 30 + (calendar.year - 1) * 360;
@@ -202,20 +203,20 @@ export default function StaffTab() {
                   </div>
 
                   <div className="flex items-center gap-1 flex-wrap">
-                    <Button size="sm" variant={emp.assignedTaskId === null && !emp.onVacation ? 'default' : 'ghost'}
+                    <Button size="sm" variant={emp.autoAssign ? 'default' : 'ghost'}
                       className="h-6 text-xs px-2 cursor-pointer"
                       disabled={emp.onVacation}
-                      onClick={() => assignEmployee(emp.id, null)}>
-                      Idle
+                      onClick={() => setEmployeeAutoAssign(emp.id)}>
+                      Auto
                     </Button>
-                    <Button size="sm" variant={emp.assignedTaskId === 'bugfix' ? 'default' : 'ghost'}
+                    <Button size="sm" variant={!emp.autoAssign && emp.assignedTaskId === 'bugfix' ? 'default' : 'ghost'}
                       className="h-6 text-xs px-2 cursor-pointer"
                       disabled={emp.onVacation}
                       onClick={() => assignEmployee(emp.id, 'bugfix')}>
                       Bugs
                     </Button>
                     {activeTasks.map((t) => (
-                      <Button key={t.id} size="sm" variant={emp.assignedTaskId === t.id ? 'default' : 'ghost'}
+                      <Button key={t.id} size="sm" variant={!emp.autoAssign && emp.assignedTaskId === t.id ? 'default' : 'ghost'}
                         className="h-6 text-xs px-2 cursor-pointer truncate max-w-[80px]"
                         disabled={emp.onVacation}
                         onClick={() => assignEmployee(emp.id, t.id)}

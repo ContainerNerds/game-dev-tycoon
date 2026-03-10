@@ -1,7 +1,7 @@
 import type { StudioState } from '@/lib/game/types';
 import { formatDate } from '@/lib/game/calendarSystem';
 
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 const SLOT_KEY_PREFIX = 'game-dev-tycoon-slot-';
 const SETTINGS_KEY = 'game-dev-tycoon-settings';
 
@@ -58,14 +58,35 @@ export function saveToSlot(slotId: number, state: StudioState): void {
   }
 }
 
+function migrateState(state: StudioState, fromVersion: number): StudioState {
+  if (fromVersion < 3) {
+    // v2 → v3: autoAssign moved from StudioTask to Employee
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = state as any;
+    raw.employees = raw.employees.map((e: any) => ({
+      ...e,
+      autoAssign: e.autoAssign ?? true,
+    }));
+    raw.candidatePool = raw.candidatePool.map((e: any) => ({
+      ...e,
+      autoAssign: e.autoAssign ?? true,
+    }));
+    raw.activeTasks = raw.activeTasks.map(({ autoAssign: _removed, ...rest }: any) => rest);
+  }
+  return state;
+}
+
 export function loadFromSlot(slotId: number): StudioState | null {
   try {
     const raw = localStorage.getItem(`${SLOT_KEY_PREFIX}${slotId}`);
     if (!raw) return null;
     const envelope: SaveEnvelope = JSON.parse(raw);
-    if (envelope.version !== SAVE_VERSION) {
-      console.warn(`Save version mismatch in slot ${slotId}`);
+    if (envelope.version > SAVE_VERSION) {
+      console.warn(`Save version too new in slot ${slotId}`);
       return null;
+    }
+    if (envelope.version < SAVE_VERSION) {
+      envelope.state = migrateState(envelope.state, envelope.version);
     }
     return envelope.state;
   } catch (e) {
@@ -79,7 +100,7 @@ export function getSlotMeta(slotId: number): { meta: SaveMeta; timestamp: number
     const raw = localStorage.getItem(`${SLOT_KEY_PREFIX}${slotId}`);
     if (!raw) return null;
     const envelope: SaveEnvelope = JSON.parse(raw);
-    if (envelope.version !== SAVE_VERSION) return null;
+    if (envelope.version > SAVE_VERSION) return null;
     return { meta: envelope.meta, timestamp: envelope.timestamp };
   } catch {
     return null;

@@ -50,6 +50,7 @@ export function createPlayerEmployee(playerName: string): Employee {
     skills: { graphics: 2, sound: 1, gameplay: 2, polish: 1 },
     assignedTaskId: null,
     activity: 'idle',
+    autoAssign: true,
     isPlayer: true,
     hireCost: 0,
     monthlySalary: 0,
@@ -141,6 +142,7 @@ interface GameActions {
   hireEmployee: (employee: Employee) => void;
   fireEmployee: (employeeId: string) => void;
   assignEmployee: (employeeId: string, taskId: string | null) => void;
+  setEmployeeAutoAssign: (employeeId: string) => void;
   sendOnVacation: (employeeId: string) => void;
   updateEmployees: (employees: Employee[]) => void;
 
@@ -290,7 +292,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   removeTask: (taskId) => set((s) => ({
     activeTasks: s.activeTasks.filter((t) => t.id !== taskId),
     employees: s.employees.map((e) =>
-      e.assignedTaskId === taskId ? { ...e, assignedTaskId: null, activity: 'idle' as const } : e
+      e.assignedTaskId === taskId ? { ...e, assignedTaskId: null, activity: 'idle' as const, autoAssign: true } : e
     ),
   })),
 
@@ -360,7 +362,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       activeGames: [...s.activeGames, activeGame],
       activeTasks: s.activeTasks.filter((t) => t.id !== taskId),
       employees: s.employees.map((e) =>
-        e.assignedTaskId === taskId ? { ...e, assignedTaskId: null } : e
+        e.assignedTaskId === taskId ? { ...e, assignedTaskId: null, activity: 'idle' as const, autoAssign: true } : e
       ),
     };
   }),
@@ -376,7 +378,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           : g
       ),
       employees: s.employees.map((e) =>
-        e.assignedTaskId === taskId ? { ...e, assignedTaskId: null } : e
+        e.assignedTaskId === taskId ? { ...e, assignedTaskId: null, activity: 'idle' as const, autoAssign: true } : e
       ),
     };
   }),
@@ -445,14 +447,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
       let activity: Employee['activity'] = 'idle';
       if (taskId === 'bugfix') activity = 'bugfixing';
       else if (taskId) activity = 'developing';
-      return { ...e, assignedTaskId: taskId, activity };
+      return { ...e, assignedTaskId: taskId, activity, autoAssign: false };
     }),
+  })),
+
+  setEmployeeAutoAssign: (employeeId) => set((s) => ({
+    employees: s.employees.map((e) =>
+      e.id === employeeId ? { ...e, assignedTaskId: null, activity: 'idle' as const, autoAssign: true } : e
+    ),
   })),
 
   sendOnVacation: (employeeId) => set((s) => ({
     employees: s.employees.map((e) =>
       e.id === employeeId
-        ? { ...e, assignedTaskId: null, activity: 'vacation' as const, onVacation: true, vacationDaysLeft: 14 }
+        ? { ...e, assignedTaskId: null, activity: 'vacation' as const, autoAssign: true, onVacation: true, vacationDaysLeft: 14 }
         : e
     ),
   })),

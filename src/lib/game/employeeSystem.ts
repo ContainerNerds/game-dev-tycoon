@@ -49,6 +49,7 @@ export function generateEmployee(): Employee {
     skills,
     assignedTaskId: null,
     activity: 'idle',
+    autoAssign: true,
     isPlayer: false,
     hireCost: totalPoints * EMPLOYEE_CONFIG.hireCostPerSkillPoint,
     monthlySalary: EMPLOYEE_CONFIG.salaryBaseline + totalPoints * EMPLOYEE_CONFIG.salaryPerSkillPoint,

@@ -206,7 +206,6 @@ export default function TaskBar() {
       progressPercent: 0,
       bugsFound: 0,
       assignedEmployeeIds: [],
-      autoAssign: true,
       isCrunching: false,
       ...(taskType === 'game' ? {
         genre, style: topic, topic, mode: gameMode, platforms: ['PC'] as const,

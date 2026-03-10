@@ -115,6 +115,7 @@ export interface Employee {
   skills: EmployeeSkills;
   assignedTaskId: string | null;  // null = unassigned, 'bugfix' = bug duty, or a task ID
   activity: EmployeeActivity;
+  autoAssign: boolean;            // true = auto-assigned to first active task
   isPlayer: boolean;
   hireCost: number;
   monthlySalary: number;
@@ -176,7 +177,6 @@ export interface StudioTask {
   progressPercent: number;
   bugsFound: number;
   assignedEmployeeIds: string[];
-  autoAssign: boolean;
   isCrunching: boolean;
   startMonth: number;
   startYear: number;
