@@ -1,0 +1,13 @@
+---
+description: Always commit changes after making them
+alwaysApply: true
+---
+
+# Commit After Changes
+
+After making code changes, always create a git commit before ending your turn.
+
+- Follow the repo's commit message style: `feat:`, `fix:`, `refactor:`, `chore:`
+- Write a concise message (1-2 sentences) explaining **why**, not just what
+- Group related changes into a single commit; unrelated changes get separate commits
+- Never commit files that contain secrets (`.env`, credentials, API keys)
