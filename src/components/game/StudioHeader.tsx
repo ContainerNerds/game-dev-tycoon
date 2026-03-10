@@ -45,7 +45,7 @@ export default function StudioHeader({ slotId, onMenuClick }: StudioHeaderProps)
 
   return (
     <header className="border-b border-border bg-card px-3 py-1.5 sm:px-4 sm:py-2 shrink-0 space-y-1">
-      {/* Row 1: Name, Money, Speed controls */}
+      {/* Row 1: Name, metrics (sm+), speed controls, date (sm+), save */}
       <div className="flex items-center gap-2 sm:gap-4">
         <button
           type="button"
@@ -57,18 +57,15 @@ export default function StudioHeader({ slotId, onMenuClick }: StudioHeaderProps)
 
         <Separator orientation="vertical" className="h-5 sm:h-6 hidden sm:block" />
 
-        <div className="text-green-400 font-mono text-xs sm:text-sm">
+        <div className="hidden sm:block text-green-400 font-mono text-sm">
           ${Math.floor(money).toLocaleString()}
-          <span className="hidden sm:inline">
-            {dailyRates.moneyPerDay !== 0 && (
-              <span className="text-xs text-green-400/60 ml-1">
-                {formatRate(dailyRates.moneyPerDay, '$')}
-              </span>
-            )}
-          </span>
+          {dailyRates.moneyPerDay !== 0 && (
+            <span className="text-xs text-green-400/60 ml-1">
+              {formatRate(dailyRates.moneyPerDay, '$')}
+            </span>
+          )}
         </div>
 
-        {/* Fans & RP — hidden on mobile, shown on sm+ */}
         <div className="hidden sm:flex items-center gap-4 text-sm">
           <div className="text-purple-400">
             {Math.floor(studioFans).toLocaleString()} fans
@@ -107,6 +104,12 @@ export default function StudioHeader({ slotId, onMenuClick }: StudioHeaderProps)
             ))}
           </div>
 
+          <Separator orientation="vertical" className="h-4 hidden sm:block" />
+
+          <div className="hidden sm:block font-mono text-foreground text-sm">
+            {formatDate(calendar)}
+          </div>
+
           <Button
             size="sm"
             variant="outline"
@@ -118,13 +121,16 @@ export default function StudioHeader({ slotId, onMenuClick }: StudioHeaderProps)
         </div>
       </div>
 
-      {/* Row 2: Mobile-only secondary info + calendar */}
-      <div className="flex items-center gap-3 text-xs">
-        <span className="text-purple-400 sm:hidden">{Math.floor(studioFans).toLocaleString()} fans</span>
-        <span className="text-blue-400 sm:hidden">{researchPoints.toFixed(1)} RP</span>
-        <div className="ml-auto font-mono text-foreground text-xs sm:text-sm">
+      {/* Row 2: Mobile-only — metrics + date */}
+      <div className="flex items-center gap-3 text-xs sm:hidden">
+        <span className="text-green-400 font-mono">
+          ${Math.floor(money).toLocaleString()}
+        </span>
+        <span className="text-purple-400">{Math.floor(studioFans).toLocaleString()} fans</span>
+        <span className="text-blue-400">{researchPoints.toFixed(1)} RP</span>
+        <span className="ml-auto font-mono text-foreground">
           {formatDate(calendar)}
-        </div>
+        </span>
       </div>
     </header>
   );
