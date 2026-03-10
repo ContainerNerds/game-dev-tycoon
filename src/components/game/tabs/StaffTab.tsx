@@ -19,9 +19,9 @@ import {
 } from '@/components/ui/context-menu';
 import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/lib/store/gameStore';
-import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
+import { PACK_TYPES, type PackTypeId } from '@/lib/config/employeeConfig';
 import { generatePack } from '@/lib/game/employeeSystem';
-import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, Zap, Plus, Volume2, VolumeX } from 'lucide-react';
+import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, Zap, Plus, Volume2, VolumeX, Crown, Gem } from 'lucide-react';
 import type { Employee, EmployeeActivity } from '@/lib/game/types';
 import EmployeeCard from '@/components/game/EmployeeCard';
 import EmployeeDetailModal from '@/components/game/EmployeeDetailModal';
@@ -114,15 +114,16 @@ export default function StaffTab() {
 
   const handleOpenFreePack = () => {
     if (!freePackAvailable) return;
-    const pack = generatePack();
+    const pack = generatePack('standard');
     openFreePack(pack);
     scheduleReveals(pack);
   };
 
-  const handleBuyPack = () => {
-    if (money < EMPLOYEE_CONFIG.packBuyCost) return;
-    const pack = generatePack();
-    buyPack(pack);
+  const handleBuyPack = (packTypeId: PackTypeId) => {
+    const packDef = PACK_TYPES[packTypeId];
+    if (money < packDef.cost) return;
+    const pack = generatePack(packTypeId);
+    buyPack(pack, packDef.cost);
     scheduleReveals(pack);
   };
 
@@ -181,22 +182,42 @@ export default function StaffTab() {
               {sfxMuted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
             </Button>
           </h4>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {freePackAvailable && (
               <Button size="sm" className="text-xs cursor-pointer" onClick={handleOpenFreePack}>
                 <Package className="h-3 w-3 mr-1" />
-                Open Free Pack
+                Free Pack
               </Button>
             )}
             <Button
               size="sm"
               variant="outline"
               className="text-xs cursor-pointer"
-              disabled={money < EMPLOYEE_CONFIG.packBuyCost}
-              onClick={handleBuyPack}
+              disabled={money < PACK_TYPES.standard.cost}
+              onClick={() => handleBuyPack('standard')}
             >
               <ShoppingCart className="h-3 w-3 mr-1" />
-              Buy Pack (${EMPLOYEE_CONFIG.packBuyCost.toLocaleString()})
+              Standard (${PACK_TYPES.standard.cost.toLocaleString()})
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs cursor-pointer border-purple-500/50 text-purple-400 hover:bg-purple-500/10"
+              disabled={money < PACK_TYPES.epic.cost}
+              onClick={() => handleBuyPack('epic')}
+            >
+              <Gem className="h-3 w-3 mr-1" />
+              Epic (${PACK_TYPES.epic.cost.toLocaleString()})
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs cursor-pointer border-amber-500/50 text-amber-400 hover:bg-amber-500/10"
+              disabled={money < PACK_TYPES.legendary.cost}
+              onClick={() => handleBuyPack('legendary')}
+            >
+              <Crown className="h-3 w-3 mr-1" />
+              Legendary (${PACK_TYPES.legendary.cost.toLocaleString()})
             </Button>
           </div>
         </div>

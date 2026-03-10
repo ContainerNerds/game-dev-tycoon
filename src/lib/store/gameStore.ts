@@ -145,7 +145,7 @@ interface GameActions {
 
   // Employees & Packs
   openFreePack: (pack: Employee[]) => void;
-  buyPack: (pack: Employee[]) => void;
+  buyPack: (pack: Employee[], cost: number) => void;
   revealPackCard: (index: number) => void;
   grantFreePack: () => void;
   hireEmployee: (employee: Employee) => void;
@@ -445,10 +445,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     freePackAvailable: false,
   }),
 
-  buyPack: (pack) => set((s) => ({
+  buyPack: (pack, cost) => set((s) => ({
     currentPack: pack,
     packRevealed: new Array(pack.length).fill(false),
-    money: s.money - EMPLOYEE_CONFIG.packBuyCost,
+    money: s.money - cost,
   })),
 
   revealPackCard: (index) => set((s) => {

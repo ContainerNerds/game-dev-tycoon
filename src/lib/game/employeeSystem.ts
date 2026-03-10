@@ -1,5 +1,5 @@
 import type { Employee, EmployeeSkills, EmployeeTitle } from './types';
-import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
+import { EMPLOYEE_CONFIG, PACK_TYPES, type PackTypeId } from '@/lib/config/employeeConfig';
 import { type Rarity, RARITY_TIERS, RARITY_ORDER } from '@/lib/config/rarityConfig';
 
 function randomInt(min: number, max: number): number {
@@ -27,11 +27,11 @@ export function getEffectiveSkills(emp: Employee): EmployeeSkills {
 // Rarity Rolling
 // ============================================================
 
-export function rollRarity(): Rarity {
+export function rollRarity(customWeights?: Record<Rarity, number>): Rarity {
   const roll = Math.random();
   let cumulative = 0;
   for (const rarity of RARITY_ORDER) {
-    cumulative += RARITY_TIERS[rarity].weight;
+    cumulative += customWeights ? customWeights[rarity] : RARITY_TIERS[rarity].weight;
     if (roll < cumulative) return rarity;
   }
   return 'common';
@@ -163,8 +163,25 @@ function generateUniqueEmployee(): Employee {
 // Pack Generation (replaces candidate pool)
 // ============================================================
 
-export function generatePack(): Employee[] {
-  return Array.from({ length: EMPLOYEE_CONFIG.packSize }, () => generateEmployee());
+export function generatePack(packTypeId: PackTypeId = 'standard'): Employee[] {
+  const packDef = PACK_TYPES[packTypeId];
+  const pack: Employee[] = [];
+
+  for (const guaranteedRarity of packDef.guarantees) {
+    pack.push(generateEmployee(guaranteedRarity));
+  }
+
+  while (pack.length < packDef.size) {
+    const rarity = rollRarity(packDef.rarityWeights);
+    pack.push(generateEmployee(rarity));
+  }
+
+  for (let i = pack.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pack[i], pack[j]] = [pack[j], pack[i]];
+  }
+
+  return pack;
 }
 
 // ============================================================

@@ -1,4 +1,5 @@
 import type { EmployeeTitle } from '@/lib/game/types';
+import type { Rarity } from '@/lib/config/rarityConfig';
 
 export interface UniqueEmployeeDef {
   name: string;
@@ -6,6 +7,65 @@ export interface UniqueEmployeeDef {
   description: string;
   guaranteedSkills?: Partial<Record<'graphics' | 'sound' | 'gameplay' | 'polish', number>>;
 }
+
+export type PackTypeId = 'standard' | 'epic' | 'legendary';
+
+export interface PackTypeDef {
+  id: PackTypeId;
+  label: string;
+  cost: number;
+  size: number;
+  rarityWeights: Record<Rarity, number>;
+  guarantees: Rarity[];
+}
+
+export const PACK_TYPES: Record<PackTypeId, PackTypeDef> = {
+  standard: {
+    id: 'standard',
+    label: 'Standard Pack',
+    cost: 1_000,
+    size: 5,
+    rarityWeights: {
+      common: 0.50,
+      uncommon: 0.25,
+      rare: 0.15,
+      epic: 0.07,
+      legendary: 0.025,
+      unique: 0.005,
+    },
+    guarantees: [],
+  },
+  epic: {
+    id: 'epic',
+    label: 'Epic Pack',
+    cost: 5_000,
+    size: 5,
+    rarityWeights: {
+      common: 0.15,
+      uncommon: 0.20,
+      rare: 0.30,
+      epic: 0.22,
+      legendary: 0.08,
+      unique: 0.05,
+    },
+    guarantees: [],
+  },
+  legendary: {
+    id: 'legendary',
+    label: 'Legendary Pack',
+    cost: 15_000,
+    size: 5,
+    rarityWeights: {
+      common: 0.05,
+      uncommon: 0.10,
+      rare: 0.20,
+      epic: 0.28,
+      legendary: 0.22,
+      unique: 0.15,
+    },
+    guarantees: ['legendary'],
+  },
+};
 
 export const EMPLOYEE_CONFIG = {
   // ----------------------------------------------------------
@@ -23,7 +83,6 @@ export const EMPLOYEE_CONFIG = {
   // Pack system (replaces candidate pool)
   // ----------------------------------------------------------
   packSize: 5,
-  packBuyCost: 1000,
   freePacksPerMonth: 1,
 
   // ----------------------------------------------------------
