@@ -115,6 +115,7 @@ interface GameActions {
   // Tasks (unified: game dev, DLC, patch)
   addTask: (task: StudioTask) => void;
   removeTask: (taskId: string) => void;
+  updateTask: (taskId: string, updates: Partial<StudioTask>) => void;
   contributeToTask: (taskId: string, pillar: keyof PillarProgress, points: number) => void;
   addTaskBugs: (taskId: string, count: number) => void;
   toggleTaskCrunch: (taskId: string) => void;
@@ -287,8 +288,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   removeTask: (taskId) => set((s) => ({
     activeTasks: s.activeTasks.filter((t) => t.id !== taskId),
     employees: s.employees.map((e) =>
-      e.assignedTaskId === taskId ? { ...e, assignedTaskId: null } : e
+      e.assignedTaskId === taskId ? { ...e, assignedTaskId: null, activity: 'idle' as const } : e
     ),
+  })),
+
+  updateTask: (taskId, updates) => set((s) => ({
+    activeTasks: s.activeTasks.map((t) => t.id === taskId ? { ...t, ...updates } : t),
   })),
 
   contributeToTask: (taskId, pillar, points) => set((s) => ({

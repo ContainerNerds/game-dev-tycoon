@@ -4,7 +4,14 @@
 
 export type Genre = 'RPG' | 'Action' | 'Strategy' | 'Simulation' | 'Adventure' | 'Puzzle' | 'Sports';
 
-export type Style = 'Fantasy' | 'SciFi' | 'Horror' | 'Historical' | 'Modern' | 'Cyberpunk' | 'PostApocalyptic' | 'Cartoon';
+export type Topic = 'Fantasy' | 'SciFi' | 'Horror' | 'Historical' | 'Modern' | 'Cyberpunk' | 'PostApocalyptic' | 'Cartoon';
+
+/** @deprecated Use Topic instead */
+export type Style = Topic;
+
+export type GameSize = 'small' | 'medium' | 'large' | 'mmorpg';
+
+export type GameRating = 'E' | 'T' | 'M';
 
 export type Platform = 'PC' | 'Console' | 'Mobile';
 
@@ -117,6 +124,45 @@ export interface Employee {
 }
 
 // ============================================================
+// Development Phases (9 categories across 3 phases)
+// ============================================================
+
+export type DevPhase = 1 | 2 | 3;
+
+export interface PhaseCategories {
+  // Phase 1
+  engine: number;
+  gameplay: number;
+  storyQuests: number;
+  // Phase 2
+  dialogues: number;
+  levelDesign: number;
+  ai: number;
+  // Phase 3
+  worldDesign: number;
+  graphics: number;
+  sound: number;
+}
+
+export const PHASE_CATEGORIES: Record<DevPhase, (keyof PhaseCategories)[]> = {
+  1: ['engine', 'gameplay', 'storyQuests'],
+  2: ['dialogues', 'levelDesign', 'ai'],
+  3: ['worldDesign', 'graphics', 'sound'],
+};
+
+export const DEV_CATEGORY_LABELS: Record<keyof PhaseCategories, string> = {
+  engine: 'Engine',
+  gameplay: 'Gameplay',
+  storyQuests: 'Story/Quests',
+  dialogues: 'Dialogues',
+  levelDesign: 'Level Design',
+  ai: 'AI',
+  worldDesign: 'World Design',
+  graphics: 'Graphics',
+  sound: 'Sound',
+};
+
+// ============================================================
 // Studio Task (unified: game dev, DLC, patch)
 // ============================================================
 
@@ -137,11 +183,21 @@ export interface StudioTask {
   // Game task fields
   genre?: Genre;
   style?: Style;
+  topic?: Topic;
   mode?: GameMode;
   platforms?: Platform[];
   pillarWeights?: PillarWeights;
   devCostSpent?: number;
   engineId?: string;
+  gameSize?: GameSize;
+  gameRating?: GameRating;
+  // Phase development
+  currentPhase?: DevPhase;
+  phaseProgress?: PhaseCategories;
+  phaseWeights?: PhaseCategories;
+  developmentDaysTarget?: number;
+  developmentDaysElapsed?: number;
+  ticksInCurrentPhase?: number;
 }
 
 // ============================================================

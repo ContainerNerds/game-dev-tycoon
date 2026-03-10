@@ -12,7 +12,8 @@ import { calculateFanConversion } from './fanSystem';
 import { buildMonthlyReport, getTotalMonthlyCosts } from './calendarSystem';
 import { getEmployeePillarContribution, getBugChancePerContribution, generateCandidatePool, getStaminaEfficiency, drainStamina, processVacationDay } from './employeeSystem';
 import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
-import type { Bug, BugSeverity, RegionId, StaffContribution, ActiveGame } from './types';
+import type { Bug, BugSeverity, RegionId, StaffContribution, ActiveGame, DevPhase, PhaseCategories, StudioTask } from './types';
+import { PHASE_CATEGORIES } from './types';
 
 function generateBugId(): string {
   return `bug-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -75,6 +76,43 @@ function pickWeightedRegion(weights: Record<string, number>): string {
 }
 
 const isNewDay = (cal: { tickInDay: number }) => cal.tickInDay === 0;
+
+function processPhaseProgress(task: StudioTask, employeeCount: number, crunchMultiplier: number, efficiency: number): Partial<StudioTask> {
+  if (!task.currentPhase || !task.phaseProgress || !task.phaseWeights || !task.developmentDaysTarget) return {};
+
+  const phase = task.currentPhase;
+  const categories = PHASE_CATEGORIES[phase];
+  const ticksInPhase = (task.ticksInCurrentPhase ?? 0) + 1;
+  const daysElapsed = (task.developmentDaysElapsed ?? 0) + 0.25;
+  const phaseDays = task.developmentDaysTarget / 3;
+  const phaseTicks = phaseDays * 4;
+
+  const newProgress = { ...task.phaseProgress };
+
+  for (const cat of categories) {
+    const weight = task.phaseWeights[cat] / 100;
+    const basePoints = (0.5 + Math.random() * 0.5) * weight * employeeCount * crunchMultiplier * efficiency;
+    newProgress[cat] = (newProgress[cat] ?? 0) + basePoints;
+  }
+
+  let newPhase = phase;
+  let newTicksInPhase = ticksInPhase;
+
+  if (ticksInPhase >= phaseTicks && phase < 3) {
+    newPhase = (phase + 1) as DevPhase;
+    newTicksInPhase = 0;
+  }
+
+  const totalProgress = (daysElapsed / task.developmentDaysTarget) * 100;
+
+  return {
+    currentPhase: newPhase,
+    phaseProgress: newProgress,
+    ticksInCurrentPhase: newTicksInPhase,
+    developmentDaysElapsed: daysElapsed,
+    progressPercent: Math.min(100, totalProgress),
+  };
+}
 
 export function processTick(store: GameStore): void {
   const state = store;
@@ -186,6 +224,18 @@ export function processTick(store: GameStore): void {
       const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
       for (const pillar of pillars) {
         store.contributeToTask(task.id, pillar, soloRate);
+      }
+    }
+
+    // Advance phase-based development for game tasks
+    if (task.currentPhase && task.phaseProgress) {
+      const empCount = Math.max(1, taskEmployees.length);
+      const avgEfficiency = taskEmployees.length > 0
+        ? taskEmployees.reduce((sum, e) => sum + getStaminaEfficiency(e.stamina), 0) / taskEmployees.length
+        : 0.5;
+      const phaseUpdates = processPhaseProgress(task, empCount, crunchMultiplier, avgEfficiency);
+      if (Object.keys(phaseUpdates).length > 0) {
+        store.updateTask(task.id, phaseUpdates);
       }
     }
   }

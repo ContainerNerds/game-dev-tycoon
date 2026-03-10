@@ -15,10 +15,11 @@ import {
 } from '@/components/ui/dialog';
 import { useGameStore } from '@/lib/store/gameStore';
 import ReleaseModal from '@/components/game/ReleaseModal';
-import { ALL_GENRES, ALL_STYLES, getComboMultiplier } from '@/lib/config/genreStyleConfig';
+import { ALL_GENRES, ALL_STYLES, ALL_TOPICS, getComboMultiplier } from '@/lib/config/genreStyleConfig';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
+import { GAME_SIZE_CONFIG, ALL_GAME_SIZES, ALL_GAME_RATINGS } from '@/lib/config/gameSizeConfig';
 import { randomGameName } from '@/lib/config/nameConfig';
-import type { Genre, Style, GameMode, PillarWeights, StudioTask, TaskType } from '@/lib/game/types';
+import type { Genre, Topic, GameMode, GameSize, GameRating, PillarWeights, PhaseCategories, StudioTask, TaskType } from '@/lib/game/types';
 import {
   Zap, Paintbrush, Gamepad2, Volume2, Sparkles, Plus, Shuffle, Rocket,
   Archive, X,
@@ -73,6 +74,11 @@ function TaskRow({ task, onRelease }: { task: StudioTask; onRelease: (task: Stud
               {task.type.toUpperCase()}
             </Badge>
             <span className="text-xs sm:text-sm font-medium truncate">{task.name}</span>
+            {task.currentPhase && (
+              <Badge variant="outline" className="text-xs text-cyan-400 border-cyan-500/50 hidden sm:flex">
+                Phase {task.currentPhase}/3
+              </Badge>
+            )}
             {task.isCrunching && (
               <Badge variant="outline" className="text-xs text-orange-400 border-orange-500/50 hidden sm:flex">
                 <Zap className="h-3 w-3 mr-0.5" />Crunch
@@ -136,12 +142,23 @@ export default function TaskBar() {
   const [taskType, setTaskType] = useState<TaskType>('game');
   const [gameName, setGameName] = useState(randomGameName);
   const [genre, setGenre] = useState<Genre>('RPG');
-  const [style, setStyle] = useState<Style>('Fantasy');
+  const [topic, setTopic] = useState<Topic>('Fantasy');
   const [gameMode, setGameMode] = useState<GameMode>('standard');
+  const [gameSize, setGameSize] = useState<GameSize>('small');
+  const [gameRating, setGameRating] = useState<GameRating>('E');
   const [targetGameId, setTargetGameId] = useState('');
   const [pillars, setPillars] = useState<PillarWeights>({ graphics: 25, gameplay: 25, sound: 25, polish: 25 });
   const engines = useGameStore((s) => s.engines);
+  const money = useGameStore((s) => s.money);
+  const spendMoney = useGameStore((s) => s.spendMoney);
   const [selectedEngineId, setSelectedEngineId] = useState<string>('none');
+
+  const DEFAULT_PHASE_WEIGHTS: PhaseCategories = {
+    engine: 33, gameplay: 34, storyQuests: 33,
+    dialogues: 33, levelDesign: 34, ai: 33,
+    worldDesign: 33, graphics: 34, sound: 33,
+  };
+  const [phaseWeights, setPhaseWeights] = useState<PhaseCategories>(DEFAULT_PHASE_WEIGHTS);
 
   const canAddTask = activeTasks.length < maxParallelTasks;
 
@@ -164,7 +181,14 @@ export default function TaskBar() {
 
   const handleCreate = () => {
     const cal = useGameStore.getState().calendar;
-    const baseComplexity = taskType === 'game' ? 100 : taskType === 'dlc' ? 60 : 30;
+    const sizeDef = GAME_SIZE_CONFIG[gameSize];
+    const baseComplexity = taskType === 'game' ? sizeDef.baseComplexity : taskType === 'dlc' ? 60 : 30;
+    const devDaysTarget = taskType === 'game'
+      ? Math.round((sizeDef.devMonthsMin + sizeDef.devMonthsMax) / 2 * 30)
+      : taskType === 'dlc' ? 60 : 30;
+
+    if (taskType === 'game' && !spendMoney(sizeDef.cost)) return;
+
     const task: StudioTask = {
       id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       type: taskType,
@@ -185,9 +209,16 @@ export default function TaskBar() {
       autoAssign: true,
       isCrunching: false,
       ...(taskType === 'game' ? {
-        genre, style, mode: gameMode, platforms: ['PC'] as const,
-        pillarWeights: { ...pillars }, devCostSpent: 0,
+        genre, style: topic, topic, mode: gameMode, platforms: ['PC'] as const,
+        pillarWeights: { ...pillars }, devCostSpent: sizeDef.cost,
         engineId: selectedEngineId !== 'none' ? selectedEngineId : undefined,
+        gameSize, gameRating,
+        currentPhase: 1 as const,
+        phaseProgress: { engine: 0, gameplay: 0, storyQuests: 0, dialogues: 0, levelDesign: 0, ai: 0, worldDesign: 0, graphics: 0, sound: 0 },
+        phaseWeights: { ...phaseWeights },
+        developmentDaysTarget: devDaysTarget,
+        developmentDaysElapsed: 0,
+        ticksInCurrentPhase: 0,
       } : {}),
     };
     addTask(task);
@@ -195,7 +226,9 @@ export default function TaskBar() {
     setGameName(randomGameName());
   };
 
-  const comboMultiplier = taskType === 'game' ? getComboMultiplier(genre, style) : 0;
+  const comboMultiplier = taskType === 'game' ? getComboMultiplier(genre, topic) : 0;
+  const currentSizeDef = GAME_SIZE_CONFIG[gameSize];
+  const canAfford = taskType !== 'game' || money >= currentSizeDef.cost;
 
   return (
     <>
@@ -254,19 +287,45 @@ export default function TaskBar() {
 
             {taskType === 'game' && (
               <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Size</Label>
+                    <Select value={gameSize} onValueChange={(v) => setGameSize((v ?? 'small') as GameSize)}>
+                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {ALL_GAME_SIZES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {GAME_SIZE_CONFIG[s].label} (${GAME_SIZE_CONFIG[s].cost.toLocaleString()})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Rating</Label>
+                    <div className="flex gap-1">
+                      {ALL_GAME_RATINGS.map((r) => (
+                        <Button key={r} size="sm" variant={gameRating === r ? 'default' : 'outline'}
+                          className="flex-1 h-8 text-xs cursor-pointer" onClick={() => setGameRating(r)}>
+                          {r}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label className="text-xs">Genre</Label>
-                    <Select value={genre} onValueChange={(v) => setGenre(v as Genre)}>
+                    <Select value={genre} onValueChange={(v) => setGenre((v ?? 'RPG') as Genre)}>
                       <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>{ALL_GENRES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Style</Label>
-                    <Select value={style} onValueChange={(v) => setStyle(v as Style)}>
+                    <Label className="text-xs">Topic</Label>
+                    <Select value={topic} onValueChange={(v) => setTopic((v ?? 'Fantasy') as Topic)}>
                       <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>{ALL_STYLES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                      <SelectContent>{ALL_TOPICS.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
@@ -279,7 +338,7 @@ export default function TaskBar() {
                 </div>
                 {comboMultiplier > 0 && (
                   <p className={`text-xs text-center ${comboMultiplier >= 2 ? 'text-green-400' : comboMultiplier >= 1.5 ? 'text-blue-400' : 'text-muted-foreground'}`}>
-                    {genre} + {style} ({comboMultiplier}x)
+                    {genre} + {topic} ({comboMultiplier}x) &middot; {currentSizeDef.devMonthsMin}–{currentSizeDef.devMonthsMax} months
                   </p>
                 )}
                 {engines.filter((e) => e.completedAt !== null).length > 0 && (
@@ -315,7 +374,9 @@ export default function TaskBar() {
           </div>
           <DialogFooter>
             <Button variant="outline" className="cursor-pointer" onClick={() => setShowNewTask(false)}>Cancel</Button>
-            <Button className="cursor-pointer" disabled={!gameName.trim()} onClick={handleCreate}>Start</Button>
+            <Button className="cursor-pointer" disabled={!gameName.trim() || !canAfford} onClick={handleCreate}>
+              {taskType === 'game' ? `Start ($${currentSizeDef.cost.toLocaleString()})` : 'Start'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useGameStore } from '@/lib/store/gameStore';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
+import { GAME_SIZE_CONFIG } from '@/lib/config/gameSizeConfig';
 import { ALL_GENRES, ALL_STYLES, getComboMultiplier } from '@/lib/config/genreStyleConfig';
 import { randomStudioName, randomGameName, randomPlayerName } from '@/lib/config/nameConfig';
 import type { Genre, Style, Platform, PillarWeights, StudioTask, GameMode } from '@/lib/game/types';
@@ -74,8 +75,9 @@ export function GameCreationWizard({ onStart, onBack, targetSlotId }: GameCreati
   const handleCreate = () => {
     newGame(studioName, playerName || 'Player', startingMoney);
 
-    // Base complexity determines total points needed
-    const baseComplexity = 100;
+    const sizeDef = GAME_SIZE_CONFIG.small;
+    const baseComplexity = sizeDef.baseComplexity;
+    const devDaysTarget = Math.round((sizeDef.devMonthsMin + sizeDef.devMonthsMax) / 2 * 30);
     const pillarTargets = {
       graphics: Math.round((pillars.graphics / 100) * baseComplexity),
       gameplay: Math.round((pillars.gameplay / 100) * baseComplexity),
@@ -100,10 +102,19 @@ export function GameCreationWizard({ onStart, onBack, targetSlotId }: GameCreati
       isCrunching: false,
       genre,
       style,
+      topic: style,
       mode: gameMode,
       platforms: ['PC'],
       pillarWeights: pillars,
       devCostSpent: 0,
+      gameSize: 'small',
+      gameRating: 'E',
+      currentPhase: 1,
+      phaseProgress: { engine: 0, gameplay: 0, storyQuests: 0, dialogues: 0, levelDesign: 0, ai: 0, worldDesign: 0, graphics: 0, sound: 0 },
+      phaseWeights: { engine: 33, gameplay: 34, storyQuests: 33, dialogues: 33, levelDesign: 34, ai: 33, worldDesign: 33, graphics: 34, sound: 33 },
+      developmentDaysTarget: devDaysTarget,
+      developmentDaysElapsed: 0,
+      ticksInCurrentPhase: 0,
     };
 
     addTask(task);

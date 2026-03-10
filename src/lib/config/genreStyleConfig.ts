@@ -1,4 +1,4 @@
-import type { Genre, Style } from '@/lib/game/types';
+import type { Genre, Style, Topic } from '@/lib/game/types';
 
 interface GenreStyleEntry {
   genre: Genre;
@@ -62,6 +62,7 @@ export const GENRE_STYLE_COMBOS: GenreStyleEntry[] = [
 
 export const ALL_GENRES: Genre[] = ['RPG', 'Action', 'Strategy', 'Simulation', 'Adventure', 'Puzzle', 'Sports'];
 export const ALL_STYLES: Style[] = ['Fantasy', 'SciFi', 'Horror', 'Historical', 'Modern', 'Cyberpunk', 'PostApocalyptic', 'Cartoon'];
+export const ALL_TOPICS: Topic[] = ALL_STYLES;
 
 export function getComboMultiplier(genre: Genre, style: Style): number {
   const entry = GENRE_STYLE_COMBOS.find(c => c.genre === genre && c.style === style);
