@@ -15,6 +15,7 @@ import type {
   PillarProgress,
   ServerRack,
   StaffContribution,
+  GameEngine,
 } from '@/lib/game/types';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { OFFICE_CONFIG } from '@/lib/config/officeConfig';
@@ -77,6 +78,7 @@ export function createInitialState(studioName: string, playerName: string, start
     racks: [],
     employees: [player],
     candidatePool: [],
+    engines: [],
     office: createInitialOffice(),
     calendar: createInitialCalendar(),
     dailyRates: { moneyPerDay: 0, fansPerDay: 0, rpPerDay: 0 },
@@ -148,6 +150,10 @@ interface GameActions {
   unlockStudioUpgrade: (upgradeId: string) => void;
   unlockGameUpgrade: (gameId: string, upgradeId: string) => void;
 
+  // Engines
+  addEngine: (engine: GameEngine) => void;
+  updateEngine: (engineId: string, updates: Partial<GameEngine>) => void;
+
   // Bugs
   addBug: (gameId: string, bug: Bug) => void;
   removeBug: (gameId: string, bugId: string) => void;
@@ -209,6 +215,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       racks: state.racks,
       employees: state.employees,
       candidatePool: state.candidatePool,
+      engines: state.engines,
       office: state.office,
       calendar: state.calendar,
       dailyRates: state.dailyRates,
@@ -467,6 +474,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ? { ...g, unlockedGameUpgrades: [...g.unlockedGameUpgrades, upgradeId] }
         : g
     ),
+  })),
+
+  // ----------------------------------------------------------
+  // Engines
+  // ----------------------------------------------------------
+
+  addEngine: (engine) => set((s) => ({
+    engines: [...s.engines, engine],
+  })),
+
+  updateEngine: (engineId, updates) => set((s) => ({
+    engines: s.engines.map((e) => e.id === engineId ? { ...e, ...updates } : e),
   })),
 
   // ----------------------------------------------------------

@@ -35,6 +35,7 @@ const TASK_TYPE_COLORS: Record<TaskType, string> = {
   game: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
   dlc: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
   patch: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
+  engine: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50',
 };
 
 function TaskRow({ task, onRelease }: { task: StudioTask; onRelease: (task: StudioTask) => void }) {
@@ -139,6 +140,8 @@ export default function TaskBar() {
   const [gameMode, setGameMode] = useState<GameMode>('standard');
   const [targetGameId, setTargetGameId] = useState('');
   const [pillars, setPillars] = useState<PillarWeights>({ graphics: 25, gameplay: 25, sound: 25, polish: 25 });
+  const engines = useGameStore((s) => s.engines);
+  const [selectedEngineId, setSelectedEngineId] = useState<string>('none');
 
   const canAddTask = activeTasks.length < maxParallelTasks;
 
@@ -184,6 +187,7 @@ export default function TaskBar() {
       ...(taskType === 'game' ? {
         genre, style, mode: gameMode, platforms: ['PC'] as const,
         pillarWeights: { ...pillars }, devCostSpent: 0,
+        engineId: selectedEngineId !== 'none' ? selectedEngineId : undefined,
       } : {}),
     };
     addTask(task);
@@ -277,6 +281,22 @@ export default function TaskBar() {
                   <p className={`text-xs text-center ${comboMultiplier >= 2 ? 'text-green-400' : comboMultiplier >= 1.5 ? 'text-blue-400' : 'text-muted-foreground'}`}>
                     {genre} + {style} ({comboMultiplier}x)
                   </p>
+                )}
+                {engines.filter((e) => e.completedAt !== null).length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Engine</Label>
+                    <Select value={selectedEngineId} onValueChange={(v) => setSelectedEngineId(v ?? 'none')}>
+                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Engine</SelectItem>
+                        {engines.filter((e) => e.completedAt !== null).map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.name} v{e.version} (+{(e.graphicsBonus * 100).toFixed(0)}%)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </>
             )}

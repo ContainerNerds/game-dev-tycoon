@@ -144,6 +144,15 @@ export function processTick(store: GameStore): void {
       taskEmployees = [...taskEmployees, ...unassigned];
     }
 
+    // Engine bonus for game tasks
+    const engine = task.engineId ? state.engines.find((e) => e.id === task.engineId) : null;
+    const engineBonus = engine?.completedAt ? {
+      graphics: 1 + engine.graphicsBonus,
+      gameplay: 1 + engine.gameplayBonus,
+      sound: 1 + engine.soundBonus,
+      polish: 1 + engine.polishBonus,
+    } : { graphics: 1, gameplay: 1, sound: 1, polish: 1 };
+
     if (taskEmployees.length > 0) {
       for (const emp of taskEmployees) {
         const efficiency = getStaminaEfficiency(emp.stamina);
@@ -157,7 +166,7 @@ export function processTick(store: GameStore): void {
         };
 
         for (const pillar of pillars) {
-          const points = contrib[pillar] * crunchMultiplier * efficiency * 0.1 * TICK_SCALE;
+          const points = contrib[pillar] * crunchMultiplier * efficiency * engineBonus[pillar] * 0.1 * TICK_SCALE;
           if (points > 0) {
             store.contributeToTask(task.id, pillar, points);
             c[pillar] += points;
@@ -181,7 +190,7 @@ export function processTick(store: GameStore): void {
     }
   }
 
-  // Check for completed patch tasks — auto-reset
+  // Check for completed patch tasks — auto-reset; check engine tasks — complete engine
   const freshAfterTasks = useGameStore.getState();
   for (const task of freshAfterTasks.activeTasks) {
     if (task.type === 'patch' && task.progressPercent >= 100) {
@@ -195,6 +204,23 @@ export function processTick(store: GameStore): void {
           });
         }
       }
+    }
+    if (task.type === 'engine' && task.progressPercent >= 100 && task.targetGameId) {
+      const engine = freshAfterTasks.engines.find((e) => e.id === task.targetGameId);
+      if (engine) {
+        const versionMatch = task.name.match(/v(\d+)/);
+        const newVersion = versionMatch ? parseInt(versionMatch[1], 10) : engine.version + 1;
+        const bonusPerVersion = 0.05;
+        store.updateEngine(engine.id, {
+          version: newVersion,
+          graphicsBonus: newVersion * bonusPerVersion,
+          soundBonus: newVersion * bonusPerVersion,
+          gameplayBonus: newVersion * bonusPerVersion,
+          polishBonus: newVersion * bonusPerVersion,
+          completedAt: { year: fresh.calendar.year, month: fresh.calendar.month, day: fresh.calendar.day },
+        });
+      }
+      store.removeTask(task.id);
     }
   }
 

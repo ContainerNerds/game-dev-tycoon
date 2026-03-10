@@ -16,6 +16,7 @@ import PressTab from '@/components/game/tabs/PressTab';
 import StaffTab from '@/components/game/tabs/StaffTab';
 import OfficeTab from '@/components/game/tabs/OfficeTab';
 import FinancesTab from '@/components/game/tabs/FinancesTab';
+import EnginesTab from '@/components/game/tabs/EnginesTab';
 import { useGameTick } from '@/lib/game/useGameTick';
 import { useGameStore } from '@/lib/store/gameStore';
 import { loadSettings } from '@/lib/store/saveLoad';
@@ -68,6 +69,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
             <TabsTrigger value="bugs" className="cursor-pointer">Bugs</TabsTrigger>
             <TabsTrigger value="research" className="cursor-pointer">Research</TabsTrigger>
             <TabsTrigger value="press" className="cursor-pointer">Press</TabsTrigger>
+            <TabsTrigger value="engines" className="cursor-pointer">Engines</TabsTrigger>
             <TabsTrigger value="staff" className="cursor-pointer">Staff</TabsTrigger>
             <TabsTrigger value="office" className="cursor-pointer">Office</TabsTrigger>
           </TabsList>
@@ -80,6 +82,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
             <TabsContent value="bugs" className="mt-0"><BugsTab /></TabsContent>
             <TabsContent value="research" className="mt-0"><ResearchTab /></TabsContent>
             <TabsContent value="press" className="mt-0"><PressTab /></TabsContent>
+            <TabsContent value="engines" className="mt-0"><EnginesTab /></TabsContent>
             <TabsContent value="staff" className="mt-0"><StaffTab /></TabsContent>
             <TabsContent value="office" className="mt-0"><OfficeTab /></TabsContent>
           </div>

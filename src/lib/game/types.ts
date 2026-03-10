@@ -46,7 +46,24 @@ export type ServerType = 'colocated' | 'datacenter';
 
 export type GameMode = 'standard' | 'liveservice';
 
-export type TaskType = 'game' | 'dlc' | 'patch';
+export type TaskType = 'game' | 'dlc' | 'patch' | 'engine';
+
+// ============================================================
+// Game Engines
+// ============================================================
+
+export interface GameEngine {
+  id: string;
+  name: string;
+  version: number;
+  graphicsBonus: number;    // 0–1 multiplier bonus
+  soundBonus: number;
+  gameplayBonus: number;
+  polishBonus: number;
+  developmentCost: number;
+  developmentDays: number;
+  completedAt: { year: number; month: number; day: number } | null;
+}
 
 // ============================================================
 // Development Pillars
@@ -124,6 +141,7 @@ export interface StudioTask {
   platforms?: Platform[];
   pillarWeights?: PillarWeights;
   devCostSpent?: number;
+  engineId?: string;
 }
 
 // ============================================================
@@ -356,6 +374,7 @@ export interface StudioState {
 
   employees: Employee[];
   candidatePool: Employee[];
+  engines: GameEngine[];
 
   office: OfficeState;
   calendar: CalendarState;
