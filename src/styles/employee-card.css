@@ -1,7 +1,9 @@
 /* ============================================================
    Employee Trading Card – Holographic Effects
-   Inspired by simeydotme/pokemon-cards-css
-   Uses CSS custom properties set by JS mouse handlers:
+   Holo overlays are real DOM elements (.employee-card__holo-a/b)
+   inside __front so they share the same stacking context as the
+   card content — no cross-context z-index battles.
+   CSS custom properties set by JS mouse handlers:
      --mx: 0-1 (mouse X position within card)
      --my: 0-1 (mouse Y position within card)
    ============================================================ */
@@ -9,13 +11,10 @@
 .employee-card {
   --mx: 0.5;
   --my: 0.5;
-  --o: 0;          /* 1 when hovered */
 
   position: relative;
   border-radius: 12px;
   transition: transform 0.15s ease-out, box-shadow 0.3s ease;
-  transform-style: preserve-3d;
-  will-change: transform;
 }
 
 /* 3D tilt on hover */
@@ -53,18 +52,18 @@
   border-radius: 12px;
 }
 
-.employee-card__front {
-  overflow: hidden;
-}
-
+/* overflow:hidden is safe on __back (it just clips the ? mark).
+   Do NOT put overflow:hidden on __front — it's a CSS grouping property
+   that can break backface-visibility in some engines. Front-face content
+   is clipped by the content wrapper div instead. */
 .employee-card__back {
+  overflow: hidden;
   transform: rotateY(180deg);
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   border: 2px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
 }
 
 .employee-card__back::after {
@@ -74,16 +73,9 @@
   color: rgba(255, 255, 255, 0.15);
 }
 
-/* ---- Hide holo overlays while face-down ---- */
-.employee-card--face-down::before,
-.employee-card--face-down::after {
-  opacity: 0 !important;
-}
-
-/* ---- Holographic overlay (shared base) ---- */
-.employee-card::before,
-.employee-card::after {
-  content: '';
+/* ---- Holographic overlays (real divs inside __front) ---- */
+.employee-card__holo-a,
+.employee-card__holo-b {
   position: absolute;
   inset: 0;
   border-radius: 12px;
@@ -96,7 +88,7 @@
 /* ---- COMMON: no effect ---- */
 
 /* ---- UNCOMMON: subtle shimmer ---- */
-.employee-card[data-rarity="uncommon"]::after {
+[data-rarity="uncommon"] .employee-card__holo-b {
   background: linear-gradient(
     115deg,
     transparent 20%,
@@ -109,12 +101,12 @@
   background-position: calc(var(--mx) * 100%) calc(var(--my) * 100%);
 }
 
-.employee-card[data-rarity="uncommon"][data-interactive="true"]:hover::after {
+[data-rarity="uncommon"][data-interactive="true"]:hover .employee-card__holo-b {
   opacity: 1;
 }
 
 /* ---- RARE: holographic stripe ---- */
-.employee-card[data-rarity="rare"]::after {
+[data-rarity="rare"] .employee-card__holo-b {
   background: linear-gradient(
     115deg,
     transparent 10%,
@@ -129,16 +121,16 @@
   mix-blend-mode: color-dodge;
 }
 
-.employee-card[data-rarity="rare"][data-interactive="true"]:hover::after {
+[data-rarity="rare"][data-interactive="true"]:hover .employee-card__holo-b {
   opacity: 1;
 }
 
-.employee-card[data-rarity="rare"][data-interactive="true"]:hover {
+[data-rarity="rare"][data-interactive="true"]:hover {
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.25);
 }
 
 /* ---- EPIC: reverse holo (full surface) ---- */
-.employee-card[data-rarity="epic"]::after {
+[data-rarity="epic"] .employee-card__holo-b {
   background: radial-gradient(
     circle at calc(var(--mx) * 100%) calc(var(--my) * 100%),
     rgba(168, 85, 247, 0.2) 0%,
@@ -149,7 +141,7 @@
   mix-blend-mode: color-dodge;
 }
 
-.employee-card[data-rarity="epic"]::before {
+[data-rarity="epic"] .employee-card__holo-a {
   background: linear-gradient(
     calc(var(--mx) * 360deg),
     rgba(168, 85, 247, 0.06),
@@ -159,17 +151,17 @@
   );
 }
 
-.employee-card[data-rarity="epic"][data-interactive="true"]:hover::after,
-.employee-card[data-rarity="epic"][data-interactive="true"]:hover::before {
+[data-rarity="epic"][data-interactive="true"]:hover .employee-card__holo-b,
+[data-rarity="epic"][data-interactive="true"]:hover .employee-card__holo-a {
   opacity: 1;
 }
 
-.employee-card[data-rarity="epic"][data-interactive="true"]:hover {
+[data-rarity="epic"][data-interactive="true"]:hover {
   box-shadow: 0 0 25px rgba(168, 85, 247, 0.3);
 }
 
 /* ---- LEGENDARY: full-art holo + sparkles + glow ---- */
-.employee-card[data-rarity="legendary"]::after {
+[data-rarity="legendary"] .employee-card__holo-b {
   background:
     radial-gradient(
       circle at calc(var(--mx) * 100%) calc(var(--my) * 100%),
@@ -181,7 +173,7 @@
   mix-blend-mode: color-dodge;
 }
 
-.employee-card[data-rarity="legendary"]::before {
+[data-rarity="legendary"] .employee-card__holo-a {
   background: conic-gradient(
     from calc(var(--mx) * 360deg) at 50% 50%,
     rgba(245, 158, 11, 0.08),
@@ -193,19 +185,19 @@
   );
 }
 
-.employee-card[data-rarity="legendary"][data-interactive="true"]:hover::after,
-.employee-card[data-rarity="legendary"][data-interactive="true"]:hover::before {
+[data-rarity="legendary"][data-interactive="true"]:hover .employee-card__holo-b,
+[data-rarity="legendary"][data-interactive="true"]:hover .employee-card__holo-a {
   opacity: 1;
 }
 
-.employee-card[data-rarity="legendary"][data-interactive="true"]:hover {
+[data-rarity="legendary"][data-interactive="true"]:hover {
   box-shadow:
     0 0 30px rgba(245, 158, 11, 0.35),
     0 0 60px rgba(245, 158, 11, 0.1);
 }
 
 /* ---- UNIQUE: rainbow rare + max glow ---- */
-.employee-card[data-rarity="unique"]::after {
+[data-rarity="unique"] .employee-card__holo-b {
   background:
     radial-gradient(
       circle at calc(var(--mx) * 100%) calc(var(--my) * 100%),
@@ -217,7 +209,7 @@
   mix-blend-mode: color-dodge;
 }
 
-.employee-card[data-rarity="unique"]::before {
+[data-rarity="unique"] .employee-card__holo-a {
   background: conic-gradient(
     from calc(var(--mx) * 360deg) at 50% 50%,
     rgba(34, 211, 238, 0.1),
@@ -235,17 +227,17 @@
   to { filter: hue-rotate(360deg); }
 }
 
-.employee-card[data-rarity="unique"]::after,
-.employee-card[data-rarity="unique"]::before {
+[data-rarity="unique"] .employee-card__holo-b,
+[data-rarity="unique"] .employee-card__holo-a {
   opacity: 0.6;
 }
 
-.employee-card[data-rarity="unique"][data-interactive="true"]:hover::after,
-.employee-card[data-rarity="unique"][data-interactive="true"]:hover::before {
+[data-rarity="unique"][data-interactive="true"]:hover .employee-card__holo-b,
+[data-rarity="unique"][data-interactive="true"]:hover .employee-card__holo-a {
   opacity: 1;
 }
 
-.employee-card[data-rarity="unique"][data-interactive="true"]:hover {
+[data-rarity="unique"][data-interactive="true"]:hover {
   box-shadow:
     0 0 30px rgba(34, 211, 238, 0.4),
     0 0 60px rgba(99, 102, 241, 0.2),
@@ -253,8 +245,8 @@
 }
 
 /* ---- Sparkle layer for Legendary & Unique ---- */
-.employee-card[data-rarity="legendary"] .employee-card__sparkles,
-.employee-card[data-rarity="unique"] .employee-card__sparkles {
+[data-rarity="legendary"] .employee-card__sparkles,
+[data-rarity="unique"] .employee-card__sparkles {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -265,8 +257,8 @@
   transition: opacity 0.3s ease;
 }
 
-.employee-card[data-rarity="legendary"][data-interactive="true"]:hover .employee-card__sparkles,
-.employee-card[data-rarity="unique"][data-interactive="true"]:hover .employee-card__sparkles {
+[data-rarity="legendary"][data-interactive="true"]:hover .employee-card__sparkles,
+[data-rarity="unique"][data-interactive="true"]:hover .employee-card__sparkles {
   opacity: 1;
 }
 

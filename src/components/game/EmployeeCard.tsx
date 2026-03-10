@@ -74,16 +74,12 @@ export default function EmployeeCard({
       onMouseLeave={!faceDown ? handleMouseLeave : undefined}
       style={{ width: cardWidth, height: compact ? 240 : 300 }}
     >
-      {/* CSS transition handles the flip via .employee-card--face-down class */}
       <div className="employee-card__inner">
-        {/* Front face — the revealed card */}
+        {/* Front face */}
         <div className={`employee-card__front border-2 ${rarity.borderColor} ${rarity.bgColor}`}>
-          <div className="employee-card__sparkles" />
-
-          {/* Card body — clickable to open detail modal.
-              Uses z-20 to sit above the holo pseudo-elements (z-10) on the outer card. */}
+          {/* Card body — clickable to open detail modal */}
           <div
-            className={`relative z-20 flex flex-col p-3 gap-2 h-full ${onClick ? 'cursor-pointer' : ''}`}
+            className={`relative flex flex-col p-3 gap-2 h-full overflow-hidden rounded-[12px] ${onClick ? 'cursor-pointer' : ''}`}
             onClick={onClick}
           >
             {/* Header */}
@@ -152,7 +148,7 @@ export default function EmployeeCard({
               </p>
             )}
 
-            {/* Hire button (pack view only) — stopPropagation prevents the card body onClick */}
+            {/* Hire button — stopPropagation prevents the card body onClick */}
             {onHire && (
               <div
                 className="flex items-center justify-between gap-1 pt-1 border-t border-border/30 mt-auto"
@@ -170,9 +166,15 @@ export default function EmployeeCard({
               </div>
             )}
           </div>
+
+          {/* Holo overlays — real divs inside __front so they share stacking context with content.
+              pointer-events:none lets clicks pass through to the content below. */}
+          <div className="employee-card__holo-a" />
+          <div className="employee-card__holo-b" />
+          <div className="employee-card__sparkles" />
         </div>
 
-        {/* Back face — question mark */}
+        {/* Back face */}
         <div className="employee-card__back" />
       </div>
     </div>
