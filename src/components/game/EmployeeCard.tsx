@@ -8,28 +8,38 @@ import type { Employee } from '@/lib/game/types';
 import { RARITY_TIERS } from '@/lib/config/rarityConfig';
 import { getEffectiveSkills } from '@/lib/game/employeeSystem';
 
-const SKILL_META: Record<string, { label: string; color: string; barColor: string }> = {
+export const SKILL_META: Record<string, { label: string; color: string; barColor: string }> = {
   graphics: { label: 'GFX', color: 'text-pink-400', barColor: 'bg-pink-500' },
   sound: { label: 'SND', color: 'text-green-400', barColor: 'bg-green-500' },
   gameplay: { label: 'GME', color: 'text-blue-400', barColor: 'bg-blue-500' },
   polish: { label: 'POL', color: 'text-yellow-400', barColor: 'bg-yellow-500' },
 };
 
+function staminaColor(stamina: number): string {
+  if (stamina > 60) return 'bg-green-500';
+  if (stamina > 30) return 'bg-yellow-500';
+  return 'bg-red-500';
+}
+
 interface EmployeeCardProps {
   employee: Employee;
   faceDown?: boolean;
-  onFlip?: () => void;
+  revealDelay?: number;
+  onClick?: () => void;
   onHire?: () => void;
   hireDisabled?: boolean;
+  showStamina?: boolean;
   compact?: boolean;
 }
 
 export default function EmployeeCard({
   employee,
   faceDown = false,
-  onFlip,
+  revealDelay = 0,
+  onClick,
   onHire,
   hireDisabled = false,
+  showStamina = false,
   compact = false,
 }: EmployeeCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -53,14 +63,15 @@ export default function EmployeeCard({
     card.style.setProperty('--my', '0.5');
   }, []);
 
+  const cardWidth = compact ? 160 : 200;
+
   if (faceDown) {
     return (
       <div
-        className="employee-card employee-card--flippable employee-card--face-down"
+        className={`employee-card employee-card--flippable ${faceDown ? 'employee-card--face-down' : ''}`}
         data-rarity={employee.rarity}
         data-interactive="false"
-        onClick={onFlip}
-        style={{ width: compact ? 160 : 200, height: compact ? 240 : 300 }}
+        style={{ width: cardWidth, height: compact ? 240 : 300, '--reveal-delay': `${revealDelay}ms` } as React.CSSProperties}
       >
         <div className="employee-card__inner">
           <div className="employee-card__front" />
@@ -75,18 +86,18 @@ export default function EmployeeCard({
   return (
     <div
       ref={cardRef}
-      className={`employee-card border-2 ${rarity.borderColor} ${rarity.bgColor}`}
+      className={`employee-card border-2 ${rarity.borderColor} ${rarity.bgColor} ${onClick ? 'cursor-pointer' : ''}`}
       data-rarity={employee.rarity}
       data-interactive="true"
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      style={{ width: compact ? 160 : 200 }}
+      onClick={onClick}
+      style={{ width: cardWidth, '--reveal-delay': `${revealDelay}ms` } as React.CSSProperties}
     >
-      {/* Sparkle layer for legendary/unique */}
       <div className="employee-card__sparkles" />
 
       <div className="relative z-[1] flex flex-col p-3 gap-2">
-        {/* Header: Name + Rarity */}
+        {/* Header */}
         <div className="flex items-center justify-between gap-1">
           <div className="min-w-0">
             <p className={`text-xs font-bold truncate ${compact ? 'text-[10px]' : ''}`}>
@@ -99,12 +110,12 @@ export default function EmployeeCard({
           </Badge>
         </div>
 
-        {/* Portrait area */}
+        {/* Portrait */}
         <div className={`flex items-center justify-center rounded-md bg-card/60 border border-border/50 ${compact ? 'h-14' : 'h-20'}`}>
           <User className={`${compact ? 'h-8 w-8' : 'h-12 w-12'} text-muted-foreground/30`} />
         </div>
 
-        {/* Skill bars */}
+        {/* Skill bars (IVs) */}
         <div className="space-y-1">
           {(Object.keys(SKILL_META) as (keyof typeof SKILL_META)[]).map((skill) => {
             const iv = employee.skills[skill as keyof typeof employee.skills];
@@ -127,11 +138,23 @@ export default function EmployeeCard({
           })}
         </div>
 
-        {/* Total IVs */}
+        {/* Total IVs + salary */}
         <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-          <span>Total IV: {totalIv}/124</span>
+          <span>IV: {totalIv}/124</span>
           {!compact && <span className="font-mono">${employee.monthlySalary}/mo</span>}
         </div>
+
+        {/* Stamina bar (optional, for team cards) */}
+        {showStamina && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-muted-foreground">STA</span>
+            <div className="flex-1 h-1.5 bg-muted/60 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${staminaColor(employee.stamina)}`}
+                style={{ width: `${employee.stamina}%` }} />
+            </div>
+            <span className="text-[9px] font-mono text-muted-foreground">{Math.round(employee.stamina)}%</span>
+          </div>
+        )}
 
         {/* Unique description */}
         {employee.description && !compact && (
@@ -140,7 +163,7 @@ export default function EmployeeCard({
           </p>
         )}
 
-        {/* Hire button (only in pack view) */}
+        {/* Hire button (pack view only) */}
         {onHire && (
           <div className="flex items-center justify-between gap-1 pt-1 border-t border-border/30">
             <span className="text-[10px] text-muted-foreground">${employee.hireCost.toLocaleString()}</span>

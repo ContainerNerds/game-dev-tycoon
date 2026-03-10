@@ -1,16 +1,16 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useGameStore } from '@/lib/store/gameStore';
 import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
-import { RARITY_TIERS } from '@/lib/config/rarityConfig';
-import { generatePack, getEffectiveSkills } from '@/lib/game/employeeSystem';
+import { generatePack } from '@/lib/game/employeeSystem';
 import { UserMinus, Users, Palmtree, Package, ShoppingCart } from 'lucide-react';
-import type { EmployeeActivity } from '@/lib/game/types';
+import type { Employee, EmployeeActivity } from '@/lib/game/types';
 import EmployeeCard from '@/components/game/EmployeeCard';
+import EmployeeDetailModal from '@/components/game/EmployeeDetailModal';
 
 const ACTIVITY_COLORS: Record<EmployeeActivity, string> = {
   idle: 'text-muted-foreground',
@@ -30,18 +30,7 @@ const ACTIVITY_LABELS: Record<EmployeeActivity, string> = {
   vacation: 'On Vacation',
 };
 
-function staminaColor(stamina: number): string {
-  if (stamina > 60) return 'bg-green-500';
-  if (stamina > 30) return 'bg-yellow-500';
-  return 'bg-red-500';
-}
-
-const SKILL_BAR_META = [
-  { key: 'graphics' as const, label: 'GFX', color: 'text-pink-400', bar: 'bg-pink-500' },
-  { key: 'sound' as const, label: 'SND', color: 'text-green-400', bar: 'bg-green-500' },
-  { key: 'gameplay' as const, label: 'GME', color: 'text-blue-400', bar: 'bg-blue-500' },
-  { key: 'polish' as const, label: 'POL', color: 'text-yellow-400', bar: 'bg-yellow-500' },
-];
+const REVEAL_DELAY_MS = 400;
 
 export default function StaffTab() {
   const employees = useGameStore((s) => s.employees);
@@ -60,6 +49,32 @@ export default function StaffTab() {
   const assignEmployee = useGameStore((s) => s.assignEmployee);
   const setEmployeeAutoAssign = useGameStore((s) => s.setEmployeeAutoAssign);
   const sendOnVacation = useGameStore((s) => s.sendOnVacation);
+
+  const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
+
+  // Auto-reveal: stagger flip each card when a fresh pack arrives
+  const revealTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const prevPackIdRef = useRef<string>('');
+
+  useEffect(() => {
+    if (currentPack.length === 0) return;
+
+    const packId = currentPack.map((e) => e.id).join(',');
+    if (packId === prevPackIdRef.current) return;
+    prevPackIdRef.current = packId;
+
+    const allHidden = packRevealed.length > 0 && packRevealed.every((r) => !r);
+    if (!allHidden) return;
+
+    revealTimersRef.current.forEach(clearTimeout);
+    revealTimersRef.current = currentPack.map((_, idx) =>
+      setTimeout(() => revealPackCard(idx), REVEAL_DELAY_MS * (idx + 1))
+    );
+
+    return () => {
+      revealTimersRef.current.forEach(clearTimeout);
+    };
+  }, [currentPack, packRevealed, revealPackCard]);
 
   const hiredCount = employees.filter((e) => !e.isPlayer).length;
   const totalMonthlySalary = employees.reduce((sum, e) => sum + e.monthlySalary, 0);
@@ -112,7 +127,7 @@ export default function StaffTab() {
       )}
 
       {/* ============================================================ */}
-      {/* Pack Opening Section */}
+      {/* Pack Opening */}
       {/* ============================================================ */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -163,7 +178,8 @@ export default function StaffTab() {
                 key={emp.id}
                 employee={emp}
                 faceDown={!packRevealed[idx]}
-                onFlip={() => revealPackCard(idx)}
+                revealDelay={REVEAL_DELAY_MS * (idx + 1)}
+                onClick={packRevealed[idx] ? () => setDetailEmployee(emp) : undefined}
                 onHire={packRevealed[idx] ? () => handleHire(emp.id) : undefined}
                 hireDisabled={hiredCount >= office.maxSeats || money < emp.hireCost}
               />
@@ -173,7 +189,7 @@ export default function StaffTab() {
 
         {hasPackCards && allRevealed && (
           <p className="text-xs text-center text-muted-foreground">
-            All cards revealed. Hire who you want, then open a new pack to replace these.
+            All cards revealed. Click a card for details. Hire who you want, then open a new pack.
           </p>
         )}
       </div>
@@ -222,126 +238,85 @@ export default function StaffTab() {
       {staffContributions.length > 0 && <Separator />}
 
       {/* ============================================================ */}
-      {/* Your Team */}
+      {/* Your Team — Card Grid */}
       {/* ============================================================ */}
       {employees.length > 0 && (
         <div className="space-y-3">
           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
             Your Team
           </h4>
-          <div className="grid gap-2">
-            {employees.map((emp) => {
-              const rarity = RARITY_TIERS[emp.rarity];
-              const effSkills = getEffectiveSkills(emp);
-              return (
-                <Card key={emp.id} className={`border-2 ${rarity.borderColor} ${rarity.bgColor}`}>
-                  <CardContent className="p-3 space-y-2">
-                    {/* Row 1: Name, rarity, activity, salary, fire */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm font-medium text-foreground truncate">{emp.name}</span>
-                        <span className="text-xs text-muted-foreground">{emp.title}</span>
-                        <Badge className={`text-[9px] px-1.5 py-0 ${rarity.textColor} ${rarity.bgColor} border ${rarity.borderColor}`}>
-                          {rarity.label}
-                        </Badge>
-                        {emp.isPlayer && (
-                          <Badge className="text-xs bg-yellow-500/20 text-yellow-400 border-yellow-500/50">You</Badge>
-                        )}
-                        <span className={`text-xs font-medium ${ACTIVITY_COLORS[emp.activity]}`}>
-                          {ACTIVITY_LABELS[emp.activity]}
-                          {emp.onVacation && ` (${emp.vacationDaysLeft}d)`}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-xs text-muted-foreground">
-                          {emp.isPlayer ? 'Founder' : `$${emp.monthlySalary.toLocaleString()}/mo`}
-                        </span>
-                        {!emp.isPlayer && (
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300 cursor-pointer"
-                            onClick={() => fireEmployee(emp.id)}>
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+          <div className="flex flex-wrap gap-4">
+            {employees.map((emp) => (
+              <div key={emp.id} className="flex flex-col items-center gap-1.5" style={{ width: 168 }}>
+                {/* The card itself (clickable → detail modal) */}
+                <EmployeeCard
+                  employee={emp}
+                  compact
+                  showStamina
+                  onClick={() => setDetailEmployee(emp)}
+                />
 
-                    {/* Row 2: Skill bars + stamina */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 grid grid-cols-4 gap-x-3 gap-y-0.5">
-                        {SKILL_BAR_META.map(({ key, label, color, bar }) => {
-                          const iv = emp.skills[key];
-                          const eff = effSkills[key];
-                          const pct = (iv / 31) * 100;
-                          const evPct = eff > iv ? ((eff - iv) / 31) * 100 : 0;
-                          return (
-                            <div key={key} className="flex items-center gap-1">
-                              <span className={`text-[9px] font-mono w-6 ${color}`}>{label}</span>
-                              <div className="flex-1 h-1.5 bg-muted/60 rounded-full overflow-hidden relative">
-                                <div className={`absolute inset-y-0 left-0 ${bar} rounded-full`} style={{ width: `${pct}%` }} />
-                                {evPct > 0 && (
-                                  <div className={`absolute inset-y-0 ${bar} opacity-40 rounded-full`} style={{ left: `${pct}%`, width: `${Math.min(100 - pct, evPct)}%` }} />
-                                )}
-                              </div>
-                              <span className="text-[9px] font-mono text-muted-foreground w-4 text-right">{iv}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-xs text-muted-foreground">Stamina</span>
-                        <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all ${staminaColor(emp.stamina)}`}
-                            style={{ width: `${emp.stamina}%` }} />
-                        </div>
-                        <span className="text-xs font-mono text-muted-foreground w-8">{Math.round(emp.stamina)}%</span>
-                      </div>
-                    </div>
+                {/* Activity status line */}
+                <div className="w-full flex items-center justify-between px-1">
+                  <span className={`text-[10px] font-medium ${ACTIVITY_COLORS[emp.activity]}`}>
+                    {ACTIVITY_LABELS[emp.activity]}
+                    {emp.onVacation && ` (${emp.vacationDaysLeft}d)`}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {emp.isPlayer ? 'Founder' : `$${emp.monthlySalary.toLocaleString()}/mo`}
+                  </span>
+                </div>
 
-                    {/* Row 3: Assignment buttons */}
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <Button size="sm" variant={emp.autoAssign ? 'default' : 'ghost'}
-                        className="h-6 text-xs px-2 cursor-pointer"
-                        disabled={emp.onVacation}
-                        onClick={() => setEmployeeAutoAssign(emp.id)}>
-                        Auto
-                      </Button>
-                      <Button size="sm" variant={!emp.autoAssign && emp.assignedTaskId === 'bugfix' ? 'default' : 'ghost'}
-                        className="h-6 text-xs px-2 cursor-pointer"
-                        disabled={emp.onVacation}
-                        onClick={() => assignEmployee(emp.id, 'bugfix')}>
-                        Bugs
-                      </Button>
-                      {activeTasks.map((t) => (
-                        <Button key={t.id} size="sm" variant={!emp.autoAssign && emp.assignedTaskId === t.id ? 'default' : 'ghost'}
-                          className="h-6 text-xs px-2 cursor-pointer truncate max-w-[80px]"
-                          disabled={emp.onVacation}
-                          onClick={() => assignEmployee(emp.id, t.id)}
-                          title={t.name}>
-                          {t.name}
-                        </Button>
-                      ))}
-                      <Button size="sm" variant={emp.onVacation ? 'default' : 'ghost'}
-                        className="h-6 text-xs px-2 cursor-pointer"
-                        disabled={emp.onVacation || emp.stamina >= 95}
-                        onClick={() => sendOnVacation(emp.id)}
-                        title="Send on 2-week vacation to recover stamina">
-                        <Palmtree className="h-3 w-3 mr-1" />Vacation
-                      </Button>
-                    </div>
-
-                    {/* Unique description */}
-                    {emp.description && (
-                      <p className="text-[10px] italic text-muted-foreground/70 leading-tight">
-                        {emp.description}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                {/* Action buttons */}
+                <div className="w-full flex items-center gap-0.5 flex-wrap justify-center">
+                  <Button size="sm" variant={emp.autoAssign ? 'default' : 'ghost'}
+                    className="h-5 text-[10px] px-1.5 cursor-pointer"
+                    disabled={emp.onVacation}
+                    onClick={() => setEmployeeAutoAssign(emp.id)}>
+                    Auto
+                  </Button>
+                  <Button size="sm" variant={!emp.autoAssign && emp.assignedTaskId === 'bugfix' ? 'default' : 'ghost'}
+                    className="h-5 text-[10px] px-1.5 cursor-pointer"
+                    disabled={emp.onVacation}
+                    onClick={() => assignEmployee(emp.id, 'bugfix')}>
+                    Bugs
+                  </Button>
+                  {activeTasks.map((t) => (
+                    <Button key={t.id} size="sm" variant={!emp.autoAssign && emp.assignedTaskId === t.id ? 'default' : 'ghost'}
+                      className="h-5 text-[10px] px-1.5 cursor-pointer truncate max-w-[60px]"
+                      disabled={emp.onVacation}
+                      onClick={() => assignEmployee(emp.id, t.id)}
+                      title={t.name}>
+                      {t.name}
+                    </Button>
+                  ))}
+                  <Button size="sm" variant={emp.onVacation ? 'default' : 'ghost'}
+                    className="h-5 text-[10px] px-1.5 cursor-pointer"
+                    disabled={emp.onVacation || emp.stamina >= 95}
+                    onClick={() => sendOnVacation(emp.id)}
+                    title="Vacation">
+                    <Palmtree className="h-3 w-3" />
+                  </Button>
+                  {!emp.isPlayer && (
+                    <Button size="sm" variant="ghost"
+                      className="h-5 w-5 p-0 text-red-400 hover:text-red-300 cursor-pointer"
+                      onClick={() => fireEmployee(emp.id)}>
+                      <UserMinus className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
+
+      {/* Detail Modal */}
+      <EmployeeDetailModal
+        employee={detailEmployee}
+        open={detailEmployee !== null}
+        onOpenChange={(open) => { if (!open) setDetailEmployee(null); }}
+      />
     </div>
   );
 }
