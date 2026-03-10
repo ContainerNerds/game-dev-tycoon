@@ -52,6 +52,11 @@
   inset: 0;
   backface-visibility: hidden;
   border-radius: 12px;
+  overflow: hidden;
+}
+
+.employee-card__front {
+  z-index: 1;
 }
 
 .employee-card__back {
@@ -68,6 +73,12 @@
   font-size: 3rem;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.15);
+}
+
+/* ---- Hide holo overlays while face-down ---- */
+.employee-card--face-down::before,
+.employee-card--face-down::after {
+  opacity: 0 !important;
 }
 
 /* ---- Holographic overlay (shared base) ---- */
@@ -294,4 +305,41 @@
 @keyframes sparkle-float {
   0%, 100% { opacity: 0; transform: scale(0.5) translateY(0); }
   50% { opacity: 1; transform: scale(1) translateY(-4px); }
+}
+
+/* ---- Epic reveal shake animation ---- */
+@keyframes card-epic-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  10% { transform: translateX(-4px) rotate(-1deg); }
+  20% { transform: translateX(4px) rotate(1deg); }
+  30% { transform: translateX(-3px) rotate(-0.5deg); }
+  40% { transform: translateX(3px) rotate(0.5deg); }
+  50% { transform: translateX(-2px) rotate(-0.5deg); }
+  60% { transform: translateX(2px) rotate(0.5deg); }
+  70% { transform: translateX(-1px) rotate(0deg); }
+  80% { transform: translateX(1px) rotate(0deg); }
+  90% { transform: translateX(0) rotate(0); }
+}
+
+.employee-card--epic-reveal {
+  animation: card-epic-shake 0.6s ease-in-out;
+}
+
+/* ---- Empty slot placeholder ---- */
+.employee-card--empty {
+  border: 2px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.employee-card--empty:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.25);
 }

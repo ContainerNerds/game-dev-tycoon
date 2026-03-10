@@ -64,119 +64,109 @@ export default function EmployeeCard({
   }, []);
 
   const cardWidth = compact ? 160 : 200;
-
-  if (faceDown) {
-    return (
-      <div
-        className={`employee-card employee-card--flippable ${faceDown ? 'employee-card--face-down' : ''}`}
-        data-rarity={employee.rarity}
-        data-interactive="false"
-        style={{ width: cardWidth, height: compact ? 240 : 300, '--reveal-delay': `${revealDelay}ms` } as React.CSSProperties}
-      >
-        <div className="employee-card__inner">
-          <div className="employee-card__front" />
-          <div className="employee-card__back" />
-        </div>
-      </div>
-    );
-  }
-
   const totalIv = employee.skills.graphics + employee.skills.sound + employee.skills.gameplay + employee.skills.polish;
 
   return (
     <div
       ref={cardRef}
-      className={`employee-card border-2 ${rarity.borderColor} ${rarity.bgColor} ${onClick ? 'cursor-pointer' : ''}`}
+      className={`employee-card employee-card--flippable ${faceDown ? 'employee-card--face-down' : ''} ${!faceDown && onClick ? 'cursor-pointer' : ''}`}
       data-rarity={employee.rarity}
-      data-interactive="true"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      onClick={onClick}
-      style={{ width: cardWidth, '--reveal-delay': `${revealDelay}ms` } as React.CSSProperties}
+      data-interactive={!faceDown ? 'true' : 'false'}
+      onMouseMove={!faceDown ? handleMouseMove : undefined}
+      onMouseLeave={!faceDown ? handleMouseLeave : undefined}
+      onClick={!faceDown ? onClick : undefined}
+      style={{ width: cardWidth, height: compact ? 240 : 300, '--reveal-delay': `${revealDelay}ms` } as React.CSSProperties}
     >
-      <div className="employee-card__sparkles" />
-
-      <div className="relative z-[1] flex flex-col p-3 gap-2">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-1">
-          <div className="min-w-0">
-            <p className={`text-xs font-bold truncate ${compact ? 'text-[10px]' : ''}`}>
-              {employee.name}
-            </p>
-            <p className="text-[10px] text-muted-foreground truncate">{employee.title}</p>
-          </div>
-          <Badge className={`text-[9px] px-1.5 py-0 shrink-0 ${rarity.textColor} ${rarity.bgColor} border ${rarity.borderColor}`}>
-            {rarity.label}
-          </Badge>
-        </div>
-
-        {/* Portrait */}
-        <div className={`flex items-center justify-center rounded-md bg-card/60 border border-border/50 ${compact ? 'h-14' : 'h-20'}`}>
-          <User className={`${compact ? 'h-8 w-8' : 'h-12 w-12'} text-muted-foreground/30`} />
-        </div>
-
-        {/* Skill bars (IVs) */}
-        <div className="space-y-1">
-          {(Object.keys(SKILL_META) as (keyof typeof SKILL_META)[]).map((skill) => {
-            const iv = employee.skills[skill as keyof typeof employee.skills];
-            const eff = effectiveSkills[skill as keyof typeof effectiveSkills];
-            const meta = SKILL_META[skill];
-            const pct = (iv / 31) * 100;
-            const evPct = eff > iv ? ((eff - iv) / 31) * 100 : 0;
-            return (
-              <div key={skill} className="flex items-center gap-1.5">
-                <span className={`text-[9px] font-mono w-6 ${meta.color}`}>{meta.label}</span>
-                <div className="flex-1 h-1.5 bg-muted/60 rounded-full overflow-hidden relative">
-                  <div className={`absolute inset-y-0 left-0 ${meta.barColor} rounded-full`} style={{ width: `${Math.min(100, pct)}%` }} />
-                  {evPct > 0 && (
-                    <div className={`absolute inset-y-0 ${meta.barColor} opacity-40 rounded-full`} style={{ left: `${pct}%`, width: `${Math.min(100 - pct, evPct)}%` }} />
-                  )}
-                </div>
-                <span className="text-[9px] font-mono text-muted-foreground w-5 text-right">{iv}</span>
+      <div className="employee-card__inner">
+        {/* Front face — the revealed card */}
+        <div className={`employee-card__front border-2 ${rarity.borderColor} ${rarity.bgColor}`}>
+          <div className="employee-card__sparkles" />
+          <div className="relative z-[1] flex flex-col p-3 gap-2 h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <p className={`text-xs font-bold truncate ${compact ? 'text-[10px]' : ''}`}>
+                  {employee.name}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate">{employee.title}</p>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Total IVs + salary */}
-        <div className="flex items-center justify-between text-[9px] text-muted-foreground">
-          <span>IV: {totalIv}/124</span>
-          {!compact && <span className="font-mono">${employee.monthlySalary}/mo</span>}
-        </div>
-
-        {/* Stamina bar (optional, for team cards) */}
-        {showStamina && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] text-muted-foreground">STA</span>
-            <div className="flex-1 h-1.5 bg-muted/60 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all ${staminaColor(employee.stamina)}`}
-                style={{ width: `${employee.stamina}%` }} />
+              <Badge className={`text-[9px] px-1.5 py-0 shrink-0 ${rarity.textColor} ${rarity.bgColor} border ${rarity.borderColor}`}>
+                {rarity.label}
+              </Badge>
             </div>
-            <span className="text-[9px] font-mono text-muted-foreground">{Math.round(employee.stamina)}%</span>
-          </div>
-        )}
 
-        {/* Unique description */}
-        {employee.description && !compact && (
-          <p className="text-[9px] italic text-muted-foreground/80 leading-tight line-clamp-2">
-            {employee.description}
-          </p>
-        )}
+            {/* Portrait */}
+            <div className={`flex items-center justify-center rounded-md bg-card/60 border border-border/50 ${compact ? 'h-14' : 'h-20'}`}>
+              <User className={`${compact ? 'h-8 w-8' : 'h-12 w-12'} text-muted-foreground/30`} />
+            </div>
 
-        {/* Hire button (pack view only) */}
-        {onHire && (
-          <div className="flex items-center justify-between gap-1 pt-1 border-t border-border/30">
-            <span className="text-[10px] text-muted-foreground">${employee.hireCost.toLocaleString()}</span>
-            <Button
-              size="sm"
-              className="h-6 text-[10px] px-2 cursor-pointer"
-              disabled={hireDisabled}
-              onClick={(e) => { e.stopPropagation(); onHire(); }}
-            >
-              <UserPlus className="h-3 w-3 mr-1" />Hire
-            </Button>
+            {/* Skill bars (IVs) */}
+            <div className="space-y-1">
+              {(Object.keys(SKILL_META) as (keyof typeof SKILL_META)[]).map((skill) => {
+                const iv = employee.skills[skill as keyof typeof employee.skills];
+                const eff = effectiveSkills[skill as keyof typeof effectiveSkills];
+                const meta = SKILL_META[skill];
+                const pct = (iv / 31) * 100;
+                const evPct = eff > iv ? ((eff - iv) / 31) * 100 : 0;
+                return (
+                  <div key={skill} className="flex items-center gap-1.5">
+                    <span className={`text-[9px] font-mono w-6 ${meta.color}`}>{meta.label}</span>
+                    <div className="flex-1 h-1.5 bg-muted/60 rounded-full overflow-hidden relative">
+                      <div className={`absolute inset-y-0 left-0 ${meta.barColor} rounded-full`} style={{ width: `${Math.min(100, pct)}%` }} />
+                      {evPct > 0 && (
+                        <div className={`absolute inset-y-0 ${meta.barColor} opacity-40 rounded-full`} style={{ left: `${pct}%`, width: `${Math.min(100 - pct, evPct)}%` }} />
+                      )}
+                    </div>
+                    <span className="text-[9px] font-mono text-muted-foreground w-5 text-right">{iv}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Total IVs + salary */}
+            <div className="flex items-center justify-between text-[9px] text-muted-foreground">
+              <span>IV: {totalIv}/124</span>
+              {!compact && <span className="font-mono">${employee.monthlySalary}/mo</span>}
+            </div>
+
+            {/* Stamina bar (team cards) */}
+            {showStamina && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] text-muted-foreground">STA</span>
+                <div className="flex-1 h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${staminaColor(employee.stamina)}`}
+                    style={{ width: `${employee.stamina}%` }} />
+                </div>
+                <span className="text-[9px] font-mono text-muted-foreground">{Math.round(employee.stamina)}%</span>
+              </div>
+            )}
+
+            {/* Unique description */}
+            {employee.description && !compact && (
+              <p className="text-[9px] italic text-muted-foreground/80 leading-tight line-clamp-2">
+                {employee.description}
+              </p>
+            )}
+
+            {/* Hire button (pack view only) */}
+            {onHire && (
+              <div className="flex items-center justify-between gap-1 pt-1 border-t border-border/30 mt-auto">
+                <span className="text-[10px] text-muted-foreground">${employee.hireCost.toLocaleString()}</span>
+                <Button
+                  size="sm"
+                  className="h-6 text-[10px] px-2 cursor-pointer"
+                  disabled={hireDisabled}
+                  onClick={(e) => { e.stopPropagation(); onHire(); }}
+                >
+                  <UserPlus className="h-3 w-3 mr-1" />Hire
+                </Button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Back face — question mark */}
+        <div className="employee-card__back" />
       </div>
     </div>
   );

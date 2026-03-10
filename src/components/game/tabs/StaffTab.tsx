@@ -1,16 +1,29 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuCheckboxItem,
+  ContextMenuSeparator,
+  ContextMenuLabel,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+} from '@/components/ui/context-menu';
+import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/lib/store/gameStore';
 import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
 import { generatePack } from '@/lib/game/employeeSystem';
-import { UserMinus, Users, Palmtree, Package, ShoppingCart } from 'lucide-react';
+import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, UserPlus, Zap, Plus } from 'lucide-react';
 import type { Employee, EmployeeActivity } from '@/lib/game/types';
 import EmployeeCard from '@/components/game/EmployeeCard';
 import EmployeeDetailModal from '@/components/game/EmployeeDetailModal';
+import { playFlipSound, playEpicRevealSound } from '@/lib/game/sounds';
 
 const ACTIVITY_COLORS: Record<EmployeeActivity, string> = {
   idle: 'text-muted-foreground',
@@ -31,6 +44,7 @@ const ACTIVITY_LABELS: Record<EmployeeActivity, string> = {
 };
 
 const REVEAL_DELAY_MS = 400;
+const EPIC_RARITIES = new Set(['legendary', 'unique']);
 
 export default function StaffTab() {
   const employees = useGameStore((s) => s.employees);
@@ -51,10 +65,34 @@ export default function StaffTab() {
   const sendOnVacation = useGameStore((s) => s.sendOnVacation);
 
   const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
+  const [epicShakeIds, setEpicShakeIds] = useState<Set<string>>(new Set());
 
   // Auto-reveal: stagger flip each card when a fresh pack arrives
   const revealTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const prevPackIdRef = useRef<string>('');
+
+  const triggerReveal = useCallback((idx: number) => {
+    const emp = currentPack[idx];
+    if (!emp) return;
+
+    playFlipSound();
+    revealPackCard(idx);
+
+    if (EPIC_RARITIES.has(emp.rarity)) {
+      const shakeDelay = 700 + (REVEAL_DELAY_MS * (idx + 1));
+      setTimeout(() => {
+        playEpicRevealSound();
+        setEpicShakeIds((prev) => new Set(prev).add(emp.id));
+        setTimeout(() => {
+          setEpicShakeIds((prev) => {
+            const next = new Set(prev);
+            next.delete(emp.id);
+            return next;
+          });
+        }, 700);
+      }, shakeDelay - REVEAL_DELAY_MS * (idx + 1));
+    }
+  }, [currentPack, revealPackCard]);
 
   useEffect(() => {
     if (currentPack.length === 0) return;
@@ -68,16 +106,17 @@ export default function StaffTab() {
 
     revealTimersRef.current.forEach(clearTimeout);
     revealTimersRef.current = currentPack.map((_, idx) =>
-      setTimeout(() => revealPackCard(idx), REVEAL_DELAY_MS * (idx + 1))
+      setTimeout(() => triggerReveal(idx), REVEAL_DELAY_MS * (idx + 1))
     );
 
     return () => {
       revealTimersRef.current.forEach(clearTimeout);
     };
-  }, [currentPack, packRevealed, revealPackCard]);
+  }, [currentPack, packRevealed, triggerReveal]);
 
   const hiredCount = employees.filter((e) => !e.isPlayer).length;
   const totalMonthlySalary = employees.reduce((sum, e) => sum + e.monthlySalary, 0);
+  const emptySlots = Math.max(0, office.maxSeats - hiredCount);
 
   const handleOpenFreePack = () => {
     if (!freePackAvailable) return;
@@ -174,15 +213,16 @@ export default function StaffTab() {
         {hasPackCards && (
           <div className="flex flex-wrap gap-3 justify-center">
             {currentPack.map((emp, idx) => (
-              <EmployeeCard
-                key={emp.id}
-                employee={emp}
-                faceDown={!packRevealed[idx]}
-                revealDelay={REVEAL_DELAY_MS * (idx + 1)}
-                onClick={packRevealed[idx] ? () => setDetailEmployee(emp) : undefined}
-                onHire={packRevealed[idx] ? () => handleHire(emp.id) : undefined}
-                hireDisabled={hiredCount >= office.maxSeats || money < emp.hireCost}
-              />
+              <div key={emp.id} className={epicShakeIds.has(emp.id) ? 'employee-card--epic-reveal' : ''}>
+                <EmployeeCard
+                  employee={emp}
+                  faceDown={!packRevealed[idx]}
+                  revealDelay={REVEAL_DELAY_MS * (idx + 1)}
+                  onClick={packRevealed[idx] ? () => setDetailEmployee(emp) : undefined}
+                  onHire={packRevealed[idx] ? () => handleHire(emp.id) : undefined}
+                  hireDisabled={hiredCount >= office.maxSeats || money < emp.hireCost}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -238,7 +278,7 @@ export default function StaffTab() {
       {staffContributions.length > 0 && <Separator />}
 
       {/* ============================================================ */}
-      {/* Your Team — Card Grid */}
+      {/* Your Team — Card Grid with Context Menu */}
       {/* ============================================================ */}
       {employees.length > 0 && (
         <div className="space-y-3">
@@ -247,64 +287,111 @@ export default function StaffTab() {
           </h4>
           <div className="flex flex-wrap gap-4">
             {employees.map((emp) => (
-              <div key={emp.id} className="flex flex-col items-center gap-1.5" style={{ width: 168 }}>
-                {/* The card itself (clickable → detail modal) */}
-                <EmployeeCard
-                  employee={emp}
-                  compact
-                  showStamina
-                  onClick={() => setDetailEmployee(emp)}
-                />
+              <ContextMenu key={emp.id}>
+                <ContextMenuTrigger>
+                  <div className="flex flex-col items-center gap-1.5" style={{ width: 168 }}>
+                    <EmployeeCard
+                      employee={emp}
+                      compact
+                      showStamina
+                      onClick={() => setDetailEmployee(emp)}
+                    />
+                    <div className="w-full flex items-center justify-between px-1">
+                      <span className={`text-[10px] font-medium ${ACTIVITY_COLORS[emp.activity]}`}>
+                        {ACTIVITY_LABELS[emp.activity]}
+                        {emp.onVacation && ` (${emp.vacationDaysLeft}d)`}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {emp.isPlayer ? 'Founder' : `$${emp.monthlySalary.toLocaleString()}/mo`}
+                      </span>
+                    </div>
+                  </div>
+                </ContextMenuTrigger>
 
-                {/* Activity status line */}
-                <div className="w-full flex items-center justify-between px-1">
-                  <span className={`text-[10px] font-medium ${ACTIVITY_COLORS[emp.activity]}`}>
-                    {ACTIVITY_LABELS[emp.activity]}
-                    {emp.onVacation && ` (${emp.vacationDaysLeft}d)`}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {emp.isPlayer ? 'Founder' : `$${emp.monthlySalary.toLocaleString()}/mo`}
-                  </span>
-                </div>
+                <ContextMenuContent className="w-48">
+                  <ContextMenuLabel>{emp.name}</ContextMenuLabel>
+                  <ContextMenuSeparator />
 
-                {/* Action buttons */}
-                <div className="w-full flex items-center gap-0.5 flex-wrap justify-center">
-                  <Button size="sm" variant={emp.autoAssign ? 'default' : 'ghost'}
-                    className="h-5 text-[10px] px-1.5 cursor-pointer"
+                  <ContextMenuCheckboxItem
+                    checked={emp.autoAssign}
                     disabled={emp.onVacation}
-                    onClick={() => setEmployeeAutoAssign(emp.id)}>
-                    Auto
-                  </Button>
-                  <Button size="sm" variant={!emp.autoAssign && emp.assignedTaskId === 'bugfix' ? 'default' : 'ghost'}
-                    className="h-5 text-[10px] px-1.5 cursor-pointer"
+                    onCheckedChange={() => setEmployeeAutoAssign(emp.id)}
+                  >
+                    <Zap className="h-3.5 w-3.5 mr-1" />
+                    Auto-Assign
+                  </ContextMenuCheckboxItem>
+
+                  <ContextMenuSeparator />
+                  <ContextMenuLabel>Assign To</ContextMenuLabel>
+
+                  <ContextMenuItem
                     disabled={emp.onVacation}
-                    onClick={() => assignEmployee(emp.id, 'bugfix')}>
-                    Bugs
-                  </Button>
-                  {activeTasks.map((t) => (
-                    <Button key={t.id} size="sm" variant={!emp.autoAssign && emp.assignedTaskId === t.id ? 'default' : 'ghost'}
-                      className="h-5 text-[10px] px-1.5 cursor-pointer truncate max-w-[60px]"
-                      disabled={emp.onVacation}
-                      onClick={() => assignEmployee(emp.id, t.id)}
-                      title={t.name}>
-                      {t.name}
-                    </Button>
-                  ))}
-                  <Button size="sm" variant={emp.onVacation ? 'default' : 'ghost'}
-                    className="h-5 text-[10px] px-1.5 cursor-pointer"
-                    disabled={emp.onVacation || emp.stamina >= 95}
-                    onClick={() => sendOnVacation(emp.id)}
-                    title="Vacation">
-                    <Palmtree className="h-3 w-3" />
-                  </Button>
-                  {!emp.isPlayer && (
-                    <Button size="sm" variant="ghost"
-                      className="h-5 w-5 p-0 text-red-400 hover:text-red-300 cursor-pointer"
-                      onClick={() => fireEmployee(emp.id)}>
-                      <UserMinus className="h-3 w-3" />
-                    </Button>
+                    onSelect={() => assignEmployee(emp.id, 'bugfix')}
+                  >
+                    <Bug className="h-3.5 w-3.5 mr-1" />
+                    Bug Fixing
+                    {!emp.autoAssign && emp.assignedTaskId === 'bugfix' && (
+                      <span className="ml-auto text-[10px] text-muted-foreground">&bull;</span>
+                    )}
+                  </ContextMenuItem>
+
+                  {activeTasks.length > 0 && (
+                    <ContextMenuSub>
+                      <ContextMenuSubTrigger>
+                        Tasks
+                      </ContextMenuSubTrigger>
+                      <ContextMenuSubContent>
+                        {activeTasks.map((t) => (
+                          <ContextMenuItem
+                            key={t.id}
+                            disabled={emp.onVacation}
+                            onSelect={() => assignEmployee(emp.id, t.id)}
+                          >
+                            {t.name}
+                            {!emp.autoAssign && emp.assignedTaskId === t.id && (
+                              <span className="ml-auto text-[10px] text-muted-foreground">&bull;</span>
+                            )}
+                          </ContextMenuItem>
+                        ))}
+                      </ContextMenuSubContent>
+                    </ContextMenuSub>
                   )}
-                </div>
+
+                  <ContextMenuSeparator />
+
+                  <ContextMenuItem
+                    disabled={emp.onVacation || emp.stamina >= 95}
+                    onSelect={() => sendOnVacation(emp.id)}
+                  >
+                    <Palmtree className="h-3.5 w-3.5 mr-1" />
+                    Send on Vacation
+                  </ContextMenuItem>
+
+                  {!emp.isPlayer && (
+                    <>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem
+                        variant="destructive"
+                        onSelect={() => fireEmployee(emp.id)}
+                      >
+                        <UserMinus className="h-3.5 w-3.5 mr-1" />
+                        Fire Employee
+                      </ContextMenuItem>
+                    </>
+                  )}
+                </ContextMenuContent>
+              </ContextMenu>
+            ))}
+
+            {/* Empty slot placeholders */}
+            {Array.from({ length: emptySlots }, (_, i) => (
+              <div
+                key={`empty-${i}`}
+                className="employee-card--empty"
+                style={{ width: 160, height: 240 }}
+              >
+                <Plus className="h-8 w-8" />
+                <span className="text-xs">Open Slot</span>
               </div>
             ))}
           </div>
