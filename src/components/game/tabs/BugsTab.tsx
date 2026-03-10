@@ -116,20 +116,31 @@ export default function BugsTab() {
           <div className="grid gap-2">
             {taskBugs.map((bug) => {
               const fixer = bug.assignedFixerId ? employees.find((e) => e.id === bug.assignedFixerId) : null;
-              const fixPct = Math.round(bug.fixProgress * 100);
+              const fixPct = bug.fixTarget > 0 ? Math.min(100, (bug.fixProgress / bug.fixTarget) * 100) : 0;
               return (
                 <Card key={bug.id}>
                   <CardContent className="p-3">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 space-y-1">
+                      <div className="flex-1 space-y-1.5">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-medium">{bug.name}</span>
                           <Badge variant="outline" className={`text-xs ${SEVERITY_COLORS[bug.severity]}`}>{bug.severity}</Badge>
                           <Badge variant="outline" className="text-xs bg-cyan-500/20 text-cyan-400 border-cyan-500/50">{bug._taskName}</Badge>
-                          {fixer && <span className="text-xs text-blue-400">{fixer.name} ({fixPct}%)</span>}
                         </div>
-                        {bug.fixProgress > 0 && <Progress value={fixPct} className="h-1.5" />}
-                        <div className="text-xs text-muted-foreground">Fix cost: ${bug.fixCost.toLocaleString()}</div>
+                        <div className="flex items-center gap-2">
+                          <Progress value={fixPct} className="h-1.5 flex-1" />
+                          <span className="text-xs font-mono text-muted-foreground shrink-0">
+                            {Math.floor(bug.fixProgress)}/{bug.fixTarget}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Fix cost: ${bug.fixCost.toLocaleString()}</span>
+                          {fixer && (
+                            <span className="flex items-center gap-1 text-blue-400">
+                              <Wrench className="h-3 w-3" />{fixer.name}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <Button size="sm" variant="outline" className="cursor-pointer shrink-0" onClick={() => handleFixBug(bug, 'task')}>Fix</Button>
                     </div>
@@ -152,19 +163,30 @@ export default function BugsTab() {
         <div className="grid gap-2">
           {gameBugs.map((bug) => {
             const fixer = bug.assignedFixerId ? employees.find((e) => e.id === bug.assignedFixerId) : null;
-            const fixPct = Math.round(bug.fixProgress * 100);
+            const fixPct = bug.fixTarget > 0 ? Math.min(100, (bug.fixProgress / bug.fixTarget) * 100) : 0;
             return (
               <Card key={bug.id}>
                 <CardContent className="p-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
+                    <div className="flex-1 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium">{bug.name}</span>
                         <Badge variant="outline" className={`text-xs ${SEVERITY_COLORS[bug.severity]}`}>{bug.severity}</Badge>
-                        {fixer && <span className="text-xs text-blue-400">{fixer.name} ({fixPct}%)</span>}
                       </div>
-                      {bug.fixProgress > 0 && <Progress value={fixPct} className="h-1.5" />}
-                      <div className="text-xs text-muted-foreground">Fix cost: ${bug.fixCost.toLocaleString()}</div>
+                      <div className="flex items-center gap-2">
+                        <Progress value={fixPct} className="h-1.5 flex-1" />
+                        <span className="text-xs font-mono text-muted-foreground shrink-0">
+                          {Math.floor(bug.fixProgress)}/{bug.fixTarget}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Fix cost: ${bug.fixCost.toLocaleString()}</span>
+                        {fixer && (
+                          <span className="flex items-center gap-1 text-blue-400">
+                            <Wrench className="h-3 w-3" />{fixer.name}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <Button size="sm" variant="outline" className="cursor-pointer shrink-0" onClick={() => handleFixBug(bug, 'game')}>Fix</Button>
                   </div>

@@ -57,6 +57,8 @@ export function createPlayerEmployee(playerName: string): Employee {
     stamina: 100,
     onVacation: false,
     vacationDaysLeft: 0,
+    bugsFixed: 0,
+    totalBugFixPoints: 0,
   };
 }
 
@@ -162,6 +164,7 @@ interface GameActions {
   // Bugs
   addBug: (gameId: string, bug: Bug) => void;
   removeBug: (gameId: string, bugId: string) => void;
+  recordBugFix: (employeeId: string, fixPoints: number) => void;
 
   // Fans
   addGameFans: (gameId: string, count: number) => void;
@@ -528,6 +531,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   removeBug: (gameId, bugId) => set((s) => ({
     activeGames: s.activeGames.map((g) =>
       g.id === gameId ? { ...g, bugs: g.bugs.filter((b) => b.id !== bugId) } : g
+    ),
+  })),
+
+  recordBugFix: (employeeId, fixPoints) => set((s) => ({
+    employees: s.employees.map((e) =>
+      e.id === employeeId
+        ? { ...e, bugsFixed: e.bugsFixed + 1, totalBugFixPoints: e.totalBugFixPoints + fixPoints }
+        : e
     ),
   })),
 

@@ -122,6 +122,8 @@ export interface Employee {
   stamina: number;                // 0–100
   onVacation: boolean;
   vacationDaysLeft: number;
+  bugsFixed: number;              // lifetime count of bugs resolved
+  totalBugFixPoints: number;      // lifetime cumulative fix contribution points
 }
 
 // ============================================================
@@ -235,7 +237,8 @@ export interface Bug {
   severity: BugSeverity;
   name: string;
   fixCost: number;
-  fixProgress: number;          // 0–1, auto-fix progress by bugfix employees
+  fixTarget: number;              // total fix effort required (severity-driven)
+  fixProgress: number;            // accumulated fix work (0 → fixTarget)
   assignedFixerId: string | null;
   spawnedAt: number;
 }

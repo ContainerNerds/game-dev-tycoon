@@ -56,6 +56,8 @@ export function generateEmployee(): Employee {
     stamina: EMPLOYEE_CONFIG.stamina.max,
     onVacation: false,
     vacationDaysLeft: 0,
+    bugsFixed: 0,
+    totalBugFixPoints: 0,
   };
 }
 

@@ -235,6 +235,7 @@ export function processTick(store: GameStore): void {
             id: generateBugId(), gameId: task.id, severity,
             name: randomBugName(),
             fixCost: Math.round(GAME_CONFIG.bugFixBaseCost * severityCostMultiplier(severity)),
+            fixTarget: GAME_CONFIG.bugFixTargets[severity],
             fixProgress: 0, assignedFixerId: null, spawnedAt: Date.now(),
           });
           c.bugsIntroduced += 1;
@@ -306,7 +307,6 @@ export function processTick(store: GameStore): void {
     );
     if (idleEmployees.length === 0) continue;
 
-    const fixProgressPerTick = 0.03 * TICK_SCALE;
     let empIdx = 0;
     const updatedBugs = [...task.bugs];
     const bugsToRemove: string[] = [];
@@ -315,9 +315,12 @@ export function processTick(store: GameStore): void {
       const bug = updatedBugs[i];
       const fixer = idleEmployees[empIdx];
       const eff = getStaminaEfficiency(fixer.stamina);
-      const progress = bug.fixProgress + fixProgressPerTick * eff;
-      if (progress >= 1) {
+      const fixSkill = (fixer.skills.gameplay + fixer.skills.polish) / 2;
+      const points = GAME_CONFIG.bugFixProgressPerTick * fixSkill * eff * TICK_SCALE;
+      const progress = bug.fixProgress + points;
+      if (progress >= bug.fixTarget) {
         bugsToRemove.push(bug.id);
+        store.recordBugFix(fixer.id, bug.fixTarget);
       } else {
         updatedBugs[i] = { ...bug, fixProgress: progress, assignedFixerId: fixer.id };
       }
@@ -330,39 +333,6 @@ export function processTick(store: GameStore): void {
       }
     } else if (empIdx > 0) {
       store.updateTask(task.id, { bugs: updatedBugs });
-    }
-  }
-
-  // 2b. Bugfix employees incrementally fix bugs
-  const latestEmps = useGameStore.getState().employees;
-  const bugfixEmployees = latestEmps.filter((e) => e.assignedTaskId === 'bugfix' && !e.onVacation);
-  if (bugfixEmployees.length > 0) {
-    const progressPerTick = 0.005 * TICK_SCALE;
-    for (const game of state.activeGames) {
-      if (game.bugs.length === 0) continue;
-      const updatedBugs = [...game.bugs];
-      const bugsToRemove: string[] = [];
-
-      let empIdx = 0;
-      for (let i = 0; i < updatedBugs.length && empIdx < bugfixEmployees.length; i++) {
-        const bug = updatedBugs[i];
-        const fixer = bugfixEmployees[empIdx];
-        const efficiency = getStaminaEfficiency(fixer.stamina);
-        const fixSkill = (fixer.skills.gameplay + fixer.skills.polish) / 2;
-        const progress = bug.fixProgress + fixSkill * progressPerTick * efficiency;
-        if (progress >= 1) {
-          bugsToRemove.push(bug.id);
-        } else {
-          updatedBugs[i] = { ...bug, fixProgress: progress, assignedFixerId: fixer.id };
-        }
-        empIdx++;
-      }
-
-      if (bugsToRemove.length > 0 || empIdx > 0) {
-        store.updateGame(game.id, {
-          bugs: updatedBugs.filter((b) => !bugsToRemove.includes(b.id)),
-        });
-      }
     }
   }
 
@@ -388,6 +358,8 @@ export function processTick(store: GameStore): void {
   let totalTickRevenue = 0;
   let totalNewFans = 0;
   let totalRP = 0;
+  const latestEmps = useGameStore.getState().employees;
+  const bugfixEmployees = latestEmps.filter((e) => e.assignedTaskId === 'bugfix' && !e.onVacation);
 
   for (const game of state.activeGames) {
     if (game.phase === 'retired') continue;
@@ -463,9 +435,34 @@ export function processTick(store: GameStore): void {
         id: generateBugId(), gameId: game.id, severity,
         name: randomBugName(),
         fixCost: Math.round(GAME_CONFIG.bugFixBaseCost * severityCostMultiplier(severity)),
+        fixTarget: GAME_CONFIG.bugFixTargets[severity],
         fixProgress: 0, assignedFixerId: null, spawnedAt: Date.now(),
       });
     }
+
+    // Bugfix employees fix released-game bugs (processed in same loop to avoid state overwrite)
+    const allBugsForGame = [...game.bugs, ...newBugs];
+    const bugsToRemove: string[] = [];
+    const updatedBugs = [...allBugsForGame];
+    if (bugfixEmployees.length > 0 && allBugsForGame.length > 0) {
+      let empIdx = 0;
+      for (let i = 0; i < updatedBugs.length && empIdx < bugfixEmployees.length; i++) {
+        const bug = updatedBugs[i];
+        const fixer = bugfixEmployees[empIdx];
+        const efficiency = getStaminaEfficiency(fixer.stamina);
+        const fixSkill = (fixer.skills.gameplay + fixer.skills.polish) / 2;
+        const points = GAME_CONFIG.bugFixProgressPerTick * fixSkill * efficiency * TICK_SCALE;
+        const progress = bug.fixProgress + points;
+        if (progress >= bug.fixTarget) {
+          bugsToRemove.push(bug.id);
+          store.recordBugFix(fixer.id, bug.fixTarget);
+        } else {
+          updatedBugs[i] = { ...bug, fixProgress: progress, assignedFixerId: fixer.id };
+        }
+        empIdx++;
+      }
+    }
+    const finalBugs = updatedBugs.filter((b) => !bugsToRemove.includes(b.id));
 
     // Phase progression
     const maxTicks = getLifecyclePhaseTicks(game.phase, state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
@@ -490,7 +487,7 @@ export function processTick(store: GameStore): void {
       platformReleases: platforms,
       totalRevenue: game.totalRevenue + tickRevenue,
       phase, phaseTicks,
-      bugs: newBugs.length > 0 ? [...game.bugs, ...newBugs] : game.bugs,
+      bugs: finalBugs,
       bugRateDecay,
       regionalFans: mergedRegionalFans,
       dlcSalesBoost,

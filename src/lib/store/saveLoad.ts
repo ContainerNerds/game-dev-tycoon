@@ -1,7 +1,8 @@
-import type { StudioState } from '@/lib/game/types';
+import type { StudioState, BugSeverity } from '@/lib/game/types';
 import { formatDate } from '@/lib/game/calendarSystem';
+import { GAME_CONFIG } from '@/lib/config/gameConfig';
 
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 const SLOT_KEY_PREFIX = 'game-dev-tycoon-slot-';
 const SETTINGS_KEY = 'game-dev-tycoon-settings';
 
@@ -59,10 +60,11 @@ export function saveToSlot(slotId: number, state: StudioState): void {
 }
 
 function migrateState(state: StudioState, fromVersion: number): StudioState {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = state as any;
+
   if (fromVersion < 3) {
     // v2 → v3: autoAssign moved from StudioTask to Employee
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = state as any;
     raw.employees = raw.employees.map((e: any) => ({
       ...e,
       autoAssign: e.autoAssign ?? true,
@@ -73,6 +75,36 @@ function migrateState(state: StudioState, fromVersion: number): StudioState {
     }));
     raw.activeTasks = raw.activeTasks.map(({ autoAssign: _removed, ...rest }: any) => rest);
   }
+
+  if (fromVersion < 4) {
+    // v3 → v4: Bug.fixTarget, Employee.bugsFixed + totalBugFixPoints
+    const migrateBugs = (bugs: any[]) =>
+      bugs.map((b: any) => ({
+        ...b,
+        fixTarget: b.fixTarget ?? GAME_CONFIG.bugFixTargets[b.severity as BugSeverity] ?? 50,
+        fixProgress: b.fixProgress ?? 0,
+      }));
+
+    raw.activeGames = raw.activeGames.map((g: any) => ({
+      ...g,
+      bugs: migrateBugs(g.bugs ?? []),
+    }));
+    raw.activeTasks = raw.activeTasks.map((t: any) => ({
+      ...t,
+      bugs: t.bugs ? migrateBugs(t.bugs) : undefined,
+    }));
+    raw.employees = raw.employees.map((e: any) => ({
+      ...e,
+      bugsFixed: e.bugsFixed ?? 0,
+      totalBugFixPoints: e.totalBugFixPoints ?? 0,
+    }));
+    raw.candidatePool = raw.candidatePool.map((e: any) => ({
+      ...e,
+      bugsFixed: e.bugsFixed ?? 0,
+      totalBugFixPoints: e.totalBugFixPoints ?? 0,
+    }));
+  }
+
   return state;
 }
 

@@ -28,6 +28,8 @@ export const GAME_CONFIG = {
   bugFixBaseCost: 500,
   bugDecayPerDay: 0.97,
   bugMinDecay: 0.1,
+  bugFixTargets: { low: 20, medium: 50, high: 100, critical: 200 } as Record<string, number>,
+  bugFixProgressPerTick: 0.15,    // base progress per tick, scaled by employee skill + stamina
 
   // Research
   researchPointsPerGameDay: 0.5,  // earned while a game is online
