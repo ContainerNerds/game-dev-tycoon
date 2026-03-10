@@ -342,7 +342,7 @@ export default function StaffTab() {
                     <ContextMenuLabel>Assign To</ContextMenuLabel>
                     <ContextMenuItem
                       disabled={emp.onVacation}
-                      onSelect={() => assignEmployee(emp.id, 'bugfix')}
+                      onClick={() => assignEmployee(emp.id, 'bugfix')}
                     >
                       <Bug className="h-3.5 w-3.5 mr-1" />
                       Bug Fixing
@@ -361,7 +361,7 @@ export default function StaffTab() {
                             <ContextMenuItem
                               key={t.id}
                               disabled={emp.onVacation}
-                              onSelect={() => assignEmployee(emp.id, t.id)}
+                              onClick={() => assignEmployee(emp.id, t.id)}
                             >
                               {t.name}
                               {!emp.autoAssign && emp.assignedTaskId === t.id && (
@@ -378,7 +378,7 @@ export default function StaffTab() {
 
                   <ContextMenuItem
                     disabled={emp.onVacation || emp.stamina >= 95}
-                    onSelect={() => sendOnVacation(emp.id)}
+                    onClick={() => sendOnVacation(emp.id)}
                   >
                     <Palmtree className="h-3.5 w-3.5 mr-1" />
                     Send on Vacation
@@ -389,7 +389,7 @@ export default function StaffTab() {
                       <ContextMenuSeparator />
                       <ContextMenuItem
                         variant="destructive"
-                        onSelect={() => fireEmployee(emp.id)}
+                        onClick={() => fireEmployee(emp.id)}
                       >
                         <UserMinus className="h-3.5 w-3.5 mr-1" />
                         Fire Employee

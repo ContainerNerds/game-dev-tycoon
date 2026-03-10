@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import { motion } from 'motion/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserPlus, User } from 'lucide-react';
@@ -68,25 +67,25 @@ export default function EmployeeCard({
   return (
     <div
       ref={cardRef}
-      className={`employee-card employee-card--flippable ${faceDown ? 'employee-card--face-down' : ''} ${!faceDown && onClick ? 'cursor-pointer' : ''}`}
+      className={`employee-card employee-card--flippable ${faceDown ? 'employee-card--face-down' : ''}`}
       data-rarity={employee.rarity}
       data-interactive={!faceDown ? 'true' : 'false'}
       onMouseMove={!faceDown ? handleMouseMove : undefined}
       onMouseLeave={!faceDown ? handleMouseLeave : undefined}
-      onClick={!faceDown ? onClick : undefined}
       style={{ width: cardWidth, height: compact ? 240 : 300 }}
     >
-      <motion.div
-        className="employee-card__inner"
-        initial={{ rotateY: faceDown ? 180 : 0 }}
-        animate={{ rotateY: faceDown ? 180 : 0 }}
-        transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
-        style={{ transformStyle: 'preserve-3d' }}
-      >
+      {/* CSS transition handles the flip via .employee-card--face-down class */}
+      <div className="employee-card__inner">
         {/* Front face — the revealed card */}
         <div className={`employee-card__front border-2 ${rarity.borderColor} ${rarity.bgColor}`}>
           <div className="employee-card__sparkles" />
-          <div className="relative z-[1] flex flex-col p-3 gap-2 h-full">
+
+          {/* Card body — clickable to open detail modal.
+              Uses z-20 to sit above the holo pseudo-elements (z-10) on the outer card. */}
+          <div
+            className={`relative z-20 flex flex-col p-3 gap-2 h-full ${onClick ? 'cursor-pointer' : ''}`}
+            onClick={onClick}
+          >
             {/* Header */}
             <div className="flex items-center justify-between gap-1">
               <div className="min-w-0">
@@ -153,15 +152,18 @@ export default function EmployeeCard({
               </p>
             )}
 
-            {/* Hire button (pack view only) */}
+            {/* Hire button (pack view only) — stopPropagation prevents the card body onClick */}
             {onHire && (
-              <div className="flex items-center justify-between gap-1 pt-1 border-t border-border/30 mt-auto">
+              <div
+                className="flex items-center justify-between gap-1 pt-1 border-t border-border/30 mt-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <span className="text-[10px] text-muted-foreground">${employee.hireCost.toLocaleString()}</span>
                 <Button
                   size="sm"
                   className="h-6 text-[10px] px-2 cursor-pointer"
                   disabled={hireDisabled}
-                  onClick={(e) => { e.stopPropagation(); onHire(); }}
+                  onClick={onHire}
                 >
                   <UserPlus className="h-3 w-3 mr-1" />Hire
                 </Button>
@@ -172,7 +174,7 @@ export default function EmployeeCard({
 
         {/* Back face — question mark */}
         <div className="employee-card__back" />
-      </motion.div>
+      </div>
     </div>
   );
 }
