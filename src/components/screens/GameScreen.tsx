@@ -9,7 +9,7 @@ import GameMenu from '@/components/game/GameMenu';
 import TaskBar from '@/components/game/TaskBar';
 import ActiveGamesBar from '@/components/game/ActiveGamesBar';
 import StudioTab from '@/components/game/tabs/StudioTab';
-import UpgradesTab from '@/components/game/tabs/UpgradesTab';
+import SkillTreeTab from '@/components/game/tabs/SkillTreeTab';
 import BugsTab from '@/components/game/tabs/BugsTab';
 import ResearchTab from '@/components/game/tabs/ResearchTab';
 import StaffTab from '@/components/game/tabs/StaffTab';
@@ -69,7 +69,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
         <Tabs defaultValue="studio" className="h-full flex flex-col">
           <TabsList className="w-full justify-start rounded-none border-b border-border bg-background px-2 sm:px-4 shrink-0 overflow-x-auto no-scrollbar">
             <TabsTrigger value="studio" className="cursor-pointer">Studio</TabsTrigger>
-            <TabsTrigger value="upgrades" className="cursor-pointer">Upgrades</TabsTrigger>
+            <TabsTrigger value="skilltree" className="cursor-pointer">Skill Tree</TabsTrigger>
             <TabsTrigger value="bugs" className="cursor-pointer">
               Bugs
               {totalBugs > 0 && (
@@ -86,7 +86,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
 
           <div className="flex-1 overflow-y-auto min-h-0">
             <TabsContent value="studio" className="mt-0"><StudioTab /></TabsContent>
-            <TabsContent value="upgrades" className="mt-0"><UpgradesTab /></TabsContent>
+            <TabsContent value="skilltree" className="mt-0"><SkillTreeTab /></TabsContent>
             <TabsContent value="bugs" className="mt-0"><BugsTab /></TabsContent>
             <TabsContent value="research" className="mt-0"><ResearchTab /></TabsContent>
             <TabsContent value="engines" className="mt-0"><EnginesTab /></TabsContent>

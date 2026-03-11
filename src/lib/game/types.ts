@@ -316,6 +316,30 @@ export interface UpgradeEffect {
 }
 
 // ============================================================
+// New Skill Tree (3-spec, multi-rank)
+// ============================================================
+
+export type Specialization = 'production' | 'business' | 'technology';
+
+export interface SkillEffect {
+  type: string;
+  /** One value per rank. Index 0 = rank 1, etc. */
+  valuePerRank: number[];
+}
+
+export interface SkillNode {
+  id: string;
+  name: string;
+  description: string;
+  specialization: Specialization;
+  tier: 1 | 2 | 3 | 4;
+  maxRanks: number;
+  pointsPerRank: number;
+  prerequisites: string[];
+  effects: SkillEffect[];
+}
+
+// ============================================================
 // Platform Release Info
 // ============================================================
 

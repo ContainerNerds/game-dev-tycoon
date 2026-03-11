@@ -2,7 +2,7 @@ import type { ActiveGame, PillarWeights, StudioState, Employee } from './types';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
-import { SKILL_TREE } from '@/lib/config/skillTreeConfig';
+import { LEGACY_SKILL_TREE, getSkillEffectValue } from '@/lib/config/skillTreeConfig';
 import { getIdealPillars, getComboMultiplier } from '@/lib/config/genreStyleConfig';
 import { getEffectiveSkills } from './employeeSystem';
 
@@ -32,6 +32,11 @@ export function getServerCostMultiplier(employees: Employee[]): number {
 // Upgrade Effect Aggregation
 // ============================================================
 
+/**
+ * Legacy upgrade multiplier. Reads from old flat upgrade IDs (for
+ * backward compat with unlockedStudioUpgrades). Game upgrades are
+ * no longer used but the parameter is kept so callers don't break.
+ */
 export function getUpgradeMultiplier(
   effectType: string,
   studioUpgrades: string[],
@@ -41,7 +46,7 @@ export function getUpgradeMultiplier(
   const allUnlocked = [...studioUpgrades, ...gameUpgrades];
 
   for (const upgradeId of allUnlocked) {
-    const node = SKILL_TREE.find((n) => n.id === upgradeId);
+    const node = LEGACY_SKILL_TREE.find((n) => n.id === upgradeId);
     if (!node) continue;
     for (const effect of node.effects) {
       if (effect.type === effectType) {
@@ -51,6 +56,19 @@ export function getUpgradeMultiplier(
   }
 
   return multiplier;
+}
+
+/**
+ * New skill-tree-aware multiplier. Combines legacy unlockedStudioUpgrades
+ * with the new allocatedSkills system. Multiplicative effects are multiplied.
+ */
+export function getFullEffectMultiplier(
+  effectType: string,
+  state: StudioState,
+): number {
+  const legacyMul = getUpgradeMultiplier(effectType, state.unlockedStudioUpgrades, []);
+  const skillMul = getSkillEffectValue(effectType, state.allocatedSkills);
+  return legacyMul * skillMul;
 }
 
 // ============================================================
@@ -67,7 +85,6 @@ export function calculatePillarFitScore(
     Math.abs(weights.sound - idealWeights.sound) +
     Math.abs(weights.polish - idealWeights.polish);
 
-  // diff ranges 0 (perfect) to 200 (worst). Map to 0–1 score.
   return Math.max(0, 1 - diff / 200);
 }
 
@@ -80,13 +97,13 @@ export function calculateReviewScore(
   const ideal = getIdealPillars(game.genre, game.style);
   const pillarFit = ideal ? calculatePillarFitScore(game.pillarWeights, ideal) : 0.5;
 
-  const comboScore = getComboMultiplier(game.genre, game.style) / 3.0; // normalize 0–1
+  const comboScore = getComboMultiplier(game.genre, game.style) / 3.0;
 
   const bugPenalty = Math.min(1, bugCount * 0.05);
 
   const raw = (pillarFit * 0.5 + comboScore * 0.3 + (1 - bugPenalty) * 0.2) * 10;
 
-  return Math.round(raw * 10) / 10; // one decimal place, 0–10
+  return Math.round(raw * 10) / 10;
 }
 
 // ============================================================
@@ -99,7 +116,6 @@ export function getSaleRatePerTick(
 ): number {
   let baseRate = GAME_CONFIG.baseSaleRatePerTick;
 
-  // Phase multiplier
   switch (game.phase) {
     case 'growth':
       baseRate *= 1.0;
@@ -114,22 +130,14 @@ export function getSaleRatePerTick(
       return 0;
   }
 
-  // Combo multiplier
   baseRate *= game.comboMultiplier;
 
-  // Review score scales sales (0–10 maps to 0.2–2.0)
   const reviewMultiplier = 0.2 + (game.reviewScore / 10) * 1.8;
   baseRate *= reviewMultiplier;
 
-  // Upgrade multipliers
-  const saleUpgrade = getUpgradeMultiplier(
-    'saleRateMultiplier',
-    state.unlockedStudioUpgrades,
-    game.unlockedGameUpgrades
-  );
+  const saleUpgrade = getFullEffectMultiplier('saleRateMultiplier', state);
   baseRate *= saleUpgrade;
 
-  // Studio fans guaranteed buys (only during growth)
   if (game.phase === 'growth') {
     baseRate += state.studioFans * GAME_CONFIG.studioFanPurchaseRate * 0.01;
   }
