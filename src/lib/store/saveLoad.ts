@@ -2,8 +2,9 @@ import type { StudioState, BugSeverity } from '@/lib/game/types';
 import { formatDate } from '@/lib/game/calendarSystem';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { getStartingUnlockedFeatures } from '@/lib/config/engineFeaturesConfig';
+import { computeLevelUp } from '@/lib/config/studioLevelConfig';
 
-const SAVE_VERSION = 7;
+const SAVE_VERSION = 8;
 const SLOT_KEY_PREFIX = 'game-dev-tycoon-slot-';
 const SETTINGS_KEY = 'game-dev-tycoon-settings';
 
@@ -250,6 +251,49 @@ function migrateState(state: StudioState, fromVersion: number): StudioState {
   if (fromVersion < 7) {
     // v6 → v7: Add furniture array
     raw.furniture = raw.furniture ?? [];
+  }
+
+  if (fromVersion < 8) {
+    // v7 → v8: Studio XP/level system and new skill tree
+    raw.studioXP = raw.studioXP ?? 0;
+    raw.studioLevel = raw.studioLevel ?? 0;
+    raw.skillPoints = raw.skillPoints ?? 0;
+    raw.allocatedSkills = raw.allocatedSkills ?? {};
+
+    // Map old unlockedStudioUpgrades to new skill tree allocations
+    const upgradeToSkillMap: Record<string, string> = {
+      'better-marketing': 'biz-marketing',
+      'efficient-ops': 'tech-server-opt',
+      'basic-qa': 'prod-qa-basics',
+      'viral-launch': 'biz-viral-launch',
+      'datacenter-unlocked': 'tech-datacenter',
+      'console-publishing': 'tech-console',
+      'mobile-publishing': 'tech-mobile',
+      'global-reach': 'tech-global-reach',
+      'studio-brand': 'biz-studio-brand',
+      'server-optimization': 'tech-server-opt',
+    };
+
+    const oldUpgrades: string[] = raw.unlockedStudioUpgrades ?? [];
+    for (const oldId of oldUpgrades) {
+      const newId = upgradeToSkillMap[oldId];
+      if (newId && !raw.allocatedSkills[newId]) {
+        raw.allocatedSkills[newId] = 1;
+      }
+    }
+
+    // Grant retroactive XP based on completed games
+    const completedCount = (raw.completedGames ?? []).length;
+    const activeCount = (raw.activeGames ?? []).length;
+    const retroactiveXP = completedCount * 200 + activeCount * 100;
+    if (retroactiveXP > 0) {
+      raw.studioXP = retroactiveXP;
+      // Compute levels from retroactive XP
+      const result = computeLevelUp(0, 0, retroactiveXP);
+      raw.studioXP = result.newXP;
+      raw.studioLevel = result.newLevel;
+      raw.skillPoints = (raw.skillPoints ?? 0) + result.pointsGained;
+    }
   }
 
   return state;
