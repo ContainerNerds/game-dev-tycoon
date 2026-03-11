@@ -78,7 +78,6 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <TabsList className="w-full justify-start rounded-none border-b border-border bg-background px-2 sm:px-4 shrink-0 overflow-x-auto no-scrollbar">
             <TabsTrigger value="studio" className="cursor-pointer">Studio</TabsTrigger>
-            <TabsTrigger value="skilltree" className="cursor-pointer">Skill Tree</TabsTrigger>
             <TabsTrigger value="bugs" className="cursor-pointer">
               Bugs
               {totalBugs > 0 && (
@@ -87,6 +86,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="skilltree" className="cursor-pointer">Skill Tree</TabsTrigger>
             <TabsTrigger value="research" className="cursor-pointer">Research</TabsTrigger>
             <TabsTrigger value="engines" className="cursor-pointer">Engines</TabsTrigger>
             <TabsTrigger value="staff" className="cursor-pointer">Staff</TabsTrigger>
@@ -103,8 +103,8 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
 
           <div className="flex-1 overflow-y-auto min-h-0">
             <TabsContent value="studio" className="mt-0"><StudioTab /></TabsContent>
-            <TabsContent value="skilltree" className="mt-0"><SkillTreeTab /></TabsContent>
             <TabsContent value="bugs" className="mt-0"><BugsTab /></TabsContent>
+            <TabsContent value="skilltree" className="mt-0"><SkillTreeTab /></TabsContent>
             <TabsContent value="research" className="mt-0"><ResearchTab /></TabsContent>
             <TabsContent value="engines" className="mt-0"><EnginesTab /></TabsContent>
             <TabsContent value="staff" className="mt-0"><StaffTab /></TabsContent>

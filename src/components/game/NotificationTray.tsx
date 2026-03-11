@@ -13,7 +13,7 @@ import { useGameStore } from '@/lib/store/gameStore';
 import { loadSettings, saveSettings, type GameSettings } from '@/lib/store/saveLoad';
 import { setNotificationSoundMuted } from '@/lib/game/sounds';
 import type { GameNotification } from '@/lib/game/types';
-import { Bell, BellOff, Volume2, VolumeX, Mail } from 'lucide-react';
+import { Bell, BellOff, Volume2, VolumeX, Mail, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 function formatNotificationTime(ts: { year: number; month: number; day: number }): string {
@@ -32,6 +32,7 @@ export default function NotificationTray({ onNavigateToInbox }: NotificationTray
 
   const notifications = useGameStore((s) => s.notifications);
   const dismissNotification = useGameStore((s) => s.dismissNotification);
+  const clearAllNotifications = useGameStore((s) => s.clearAllNotifications);
 
   const undismissed = notifications.filter((n) => !n.dismissed);
   const unreadCount = undismissed.length;
@@ -91,6 +92,19 @@ export default function NotificationTray({ onNavigateToInbox }: NotificationTray
         <div className="p-2">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-medium text-muted-foreground">Notifications</span>
+            {notifications.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  clearAllNotifications();
+                  setOpen(false);
+                }}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+              >
+                <Trash2 className="h-3 w-3" />
+                Clear all
+              </button>
+            )}
           </div>
           <Separator className="mb-2" />
           <div className="flex flex-col gap-1 mb-2">

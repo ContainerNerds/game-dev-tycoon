@@ -216,6 +216,7 @@ interface GameActions {
   addNotification: (notification: GameNotification) => void;
   dismissNotification: (notificationId: string) => void;
   clearDismissedNotifications: () => void;
+  clearAllNotifications: () => void;
 
   // Tracking
   setBankrupt: () => void;
@@ -758,6 +759,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   clearDismissedNotifications: () => set((s) => ({
     notifications: s.notifications.filter((n) => !n.dismissed),
   })),
+
+  clearAllNotifications: () => set({ notifications: [] }),
 
   // ----------------------------------------------------------
   // Tracking
