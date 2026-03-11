@@ -28,6 +28,7 @@ interface StudioHeaderProps {
 
 export default function StudioHeader({ slotId, onMenuClick, onNavigateToInbox }: StudioHeaderProps) {
   const studioName = useGameStore((s) => s.studioName);
+  const studioLevel = useGameStore((s) => s.studioLevel);
   const money = useGameStore((s) => s.money);
   const studioFans = useGameStore((s) => s.studioFans);
   const researchPoints = useGameStore((s) => s.researchPoints);
@@ -56,6 +57,9 @@ export default function StudioHeader({ slotId, onMenuClick, onNavigateToInbox }:
         >
           {studioName}
         </button>
+        <span className="text-[10px] sm:text-xs font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/30 rounded px-1.5 py-0.5 shrink-0">
+          Lv.{studioLevel}
+        </span>
 
         <Separator orientation="vertical" className="h-5 sm:h-6 hidden sm:block" />
 
