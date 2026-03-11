@@ -39,8 +39,10 @@ export default function StudioViewTab() {
 
       {/* Content */}
       {view === 'office' && (
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-          <OfficeFloorPlan />
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 min-w-0">
+          <div className="min-w-0 overflow-x-auto">
+            <OfficeFloorPlan />
+          </div>
           <FurnitureShop />
         </div>
       )}

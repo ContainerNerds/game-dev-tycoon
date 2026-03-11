@@ -54,6 +54,7 @@ export default function EmployeeDot({ employee }: EmployeeDotProps) {
   const activityBg = ACTIVITY_COLORS[employee.activity];
   const activityText = ACTIVITY_TEXT_COLORS[employee.activity];
   const isVacation = employee.activity === 'vacation';
+  const isActive = employee.activity !== 'idle' && employee.activity !== 'vacation';
   const staminaColor =
     employee.stamina >= 60 ? 'bg-green-500' : employee.stamina >= 30 ? 'bg-yellow-500' : 'bg-red-500';
 
@@ -73,7 +74,7 @@ export default function EmployeeDot({ employee }: EmployeeDotProps) {
 
             {/* Activity dot + short label */}
             <div className="flex items-center gap-0.5">
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${activityBg}`} />
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${activityBg} ${isActive ? 'animate-pulse' : ''}`} />
               <span className={`text-[8px] font-medium leading-none ${activityText}`}>
                 {ACTIVITY_SHORT[employee.activity]}
               </span>
