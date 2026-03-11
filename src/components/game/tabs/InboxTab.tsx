@@ -372,7 +372,7 @@ export default function InboxTab() {
   return (
     <ResizablePanelGroup orientation="horizontal" className="h-full items-stretch">
       {/* Left panel — category nav */}
-      <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+      <ResizablePanel defaultSize="20" minSize="15" maxSize="25">
         <div className="flex h-[52px] items-center px-4">
           <h2 className="text-lg font-bold">Mail</h2>
           {unreadCount > 0 && (
@@ -394,7 +394,7 @@ export default function InboxTab() {
       <ResizableHandle withHandle />
 
       {/* Middle panel — email list */}
-      <ResizablePanel defaultSize={35} minSize={25}>
+      <ResizablePanel defaultSize="35" minSize="25">
         <Tabs defaultValue="all">
           <div className="flex items-center px-4 py-2">
             <h2 className="text-xl font-bold">Inbox</h2>
@@ -444,7 +444,7 @@ export default function InboxTab() {
       <ResizableHandle withHandle />
 
       {/* Right panel — email detail */}
-      <ResizablePanel defaultSize={45} minSize={30}>
+      <ResizablePanel defaultSize="45" minSize="30">
         <MailDisplay
           email={selectedEmail}
           onDelete={handleDelete}
