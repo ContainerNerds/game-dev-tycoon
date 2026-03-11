@@ -12,6 +12,19 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuCheckboxItem,
+  ContextMenuSeparator,
+  ContextMenuLabel,
+  ContextMenuGroup,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+} from '@/components/ui/context-menu';
+import {
   Coffee,
   Leaf,
   PenLine,
@@ -22,8 +35,15 @@ import {
   FlaskConical,
   DoorOpen,
   User,
+  Zap,
+  Bug,
+  Palmtree,
+  UserMinus,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import type { Employee, StudioTask } from '@/lib/game/types';
+
+const CELL_SIZE = 56;
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Coffee,
@@ -38,7 +58,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 function CellRenderer({ cell, employee, furnitureInfo }: {
   cell: GridCell;
-  employee: ReturnType<typeof useGameStore.getState>['employees'][number] | null;
+  employee: Employee | null;
   furnitureInfo: { name: string; icon: string; description: string } | null;
 }) {
   if (cell.type === 'wall') {
@@ -50,7 +70,7 @@ function CellRenderer({ cell, employee, furnitureInfo }: {
   if (cell.type === 'door') {
     return (
       <div className="w-full h-full bg-amber-900/30 flex items-center justify-center border border-amber-900/20">
-        <DoorOpen className="w-3.5 h-3.5 text-amber-700/60" />
+        <DoorOpen className="w-4 h-4 text-amber-700/60" />
       </div>
     );
   }
@@ -61,7 +81,7 @@ function CellRenderer({ cell, employee, furnitureInfo }: {
         {employee ? (
           <EmployeeDot employee={employee} />
         ) : (
-          <User className="w-3.5 h-3.5 text-muted-foreground/30" />
+          <User className="w-4 h-4 text-muted-foreground/30" />
         )}
       </div>
     );
@@ -77,7 +97,7 @@ function CellRenderer({ cell, employee, furnitureInfo }: {
               className="w-full h-full bg-sky-100/50 dark:bg-sky-900/20 border border-sky-300/40 dark:border-sky-700/30 flex items-center justify-center rounded-sm cursor-default"
             >
               {IconComp ? (
-                <IconComp className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                <IconComp className="w-4 h-4 text-sky-600 dark:text-sky-400" />
               ) : (
                 <div className="w-3 h-3 rounded bg-sky-400/60" />
               )}
@@ -92,7 +112,7 @@ function CellRenderer({ cell, employee, furnitureInfo }: {
     }
     return (
       <div className="w-full h-full border border-dashed border-muted-foreground/20 flex items-center justify-center rounded-sm">
-        <div className="w-2 h-2 rounded bg-muted-foreground/10" />
+        <div className="w-2.5 h-2.5 rounded bg-muted-foreground/10" />
       </div>
     );
   }
@@ -101,10 +121,107 @@ function CellRenderer({ cell, employee, furnitureInfo }: {
   return <div className="w-full h-full bg-muted/30" />;
 }
 
+function EmployeeDeskContextMenu({ employee, activeTasks, children }: {
+  employee: Employee;
+  activeTasks: StudioTask[];
+  children: React.ReactNode;
+}) {
+  const assignEmployee = useGameStore((s) => s.assignEmployee);
+  const setEmployeeAutoAssign = useGameStore((s) => s.setEmployeeAutoAssign);
+  const sendOnVacation = useGameStore((s) => s.sendOnVacation);
+  const fireEmployee = useGameStore((s) => s.fireEmployee);
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger className="w-full h-full">
+        {children}
+      </ContextMenuTrigger>
+
+      <ContextMenuContent className="w-48">
+        <ContextMenuGroup>
+          <ContextMenuLabel>{employee.name}</ContextMenuLabel>
+        </ContextMenuGroup>
+        <ContextMenuSeparator />
+
+        <ContextMenuCheckboxItem
+          checked={employee.autoAssign}
+          disabled={employee.onVacation}
+          onCheckedChange={() => setEmployeeAutoAssign(employee.id)}
+        >
+          <Zap className="h-3.5 w-3.5 mr-1" />
+          Auto-Assign
+        </ContextMenuCheckboxItem>
+
+        <ContextMenuSeparator />
+
+        <ContextMenuGroup>
+          <ContextMenuLabel>Assign To</ContextMenuLabel>
+          <ContextMenuItem
+            disabled={employee.onVacation}
+            onClick={() => assignEmployee(employee.id, 'bugfix')}
+          >
+            <Bug className="h-3.5 w-3.5 mr-1" />
+            Bug Fixing
+            {!employee.autoAssign && employee.assignedTaskId === 'bugfix' && (
+              <span className="ml-auto text-[10px] text-muted-foreground">&bull;</span>
+            )}
+          </ContextMenuItem>
+
+          {activeTasks.length > 0 && (
+            <ContextMenuSub>
+              <ContextMenuSubTrigger>
+                Tasks
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent>
+                {activeTasks.map((t) => (
+                  <ContextMenuItem
+                    key={t.id}
+                    disabled={employee.onVacation}
+                    onClick={() => assignEmployee(employee.id, t.id)}
+                  >
+                    {t.name}
+                    {!employee.autoAssign && employee.assignedTaskId === t.id && (
+                      <span className="ml-auto text-[10px] text-muted-foreground">&bull;</span>
+                    )}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          )}
+        </ContextMenuGroup>
+
+        <ContextMenuSeparator />
+
+        <ContextMenuItem
+          disabled={employee.onVacation || employee.stamina >= 95}
+          onClick={() => sendOnVacation(employee.id)}
+        >
+          <Palmtree className="h-3.5 w-3.5 mr-1" />
+          Send on Vacation
+        </ContextMenuItem>
+
+        {!employee.isPlayer && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              variant="destructive"
+              onClick={() => fireEmployee(employee.id)}
+            >
+              <UserMinus className="h-3.5 w-3.5 mr-1" />
+              Fire Employee
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
 export default function OfficeFloorPlan() {
   const officeTier = useGameStore((s) => s.office.tier);
   const employees = useGameStore((s) => s.employees);
   const furniture = useGameStore((s) => s.furniture);
+  const activeTasks = useGameStore((s) => s.activeTasks);
 
   const layout = useMemo(() => getOfficeLayout(officeTier), [officeTier]);
   const tierDef = OFFICE_CONFIG.tiers.find((t) => t.tier === officeTier);
@@ -146,8 +263,8 @@ export default function OfficeFloorPlan() {
       <div
         className="inline-grid gap-px bg-muted/50 rounded-lg p-1 border border-border"
         style={{
-          gridTemplateColumns: `repeat(${layout.cols}, 36px)`,
-          gridTemplateRows: `repeat(${layout.rows}, 36px)`,
+          gridTemplateColumns: `repeat(${layout.cols}, ${CELL_SIZE}px)`,
+          gridTemplateRows: `repeat(${layout.rows}, ${CELL_SIZE}px)`,
         }}
       >
         {layout.cells.flatMap((row, r) =>
@@ -162,9 +279,23 @@ export default function OfficeFloorPlan() {
                 ? furnitureSlotMap[cell.furnitureSlotIndex] ?? null
                 : null;
 
+            const cellContent = (
+              <CellRenderer cell={cell} employee={employee} furnitureInfo={furnitureInfo} />
+            );
+
+            if (cell.type === 'desk' && employee) {
+              return (
+                <div key={`${r}-${c}`} style={{ width: CELL_SIZE, height: CELL_SIZE }}>
+                  <EmployeeDeskContextMenu employee={employee} activeTasks={activeTasks}>
+                    {cellContent}
+                  </EmployeeDeskContextMenu>
+                </div>
+              );
+            }
+
             return (
-              <div key={`${r}-${c}`} className="w-[36px] h-[36px]">
-                <CellRenderer cell={cell} employee={employee} furnitureInfo={furnitureInfo} />
+              <div key={`${r}-${c}`} style={{ width: CELL_SIZE, height: CELL_SIZE }}>
+                {cellContent}
               </div>
             );
           })
