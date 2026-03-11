@@ -146,6 +146,25 @@ export function processTick(store: GameStore): void {
     if (randomEmails.hateMail) dispatchEmail(store, randomEmails.hateMail);
   }
 
+  // Free employees assigned to completed tasks back to auto-assign
+  {
+    const latestState = useGameStore.getState();
+    const completedTaskIds = new Set(
+      latestState.activeTasks
+        .filter((t) => t.progressPercent >= 100 && t.type !== 'patch')
+        .map((t) => t.id)
+    );
+    if (completedTaskIds.size > 0) {
+      const freed = latestState.employees.map((emp) => {
+        if (emp.assignedTaskId && completedTaskIds.has(emp.assignedTaskId)) {
+          return { ...emp, assignedTaskId: null, activity: 'idle' as const, autoAssign: true };
+        }
+        return emp;
+      });
+      store.updateEmployees(freed);
+    }
+  }
+
   // Resolve auto-assigned employees to tasks matching their type
   {
     const latestState = useGameStore.getState();

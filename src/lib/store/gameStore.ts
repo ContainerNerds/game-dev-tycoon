@@ -562,7 +562,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return { ...e, assignedTaskId: taskId, activity, autoAssign: false };
       }
 
-      return { ...e, assignedTaskId: null, activity: 'idle' as const, autoAssign: false };
+      return { ...e, assignedTaskId: null, activity: 'idle' as const, autoAssign: true };
     }),
   })),
 
