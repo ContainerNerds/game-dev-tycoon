@@ -13,7 +13,6 @@ import UpgradesTab from '@/components/game/tabs/UpgradesTab';
 import BugsTab from '@/components/game/tabs/BugsTab';
 import ResearchTab from '@/components/game/tabs/ResearchTab';
 import StaffTab from '@/components/game/tabs/StaffTab';
-import OfficeTab from '@/components/game/tabs/OfficeTab';
 import EnginesTab from '@/components/game/tabs/EnginesTab';
 import StudioViewTab from '@/components/game/tabs/StudioViewTab';
 import { useGameTick } from '@/lib/game/useGameTick';
@@ -82,7 +81,6 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
             <TabsTrigger value="research" className="cursor-pointer">Research</TabsTrigger>
             <TabsTrigger value="engines" className="cursor-pointer">Engines</TabsTrigger>
             <TabsTrigger value="staff" className="cursor-pointer">Staff</TabsTrigger>
-            <TabsTrigger value="office" className="cursor-pointer">Office</TabsTrigger>
             <TabsTrigger value="studioview" className="cursor-pointer">Studio View</TabsTrigger>
           </TabsList>
 
@@ -93,7 +91,6 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
             <TabsContent value="research" className="mt-0"><ResearchTab /></TabsContent>
             <TabsContent value="engines" className="mt-0"><EnginesTab /></TabsContent>
             <TabsContent value="staff" className="mt-0"><StaffTab /></TabsContent>
-            <TabsContent value="office" className="mt-0"><OfficeTab /></TabsContent>
             <TabsContent value="studioview" className="mt-0"><StudioViewTab /></TabsContent>
           </div>
         </Tabs>
