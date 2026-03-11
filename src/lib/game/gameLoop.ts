@@ -7,7 +7,7 @@ import { CATEGORY_DEV_CONFIG } from '@/lib/config/categoryConfig';
 import {
   getSaleRatePerTick,
   getBugRateMultiplier,
-  getUpgradeMultiplier,
+  getFullEffectMultiplier,
   getLifecyclePhaseTicks,
 } from './calculations';
 import { calculateFanConversion } from './fanSystem';
@@ -389,7 +389,7 @@ export function processTick(store: GameStore): void {
     let saleRate = getSaleRatePerTick(game, state) * TICK_SCALE;
     if (game.dlcSalesBoost > 0) saleRate *= (1 + game.dlcSalesBoost);
     let actualCopies = Math.max(0, Math.round(saleRate * 100) / 100);
-    const doubleSaleChance = getUpgradeMultiplier('doubleSaleChance', state.unlockedStudioUpgrades, game.unlockedGameUpgrades) - 1;
+    const doubleSaleChance = getFullEffectMultiplier('doubleSaleChance', state) - 1;
     if (doubleSaleChance > 0 && Math.random() < doubleSaleChance) actualCopies *= 2;
 
     if (actualCopies > 0) {
@@ -401,7 +401,7 @@ export function processTick(store: GameStore): void {
         pr.totalCopiesSold += copiesPerPlatform;
         pr.activePlayers += copiesPerPlatform * 0.5;
       }
-      const fans = calculateFanConversion(actualCopies, state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
+      const fans = calculateFanConversion(actualCopies, state);
       newGameFans += fans.newGameFans;
       newStudioFans += fans.newStudioFans;
 
@@ -416,7 +416,7 @@ export function processTick(store: GameStore): void {
     const totalPlayers = platforms.reduce((sum, p) => sum + p.activePlayers, 0);
     let playerDecayRate = 0;
     if (game.phase === 'decline') {
-      const declineMultiplier = getUpgradeMultiplier('declineRateMultiplier', state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
+      const declineMultiplier = getFullEffectMultiplier('declineRateMultiplier', state);
       playerDecayRate = 0.002 * declineMultiplier * TICK_SCALE;
       if (game.isLiveService) playerDecayRate *= GAME_CONFIG.liveServiceDeclineSlowdown;
     } else if (game.phase === 'peak') {
@@ -438,7 +438,7 @@ export function processTick(store: GameStore): void {
       bugRateDecay = Math.max(GAME_CONFIG.bugMinDecay, bugRateDecay * GAME_CONFIG.bugDecayPerDay);
     }
     const bugRateMultiplier = getBugRateMultiplier(state.employees);
-    const bugUpgradeMultiplier = getUpgradeMultiplier('bugRateMultiplier', state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
+    const bugUpgradeMultiplier = getFullEffectMultiplier('bugRateMultiplier', state);
     const bugChance = (GAME_CONFIG.bugBaseRatePerTick + totalPlayers * GAME_CONFIG.bugPlayerScaling) *
       bugRateMultiplier * bugUpgradeMultiplier * bugRateDecay * TICK_SCALE;
     if (Math.random() < bugChance) {
@@ -478,7 +478,7 @@ export function processTick(store: GameStore): void {
     const finalBugs = updatedBugs.filter((b) => !bugsToRemove.includes(b.id));
 
     // Phase progression
-    const maxTicks = getLifecyclePhaseTicks(game.phase, state.unlockedStudioUpgrades, game.unlockedGameUpgrades);
+    const maxTicks = getLifecyclePhaseTicks(game.phase, state.unlockedStudioUpgrades, []);
     if (phaseTicks >= maxTicks) {
       if (phase === 'growth') phase = 'peak';
       else if (phase === 'peak') phase = 'decline';

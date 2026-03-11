@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
-import { getUpgradeMultiplier } from './calculations';
+import { getFullEffectMultiplier } from './calculations';
+import type { StudioState } from './types';
 
 interface FanConversionResult {
   newGameFans: number;
@@ -8,24 +9,14 @@ interface FanConversionResult {
 
 export function calculateFanConversion(
   copiesSoldThisTick: number,
-  studioUpgrades: string[],
-  gameUpgrades: string[]
+  state: StudioState,
 ): FanConversionResult {
   if (copiesSoldThisTick <= 0) return { newGameFans: 0, newStudioFans: 0 };
 
   const baseFans = copiesSoldThisTick * GAME_CONFIG.fanConversionRate;
 
-  const studioFanMultiplier = getUpgradeMultiplier(
-    'studioFanConversionMultiplier',
-    studioUpgrades,
-    gameUpgrades
-  );
-
-  const growthFanMultiplier = getUpgradeMultiplier(
-    'growthFanMultiplier',
-    studioUpgrades,
-    gameUpgrades
-  );
+  const studioFanMultiplier = getFullEffectMultiplier('studioFanConversionMultiplier', state);
+  const growthFanMultiplier = getFullEffectMultiplier('growthFanMultiplier', state);
 
   const totalNewFans = baseFans * growthFanMultiplier;
   const studioSplit = GAME_CONFIG.studioFanSplitRate * studioFanMultiplier;

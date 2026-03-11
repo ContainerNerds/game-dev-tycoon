@@ -5,6 +5,7 @@ import { useGameStore } from '@/lib/store/gameStore';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
 import { createColocatedServer, createDatacenter } from '@/lib/game/serverSystem';
 import { getUpgradeMultiplier, getServerCostMultiplier } from '@/lib/game/calculations';
+import { getSkillEffectValue } from '@/lib/config/skillTreeConfig';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -134,14 +135,17 @@ export default function DatacenterView() {
   const money = useGameStore((s) => s.money);
   const employees = useGameStore((s) => s.employees);
   const studioUpgrades = useGameStore((s) => s.unlockedStudioUpgrades);
+  const allocatedSkills = useGameStore((s) => s.allocatedSkills);
   const spendMoney = useGameStore((s) => s.spendMoney);
   const addRack = useGameStore((s) => s.addRack);
   const addServerToRack = useGameStore((s) => s.addServerToRack);
   const addServer = useGameStore((s) => s.addServer);
 
-  const hasDatacenterUpgrade = studioUpgrades.includes('datacenter-unlocked');
+  const hasDatacenterUpgrade = studioUpgrades.includes('datacenter-unlocked') ||
+    getSkillEffectValue('unlockDatacenters', allocatedSkills) >= 1;
   const serverCostMultiplier = getServerCostMultiplier(employees) *
-    getUpgradeMultiplier('serverCostMultiplier', studioUpgrades, []);
+    getUpgradeMultiplier('serverCostMultiplier', studioUpgrades, []) *
+    getSkillEffectValue('serverCostMultiplier', allocatedSkills);
 
   const getServerCost = (regionId: RegionId) =>
     Math.round(SERVER_CONFIG.colocated.baseCostPerMonth * SERVER_CONFIG.regions.find(r => r.id === regionId)!.costMultiplier * serverCostMultiplier);

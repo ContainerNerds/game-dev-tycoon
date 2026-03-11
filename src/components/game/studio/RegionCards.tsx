@@ -3,7 +3,8 @@
 import { useMemo } from 'react';
 import { useGameStore } from '@/lib/store/gameStore';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
-import { getUpgradeMultiplier, getServerCostMultiplier } from '@/lib/game/calculations';
+import { getUpgradeMultiplier } from '@/lib/game/calculations';
+import { getSkillEffectValue } from '@/lib/config/skillTreeConfig';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,11 +27,13 @@ export default function RegionCards() {
   const activeGames = useGameStore((s) => s.activeGames);
   const money = useGameStore((s) => s.money);
   const studioUpgrades = useGameStore((s) => s.unlockedStudioUpgrades);
+  const allocatedSkills = useGameStore((s) => s.allocatedSkills);
   const employees = useGameStore((s) => s.employees);
   const spendMoney = useGameStore((s) => s.spendMoney);
   const addRack = useGameStore((s) => s.addRack);
 
-  const regionCostMultiplier = getUpgradeMultiplier('regionUnlockCostMultiplier', studioUpgrades, []);
+  const regionCostMultiplier = getUpgradeMultiplier('regionUnlockCostMultiplier', studioUpgrades, []) *
+    getSkillEffectValue('regionUnlockCostMultiplier', allocatedSkills);
 
   const handleUnlockRegion = (regionId: RegionId, unlockCost: number) => {
     if (!spendMoney(unlockCost)) return;
