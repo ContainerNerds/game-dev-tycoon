@@ -15,7 +15,9 @@ import ResearchTab from '@/components/game/tabs/ResearchTab';
 import StaffTab from '@/components/game/tabs/StaffTab';
 import EnginesTab from '@/components/game/tabs/EnginesTab';
 import StudioViewTab from '@/components/game/tabs/StudioViewTab';
+import InboxTab from '@/components/game/tabs/InboxTab';
 import { useGameTick } from '@/lib/game/useGameTick';
+import { useNotificationToasts } from '@/lib/game/useNotificationToasts';
 import { useGameStore } from '@/lib/store/gameStore';
 import { loadSettings } from '@/lib/store/saveLoad';
 import { initSoundSystem } from '@/lib/game/sounds';
@@ -28,6 +30,7 @@ interface GameScreenProps {
 
 export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
   useGameTick();
+  useNotificationToasts();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isBankrupt = useGameStore((s) => s.isBankrupt);
@@ -37,6 +40,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
     const taskBugs = s.activeTasks.reduce((sum, t) => sum + (t.bugs?.length ?? 0), 0);
     return gameBugs + taskBugs;
   });
+  const unreadEmails = useGameStore((s) => s.inbox.filter((e) => !e.read).length);
 
   const handleSave = useCallback(() => {
     saveToSlot(slotId);
@@ -81,6 +85,14 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
             <TabsTrigger value="research" className="cursor-pointer">Research</TabsTrigger>
             <TabsTrigger value="engines" className="cursor-pointer">Engines</TabsTrigger>
             <TabsTrigger value="staff" className="cursor-pointer">Staff</TabsTrigger>
+            <TabsTrigger value="inbox" className="cursor-pointer">
+              Inbox
+              {unreadEmails > 0 && (
+                <Badge variant="destructive" className="ml-1.5 h-5 min-w-5 px-1.5 text-[10px] leading-none">
+                  {unreadEmails}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="studioview" className="cursor-pointer">Studio View</TabsTrigger>
           </TabsList>
 
@@ -91,6 +103,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
             <TabsContent value="research" className="mt-0"><ResearchTab /></TabsContent>
             <TabsContent value="engines" className="mt-0"><EnginesTab /></TabsContent>
             <TabsContent value="staff" className="mt-0"><StaffTab /></TabsContent>
+            <TabsContent value="inbox" className="mt-0"><InboxTab /></TabsContent>
             <TabsContent value="studioview" className="mt-0"><StudioViewTab /></TabsContent>
           </div>
         </Tabs>

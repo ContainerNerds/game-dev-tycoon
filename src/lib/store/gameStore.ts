@@ -16,14 +16,19 @@ import type {
   StaffContribution,
   PhaseCategories,
   OwnedFurniture,
+  GameEmail,
+  GameNotification,
 } from '@/lib/game/types';
 import { zeroCategoryMap } from '@/lib/game/types';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { OFFICE_CONFIG } from '@/lib/config/officeConfig';
+import { EMAIL_CONFIG } from '@/lib/config/emailConfig';
 import { getStartingUnlockedFeatures, getFeatureDef, canAddFeatureToEngine } from '@/lib/config/engineFeaturesConfig';
 import { computeLevelUp, STUDIO_LEVEL_CONFIG } from '@/lib/config/studioLevelConfig';
 import type { GameSizeXP } from '@/lib/config/studioLevelConfig';
 import { saveToSlot, loadFromSlot } from './saveLoad';
+import { generateGameReviewEmail } from '@/lib/game/emailSystem';
+import { createEmailNotification } from '@/lib/game/notificationSystem';
 
 // ============================================================
 // Initial State Factory
@@ -102,6 +107,8 @@ export function createInitialState(studioName: string, playerName: string, start
     dailyRates: { moneyPerDay: 0, fansPerDay: 0, rpPerDay: 0 },
     staffContributions: [],
     monthlyReports: [],
+    inbox: [],
+    notifications: [],
     _dayAccMoney: 0,
     _dayAccFans: 0,
     _dayAccRP: 0,
@@ -201,6 +208,15 @@ interface GameActions {
   addStudioFans: (count: number) => void;
   addResearchPoints: (points: number) => void;
 
+  // Email & Notifications
+  addEmail: (email: GameEmail) => void;
+  markEmailRead: (emailId: string) => void;
+  deleteEmail: (emailId: string) => void;
+  markAllEmailsRead: () => void;
+  addNotification: (notification: GameNotification) => void;
+  dismissNotification: (notificationId: string) => void;
+  clearDismissedNotifications: () => void;
+
   // Tracking
   setBankrupt: () => void;
   trackDailyRate: (moneyDelta: number, fansDelta: number, rpDelta: number) => void;
@@ -266,6 +282,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       dailyRates: state.dailyRates,
       staffContributions: state.staffContributions,
       monthlyReports: state.monthlyReports,
+      inbox: state.inbox,
+      notifications: [],
       _dayAccMoney: 0, _dayAccFans: 0, _dayAccRP: 0, _dayTickCounter: 0,
       isBankrupt: state.isBankrupt,
     };
@@ -415,6 +433,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
     const xp = STUDIO_LEVEL_CONFIG.xpRewards.releaseGame[gameSize] ?? STUDIO_LEVEL_CONFIG.xpRewards.releaseGame.medium;
     get().grantStudioXP(xp);
+
+    const store = get();
+    const reviewEmail = generateGameReviewEmail(activeGame, store.calendar);
+    store.addEmail(reviewEmail);
+    store.addNotification(createEmailNotification(reviewEmail, store.calendar));
   },
 
   releaseDLC: (taskId) => {
@@ -696,6 +719,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   addResearchPoints: (points) => set((s) => ({
     researchPoints: s.researchPoints + points,
+  })),
+
+  // ----------------------------------------------------------
+  // Email & Notifications
+  // ----------------------------------------------------------
+
+  addEmail: (email) => set((s) => {
+    const updated = [email, ...s.inbox];
+    if (updated.length > EMAIL_CONFIG.maxInboxSize) {
+      updated.length = EMAIL_CONFIG.maxInboxSize;
+    }
+    return { inbox: updated };
+  }),
+
+  markEmailRead: (emailId) => set((s) => ({
+    inbox: s.inbox.map((e) => e.id === emailId ? { ...e, read: true } : e),
+  })),
+
+  deleteEmail: (emailId) => set((s) => ({
+    inbox: s.inbox.filter((e) => e.id !== emailId),
+  })),
+
+  markAllEmailsRead: () => set((s) => ({
+    inbox: s.inbox.map((e) => e.read ? e : { ...e, read: true }),
+  })),
+
+  addNotification: (notification) => set((s) => ({
+    notifications: [...s.notifications, notification],
+  })),
+
+  dismissNotification: (notificationId) => set((s) => ({
+    notifications: s.notifications.map((n) =>
+      n.id === notificationId ? { ...n, dismissed: true } : n
+    ),
+  })),
+
+  clearDismissedNotifications: () => set((s) => ({
+    notifications: s.notifications.filter((n) => !n.dismissed),
   })),
 
   // ----------------------------------------------------------

@@ -24,6 +24,10 @@ import {
 import type { Bug, BugSeverity, RegionId, StaffContribution, ActiveGame, DevPhase, PhaseCategories } from './types';
 import { PHASE_CATEGORIES } from './types';
 import { computeFurnitureBuffs, getBuffMultiplier } from './furnitureSystem';
+import { generateMonthlyReportEmail, rollRandomEmails } from './emailSystem';
+import { createEmailNotification } from './notificationSystem';
+import { NOTIFICATION_CONFIG } from '@/lib/config/emailConfig';
+import type { EmailType } from './types';
 
 function generateBugId(): string {
   return `bug-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -87,6 +91,14 @@ function pickWeightedRegion(weights: Record<string, number>): string {
 
 const isNewDay = (cal: { tickInDay: number }) => cal.tickInDay === 0;
 
+function dispatchEmail(store: GameStore, email: import('./types').GameEmail): void {
+  store.addEmail(email);
+  if ((NOTIFICATION_CONFIG.emailTypesWithToast as readonly EmailType[]).includes(email.type)) {
+    const cal = useGameStore.getState().calendar;
+    store.addNotification(createEmailNotification(email, cal));
+  }
+}
+
 export function processTick(store: GameStore): void {
   const state = store;
 
@@ -123,6 +135,12 @@ export function processTick(store: GameStore): void {
       return emp;
     });
     store.updateEmployees(updatedEmployees);
+
+    // Roll for random emails once per day
+    const emailState = useGameStore.getState();
+    const randomEmails = rollRandomEmails(emailState, false);
+    if (randomEmails.fanMail) dispatchEmail(store, randomEmails.fanMail);
+    if (randomEmails.hateMail) dispatchEmail(store, randomEmails.hateMail);
   }
 
   // Resolve auto-assigned employees to the first incomplete task
@@ -567,5 +585,16 @@ function handleMonthEnd(store: GameStore): void {
   store.spendMoney(totalCosts);
   store.pushMonthlyReport(report);
   store.grantFreePack();
+
+  // Generate monthly report email
+  const cal = useGameStore.getState().calendar;
+  const reportEmail = generateMonthlyReportEmail(report, cal);
+  dispatchEmail(store, reportEmail);
+
+  // Roll for investment opportunity at month-end
+  const monthEndState = useGameStore.getState();
+  const randomEmails = rollRandomEmails(monthEndState, true);
+  if (randomEmails.investmentEmail) dispatchEmail(store, randomEmails.investmentEmail);
+
   store.dismissMonthEnd();
 }

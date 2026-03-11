@@ -479,6 +479,54 @@ export interface MonthlyReport {
 }
 
 // ============================================================
+// Email & Notification System
+// ============================================================
+
+export type EmailType =
+  | 'game-review'
+  | 'fan-mail'
+  | 'hate-mail'
+  | 'employee-quit'
+  | 'employee-vacation'
+  | 'monthly-report'
+  | 'investment-opportunity'
+  | 'server-alert'
+  | 'general';
+
+export type EmailPriority = 'low' | 'normal' | 'high' | 'urgent';
+
+export interface GameEmail {
+  id: string;
+  type: EmailType;
+  subject: string;
+  body: string;
+  sender: string;
+  priority: EmailPriority;
+  read: boolean;
+  timestamp: { year: number; month: number; day: number };
+  metadata?: Record<string, unknown>;
+}
+
+export type NotificationType =
+  | 'new-email'
+  | 'server-overload'
+  | 'game-milestone'
+  | 'employee-event'
+  | 'money-warning'
+  | 'achievement'
+  | 'general';
+
+export interface GameNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  timestamp: { year: number; month: number; day: number };
+  dismissed: boolean;
+  emailId?: string;
+}
+
+// ============================================================
 // Full Studio State
 // ============================================================
 
@@ -520,6 +568,9 @@ export interface StudioState {
   dailyRates: DailyRates;
   staffContributions: StaffContribution[];
   monthlyReports: MonthlyReport[];
+
+  inbox: GameEmail[];
+  notifications: GameNotification[];
 
   _dayAccMoney: number;
   _dayAccFans: number;
