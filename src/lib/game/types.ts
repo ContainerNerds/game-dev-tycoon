@@ -468,6 +468,11 @@ export interface StudioState {
   unlockedStudioUpgrades: string[];
   unlockedFeatures: string[];
 
+  studioXP: number;
+  studioLevel: number;
+  skillPoints: number;
+  allocatedSkills: Record<string, number>;
+
   activeGames: ActiveGame[];
   activeTasks: StudioTask[];
   completedGames: GameSummary[];

@@ -21,6 +21,8 @@ import { zeroCategoryMap } from '@/lib/game/types';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { OFFICE_CONFIG } from '@/lib/config/officeConfig';
 import { getStartingUnlockedFeatures, getFeatureDef, canAddFeatureToEngine } from '@/lib/config/engineFeaturesConfig';
+import { computeLevelUp, STUDIO_LEVEL_CONFIG } from '@/lib/config/studioLevelConfig';
+import type { GameSizeXP } from '@/lib/config/studioLevelConfig';
 import { saveToSlot, loadFromSlot } from './saveLoad';
 
 // ============================================================
@@ -78,6 +80,10 @@ export function createInitialState(studioName: string, playerName: string, start
     researchPoints: 0,
     unlockedStudioUpgrades: [],
     unlockedFeatures: getStartingUnlockedFeatures(),
+    studioXP: 0,
+    studioLevel: 0,
+    skillPoints: 0,
+    allocatedSkills: {},
     activeGames: [],
     activeTasks: [],
     completedGames: [],
@@ -173,6 +179,10 @@ interface GameActions {
   unlockStudioUpgrade: (upgradeId: string) => void;
   unlockGameUpgrade: (gameId: string, upgradeId: string) => void;
 
+  // Studio XP & Skill Tree
+  grantStudioXP: (amount: number) => void;
+  allocateSkillPoint: (skillId: string) => void;
+
   // Engines (component-based)
   createEngine: (name: string) => void;
   addFeatureToEngine: (engineId: string, featureId: string) => boolean;
@@ -234,6 +244,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       researchPoints: state.researchPoints,
       unlockedStudioUpgrades: state.unlockedStudioUpgrades,
       unlockedFeatures: state.unlockedFeatures,
+      studioXP: state.studioXP,
+      studioLevel: state.studioLevel,
+      skillPoints: state.skillPoints,
+      allocatedSkills: state.allocatedSkills,
       activeGames: state.activeGames,
       activeTasks: state.activeTasks,
       completedGames: state.completedGames,
@@ -387,21 +401,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // Game lifecycle
   // ----------------------------------------------------------
 
-  releaseGame: (taskId, activeGame) => set((s) => {
-    if (s.activeGames.length >= s.maxActiveGames) return {};
-    return {
+  releaseGame: (taskId, activeGame) => {
+    const s = get();
+    if (s.activeGames.length >= s.maxActiveGames) return;
+    const task = s.activeTasks.find((t) => t.id === taskId);
+    const gameSize = (task?.gameSize ?? 'medium') as GameSizeXP;
+    set({
       activeGames: [...s.activeGames, activeGame],
       activeTasks: s.activeTasks.filter((t) => t.id !== taskId),
       employees: s.employees.map((e) =>
         e.assignedTaskId === taskId ? { ...e, assignedTaskId: null, activity: 'idle' as const, autoAssign: true } : e
       ),
-    };
-  }),
+    });
+    const xp = STUDIO_LEVEL_CONFIG.xpRewards.releaseGame[gameSize] ?? STUDIO_LEVEL_CONFIG.xpRewards.releaseGame.medium;
+    get().grantStudioXP(xp);
+  },
 
-  releaseDLC: (taskId) => set((s) => {
+  releaseDLC: (taskId) => {
+    const s = get();
     const task = s.activeTasks.find((t) => t.id === taskId);
-    if (!task || task.type !== 'dlc' || !task.targetGameId) return {};
-    return {
+    if (!task || task.type !== 'dlc' || !task.targetGameId) return;
+    set({
       activeTasks: s.activeTasks.filter((t) => t.id !== taskId),
       activeGames: s.activeGames.map((g) =>
         g.id === task.targetGameId
@@ -411,8 +431,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       employees: s.employees.map((e) =>
         e.assignedTaskId === taskId ? { ...e, assignedTaskId: null, activity: 'idle' as const, autoAssign: true } : e
       ),
-    };
-  }),
+    });
+    get().grantStudioXP(STUDIO_LEVEL_CONFIG.xpRewards.releaseDLC);
+  },
 
   retireGame: (gameId) => set((s) => ({
     activeGames: s.activeGames.filter((g) => g.id !== gameId),
@@ -567,6 +588,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
         : g
     ),
   })),
+
+  grantStudioXP: (amount) => set((s) => {
+    const { newXP, newLevel, pointsGained } = computeLevelUp(s.studioXP, s.studioLevel, amount);
+    return {
+      studioXP: newXP,
+      studioLevel: newLevel,
+      skillPoints: s.skillPoints + pointsGained,
+    };
+  }),
+
+  allocateSkillPoint: (skillId) => set((s) => {
+    if (s.skillPoints <= 0) return s;
+    const current = s.allocatedSkills[skillId] ?? 0;
+    return {
+      skillPoints: s.skillPoints - 1,
+      allocatedSkills: { ...s.allocatedSkills, [skillId]: current + 1 },
+    };
+  }),
 
   // ----------------------------------------------------------
   // Engines (component-based)

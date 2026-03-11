@@ -2,6 +2,7 @@ import { useGameStore, type GameStore } from '@/lib/store/gameStore';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
+import { STUDIO_LEVEL_CONFIG } from '@/lib/config/studioLevelConfig';
 import { CATEGORY_DEV_CONFIG } from '@/lib/config/categoryConfig';
 import {
   getSaleRatePerTick,
@@ -283,6 +284,7 @@ export function processTick(store: GameStore): void {
     if (task.type === 'research' && task.progressPercent >= 100 && task.targetFeatureId) {
       store.unlockFeature(task.targetFeatureId);
       store.removeTask(task.id);
+      store.grantStudioXP(STUDIO_LEVEL_CONFIG.xpRewards.completeResearch);
     }
   }
 
@@ -291,6 +293,7 @@ export function processTick(store: GameStore): void {
   for (const task of freshAfterResearch.activeTasks) {
     if (task.type === 'patch' && task.progressPercent >= 100) {
       store.resetPatchTask(task.id);
+      store.grantStudioXP(STUDIO_LEVEL_CONFIG.xpRewards.completePatch);
       if (task.targetGameId) {
         const targetGame = freshAfterResearch.activeGames.find((g) => g.id === task.targetGameId);
         if (targetGame) {
