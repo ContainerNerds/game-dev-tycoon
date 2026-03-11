@@ -36,8 +36,16 @@ export default function ReleaseModal({ task, open, onClose }: ReleaseModalProps)
   const preview = useMemo(() => {
     if (!task || task.type !== 'game') return null;
     const state = useGameStore.getState();
+    // Derive temporary pillar weights from stage weights for the review system
+    const sw = task.stageWeights ?? { engine: 33, gameplay: 34, storyQuests: 33, dialogues: 33, levelDesign: 34, ai: 33, worldDesign: 33, graphics: 34, sound: 33 };
+    const pillarWeights = {
+      graphics: Math.round((sw.graphics + (sw.worldDesign ?? 0) * 0.5 + (sw.levelDesign ?? 0) * 0.3) / 3 * 100) / 100 || 25,
+      gameplay: Math.round((sw.gameplay + (sw.engine ?? 0) * 0.5 + (sw.ai ?? 0) * 0.3) / 3 * 100) / 100 || 25,
+      sound: Math.round((sw.sound + (sw.dialogues ?? 0) * 0.5) / 2 * 100) / 100 || 25,
+      polish: Math.round(((sw.storyQuests ?? 0) * 0.5 + (sw.levelDesign ?? 0) * 0.3 + (sw.dialogues ?? 0) * 0.3) / 3 * 100) / 100 || 25,
+    };
     const formulaScore = calculateReviewScore(
-      { genre: task.genre!, style: task.style!, pillarWeights: task.pillarWeights! },
+      { genre: task.genre!, style: task.style!, pillarWeights },
       task.bugsFound,
       state.unlockedStudioUpgrades,
       []

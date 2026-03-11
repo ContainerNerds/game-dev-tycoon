@@ -1,5 +1,6 @@
-import type { Employee, EmployeeSkills, EmployeeTitle } from './types';
+import type { Employee, EmployeeSkills, EmployeeTitle, EmployeeType, PhaseCategories } from './types';
 import { EMPLOYEE_CONFIG, PACK_TYPES, type PackTypeId } from '@/lib/config/employeeConfig';
+import { CATEGORY_SKILL_MAP, PRIMARY_SKILL_WEIGHT, SECONDARY_SKILL_WEIGHT } from '@/lib/config/categoryConfig';
 import { type Rarity, RARITY_TIERS, RARITY_ORDER } from '@/lib/config/rarityConfig';
 
 function randomInt(min: number, max: number): number {
@@ -74,6 +75,17 @@ function generateName(): string {
   return `${first} ${last}`;
 }
 
+function rollEmployeeType(): EmployeeType {
+  const dist = EMPLOYEE_CONFIG.employeeTypeDistribution;
+  const roll = Math.random();
+  let cumulative = 0;
+  for (const [type, weight] of Object.entries(dist)) {
+    cumulative += weight;
+    if (roll < cumulative) return type as EmployeeType;
+  }
+  return 'developer';
+}
+
 const ZERO_EVS: EmployeeSkills = { graphics: 0, sound: 0, gameplay: 0, polish: 0 };
 
 function computeHireCost(rarity: Rarity, totalIv: number): number {
@@ -100,11 +112,13 @@ export function generateEmployee(forcedRarity?: Rarity): Employee {
   const skills = generateSkillsForRarity(rarity);
   const totalIv = getTotalIvPoints(skills);
   const title = deriveTitle(skills);
+  const employeeType = rollEmployeeType();
 
   return {
     id: `emp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: generateName(),
     title,
+    employeeType,
     rarity,
     skills,
     evs: { ...ZERO_EVS },
@@ -141,6 +155,7 @@ function generateUniqueEmployee(): Employee {
     id: `emp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: def.name,
     title: def.title,
+    employeeType: def.employeeType ?? 'developer',
     rarity: 'unique',
     skills,
     evs: { ...ZERO_EVS },
@@ -202,6 +217,19 @@ export function getEmployeePillarContribution(emp: Employee): {
     sound: eff.sound * m,
     polish: eff.polish * m,
   };
+}
+
+export function getEmployeeCategoryContribution(emp: Employee, category: keyof PhaseCategories): number {
+  const eff = getEffectiveSkills(emp);
+  const mapping = CATEGORY_SKILL_MAP[category];
+  const primary = eff[mapping.primary];
+  const secondary = mapping.secondary ? eff[mapping.secondary] : 0;
+  return primary * PRIMARY_SKILL_WEIGHT + secondary * SECONDARY_SKILL_WEIGHT;
+}
+
+export function getEmployeeResearchPower(emp: Employee): number {
+  const eff = getEffectiveSkills(emp);
+  return (eff.graphics + eff.sound + eff.gameplay + eff.polish) / 4;
 }
 
 export function getBugChancePerContribution(emp: Employee): number {

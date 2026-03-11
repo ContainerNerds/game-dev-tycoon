@@ -1,8 +1,9 @@
 import type { StudioState, BugSeverity } from '@/lib/game/types';
 import { formatDate } from '@/lib/game/calendarSystem';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
+import { getStartingUnlockedFeatures } from '@/lib/config/engineFeaturesConfig';
 
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 6;
 const SLOT_KEY_PREFIX = 'game-dev-tycoon-slot-';
 const SETTINGS_KEY = 'game-dev-tycoon-settings';
 
@@ -143,6 +144,107 @@ function migrateState(state: StudioState, fromVersion: number): StudioState {
     raw.freePackAvailable = raw.freePackAvailable ?? false;
     delete raw.candidatePool;
     delete raw.lastCandidateRefreshDay;
+  }
+
+  if (fromVersion < 6) {
+    // v5 → v6: Engine overhaul, 9-category dev, employee types
+
+    // Migrate engines from version-based to feature-based
+    raw.engines = (raw.engines ?? []).map((e: any) => ({
+      id: e.id,
+      name: e.name,
+      features: [],
+      totalEngineCost: e.developmentCost ?? 0,
+    }));
+
+    // Add unlockedFeatures
+    raw.unlockedFeatures = raw.unlockedFeatures ?? getStartingUnlockedFeatures();
+
+    // Migrate tasks from pillar-based to category-based
+    raw.activeTasks = (raw.activeTasks ?? []).map((t: any) => {
+      const pillarProgress = t.pillarProgress ?? { graphics: 0, gameplay: 0, sound: 0, polish: 0 };
+      const pillarTargets = t.pillarTargets ?? { graphics: 25, gameplay: 25, sound: 25, polish: 25 };
+
+      const catProgress = t.categoryProgress ?? {
+        engine: pillarProgress.gameplay * 0.33,
+        gameplay: pillarProgress.gameplay * 0.34,
+        storyQuests: pillarProgress.gameplay * 0.33,
+        dialogues: pillarProgress.sound * 0.33,
+        levelDesign: pillarProgress.graphics * 0.34,
+        ai: pillarProgress.polish * 0.33,
+        worldDesign: pillarProgress.graphics * 0.33,
+        graphics: pillarProgress.graphics * 0.34,
+        sound: pillarProgress.sound * 0.67,
+      };
+      const catTargets = t.categoryTargets ?? {
+        engine: Math.round(pillarTargets.gameplay * 0.33),
+        gameplay: Math.round(pillarTargets.gameplay * 0.34),
+        storyQuests: Math.round(pillarTargets.gameplay * 0.33),
+        dialogues: Math.round(pillarTargets.sound * 0.33),
+        levelDesign: Math.round(pillarTargets.graphics * 0.34),
+        ai: Math.round(pillarTargets.polish * 0.33),
+        worldDesign: Math.round(pillarTargets.graphics * 0.33),
+        graphics: Math.round(pillarTargets.graphics * 0.34),
+        sound: Math.round(pillarTargets.sound * 0.67),
+      };
+
+      // Migrate pillarWeights to stageWeights
+      const stageWeights = t.stageWeights ?? t.phaseWeights ?? {
+        engine: 33, gameplay: 34, storyQuests: 33,
+        dialogues: 33, levelDesign: 34, ai: 33,
+        worldDesign: 33, graphics: 34, sound: 33,
+      };
+
+      delete t.pillarProgress;
+      delete t.pillarTargets;
+      delete t.pillarWeights;
+      delete t.phaseProgress;
+      delete t.phaseWeights;
+      return {
+        ...t,
+        categoryProgress: catProgress,
+        categoryTargets: catTargets,
+        stageWeights,
+        currentPhase: t.currentPhase ?? 1,
+      };
+    });
+
+    // Migrate employees: add employeeType
+    raw.employees = (raw.employees ?? []).map((e: any) => ({
+      ...e,
+      employeeType: e.employeeType ?? 'developer',
+    }));
+    raw.currentPack = (raw.currentPack ?? []).map((e: any) => ({
+      ...e,
+      employeeType: e.employeeType ?? 'developer',
+    }));
+
+    // Migrate active games: pillarWeights → stageWeights, add engineBenefitScore
+    raw.activeGames = (raw.activeGames ?? []).map((g: any) => {
+      const stageWeights = g.stageWeights ?? {
+        engine: 33, gameplay: 34, storyQuests: 33,
+        dialogues: 33, levelDesign: 34, ai: 33,
+        worldDesign: 33, graphics: 34, sound: 33,
+      };
+      delete g.pillarWeights;
+      return {
+        ...g,
+        stageWeights,
+        engineBenefitScore: g.engineBenefitScore ?? 0,
+      };
+    });
+
+    // Migrate staff contributions
+    raw.staffContributions = (raw.staffContributions ?? []).map((c: any) => ({
+      employeeId: c.employeeId,
+      employeeName: c.employeeName,
+      taskId: c.taskId,
+      taskName: c.taskName,
+      categories: c.categories ?? {},
+      researchPoints: c.researchPoints ?? 0,
+      bugsIntroduced: c.bugsIntroduced ?? 0,
+      bugsFixed: c.bugsFixed ?? 0,
+    }));
   }
 
   return state;

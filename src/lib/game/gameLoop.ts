@@ -2,6 +2,7 @@ import { useGameStore, type GameStore } from '@/lib/store/gameStore';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
+import { CATEGORY_DEV_CONFIG } from '@/lib/config/categoryConfig';
 import {
   getSaleRatePerTick,
   getBugRateMultiplier,
@@ -10,8 +11,16 @@ import {
 } from './calculations';
 import { calculateFanConversion } from './fanSystem';
 import { buildMonthlyReport, getTotalMonthlyCosts } from './calendarSystem';
-import { getEmployeePillarContribution, getBugChancePerContribution, getStaminaEfficiency, drainStamina, processVacationDay, getEffectiveSkills } from './employeeSystem';
-import type { Bug, BugSeverity, RegionId, StaffContribution, ActiveGame, DevPhase, PhaseCategories, StudioTask } from './types';
+import {
+  getEmployeeCategoryContribution,
+  getEmployeeResearchPower,
+  getBugChancePerContribution,
+  getStaminaEfficiency,
+  drainStamina,
+  processVacationDay,
+  getEffectiveSkills,
+} from './employeeSystem';
+import type { Bug, BugSeverity, RegionId, StaffContribution, ActiveGame, DevPhase, PhaseCategories } from './types';
 import { PHASE_CATEGORIES } from './types';
 
 function generateBugId(): string {
@@ -76,50 +85,12 @@ function pickWeightedRegion(weights: Record<string, number>): string {
 
 const isNewDay = (cal: { tickInDay: number }) => cal.tickInDay === 0;
 
-function processPhaseProgress(task: StudioTask, employeeCount: number, crunchMultiplier: number, efficiency: number): Partial<StudioTask> {
-  if (!task.currentPhase || !task.phaseProgress || !task.phaseWeights || !task.developmentDaysTarget) return {};
-
-  const phase = task.currentPhase;
-  const categories = PHASE_CATEGORIES[phase];
-  const ticksInPhase = (task.ticksInCurrentPhase ?? 0) + 1;
-  const daysElapsed = (task.developmentDaysElapsed ?? 0) + 0.25;
-  const phaseDays = task.developmentDaysTarget / 3;
-  const phaseTicks = phaseDays * 4;
-
-  const newProgress = { ...task.phaseProgress };
-
-  for (const cat of categories) {
-    const weight = task.phaseWeights[cat] / 100;
-    const basePoints = (0.5 + Math.random() * 0.5) * weight * employeeCount * crunchMultiplier * efficiency;
-    newProgress[cat] = (newProgress[cat] ?? 0) + basePoints;
-  }
-
-  let newPhase = phase;
-  let newTicksInPhase = ticksInPhase;
-
-  if (ticksInPhase >= phaseTicks && phase < 3) {
-    newPhase = (phase + 1) as DevPhase;
-    newTicksInPhase = 0;
-  }
-
-  const totalProgress = (daysElapsed / task.developmentDaysTarget) * 100;
-
-  return {
-    currentPhase: newPhase,
-    phaseProgress: newProgress,
-    ticksInCurrentPhase: newTicksInPhase,
-    developmentDaysElapsed: daysElapsed,
-    progressPercent: Math.min(100, totalProgress),
-  };
-}
-
 export function processTick(store: GameStore): void {
   const state = store;
 
   if (state.calendar.speed === 0) return;
   if (state.isBankrupt) return;
 
-  // 1. Advance calendar
   store.advanceTick();
   const fresh = useGameStore.getState();
   if (fresh.calendar.monthEndPending) {
@@ -127,7 +98,7 @@ export function processTick(store: GameStore): void {
     return;
   }
 
-  // 1b. Process employee stamina and vacations (once per day)
+  // Process employee stamina and vacations (once per day)
   if (isNewDay(fresh.calendar)) {
     const updatedEmployees = fresh.employees.map((emp) => {
       if (emp.onVacation) {
@@ -171,8 +142,8 @@ export function processTick(store: GameStore): void {
     store.updateEmployees(staminaUpdated);
   }
 
-  // 2. Process all active tasks (dev contributions)
-  const TICK_SCALE = 6;
+  // Process all active tasks
+  const TICK_SCALE = CATEGORY_DEV_CONFIG.tickScale;
   const contribs: StaffContribution[] = [];
   const currentEmployees = useGameStore.getState().employees;
   const autoAssignedEmployees = currentEmployees.filter((e) => e.autoAssign && !e.onVacation && e.assignedTaskId === null);
@@ -189,35 +160,62 @@ export function processTick(store: GameStore): void {
       autoAssignedUsed = true;
     }
 
-    // Engine bonus for game tasks
-    const engine = task.engineId ? state.engines.find((e) => e.id === task.engineId) : null;
-    const engineBonus = engine?.completedAt ? {
-      graphics: 1 + engine.graphicsBonus,
-      gameplay: 1 + engine.gameplayBonus,
-      sound: 1 + engine.soundBonus,
-      polish: 1 + engine.polishBonus,
-    } : { graphics: 1, gameplay: 1, sound: 1, polish: 1 };
+    // Research tasks: only researchers contribute
+    if (task.type === 'research') {
+      const researchers = taskEmployees.filter((e) => e.employeeType === 'researcher');
+      if (researchers.length > 0) {
+        for (const emp of researchers) {
+          const efficiency = getStaminaEfficiency(emp.stamina);
+          const researchPower = getEmployeeResearchPower(emp);
+          const points = researchPower * efficiency * crunchMultiplier *
+            CATEGORY_DEV_CONFIG.researchRateConstant * CATEGORY_DEV_CONFIG.researchTickScale;
+          store.contributeToResearch(task.id, points);
+          contribs.push({
+            employeeId: emp.id, employeeName: emp.name,
+            taskId: task.id, taskName: task.name,
+            categories: {}, researchPoints: points,
+            bugsIntroduced: 0, bugsFixed: 0,
+          });
+        }
+      } else {
+        // Solo research (slow fallback)
+        const soloRate = GAME_CONFIG.baseDevProgressPerTick * 0.2 * crunchMultiplier * TICK_SCALE;
+        store.contributeToResearch(task.id, soloRate);
+      }
+      continue;
+    }
 
-    if (taskEmployees.length > 0) {
-      for (const emp of taskEmployees) {
+    // Game/DLC/Patch/Engine tasks: 9-category contributions
+    const phase = task.currentPhase ?? 1;
+    const activeCategories = PHASE_CATEGORIES[phase];
+
+    // Developer employees contribute (and non-typed employees for backward compat)
+    const devEmployees = taskEmployees.filter((e) =>
+      e.employeeType === 'developer' || !e.employeeType
+    );
+
+    if (devEmployees.length > 0) {
+      for (const emp of devEmployees) {
         const efficiency = getStaminaEfficiency(emp.stamina);
-        const contrib = getEmployeePillarContribution(emp);
-        const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
         const c: StaffContribution = {
           employeeId: emp.id, employeeName: emp.name,
           taskId: task.id, taskName: task.name,
-          graphics: 0, gameplay: 0, sound: 0, polish: 0,
+          categories: {}, researchPoints: 0,
           bugsIntroduced: 0, bugsFixed: 0,
         };
 
-        for (const pillar of pillars) {
-          const points = contrib[pillar] * crunchMultiplier * efficiency * engineBonus[pillar] * 0.1 * TICK_SCALE;
+        for (const cat of activeCategories) {
+          if (task.categoryTargets[cat] <= 0) continue;
+          const catContrib = getEmployeeCategoryContribution(emp, cat);
+          const points = catContrib * crunchMultiplier * efficiency *
+            CATEGORY_DEV_CONFIG.rateConstant * TICK_SCALE;
           if (points > 0) {
-            store.contributeToTask(task.id, pillar, points);
-            c[pillar] += points;
+            store.contributeToTask(task.id, cat, points);
+            c.categories[cat] = (c.categories[cat] ?? 0) + points;
           }
         }
 
+        // Bug introduction
         const bugChance = getBugChancePerContribution(emp) * (task.isCrunching ? 1.5 : 1) * TICK_SCALE;
         if (Math.random() < bugChance) {
           const severity = randomBugSeverity();
@@ -234,33 +232,53 @@ export function processTick(store: GameStore): void {
         contribs.push(c);
       }
     } else {
+      // Solo fallback (no employees)
       const soloRate = GAME_CONFIG.baseDevProgressPerTick * 0.3 * crunchMultiplier * TICK_SCALE;
-      const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
-      for (const pillar of pillars) {
-        store.contributeToTask(task.id, pillar, soloRate);
+      for (const cat of activeCategories) {
+        if (task.categoryTargets[cat] <= 0) continue;
+        store.contributeToTask(task.id, cat, soloRate);
       }
     }
 
-    // Advance phase-based development for game tasks
-    if (task.currentPhase && task.phaseProgress) {
-      const empCount = Math.max(1, taskEmployees.length);
-      const avgEfficiency = taskEmployees.length > 0
-        ? taskEmployees.reduce((sum, e) => sum + getStaminaEfficiency(e.stamina), 0) / taskEmployees.length
-        : 0.5;
-      const phaseUpdates = processPhaseProgress(task, empCount, crunchMultiplier, avgEfficiency);
-      if (Object.keys(phaseUpdates).length > 0) {
-        store.updateTask(task.id, phaseUpdates);
+    // Phase advancement: time-based (each phase is 1/3 of total dev days)
+    if (task.currentPhase && task.developmentDaysTarget) {
+      const ticksInPhase = (task.ticksInCurrentPhase ?? 0) + 1;
+      const daysElapsed = (task.developmentDaysElapsed ?? 0) + (1 / CALENDAR_CONFIG.ticksPerDay);
+      const phaseDays = task.developmentDaysTarget / 3;
+      const phaseTicks = phaseDays * CALENDAR_CONFIG.ticksPerDay;
+
+      let newPhase = task.currentPhase;
+      let newTicksInPhase = ticksInPhase;
+
+      if (ticksInPhase >= phaseTicks && task.currentPhase < 3) {
+        newPhase = (task.currentPhase + 1) as DevPhase;
+        newTicksInPhase = 0;
       }
+
+      store.updateTask(task.id, {
+        currentPhase: newPhase,
+        ticksInCurrentPhase: newTicksInPhase,
+        developmentDaysElapsed: daysElapsed,
+      });
     }
   }
 
-  // Check for completed patch tasks — auto-reset; check engine tasks — complete engine
+  // Check for completed research tasks
   const freshAfterTasks = useGameStore.getState();
   for (const task of freshAfterTasks.activeTasks) {
+    if (task.type === 'research' && task.progressPercent >= 100 && task.targetFeatureId) {
+      store.unlockFeature(task.targetFeatureId);
+      store.removeTask(task.id);
+    }
+  }
+
+  // Check for completed patch tasks — auto-reset
+  const freshAfterResearch = useGameStore.getState();
+  for (const task of freshAfterResearch.activeTasks) {
     if (task.type === 'patch' && task.progressPercent >= 100) {
       store.resetPatchTask(task.id);
       if (task.targetGameId) {
-        const targetGame = freshAfterTasks.activeGames.find((g) => g.id === task.targetGameId);
+        const targetGame = freshAfterResearch.activeGames.find((g) => g.id === task.targetGameId);
         if (targetGame) {
           store.updateGame(task.targetGameId, {
             isLiveService: true,
@@ -269,26 +287,9 @@ export function processTick(store: GameStore): void {
         }
       }
     }
-    if (task.type === 'engine' && task.progressPercent >= 100 && task.targetGameId) {
-      const engine = freshAfterTasks.engines.find((e) => e.id === task.targetGameId);
-      if (engine) {
-        const versionMatch = task.name.match(/v(\d+)/);
-        const newVersion = versionMatch ? parseInt(versionMatch[1], 10) : engine.version + 1;
-        const bonusPerVersion = 0.05;
-        store.updateEngine(engine.id, {
-          version: newVersion,
-          graphicsBonus: newVersion * bonusPerVersion,
-          soundBonus: newVersion * bonusPerVersion,
-          gameplayBonus: newVersion * bonusPerVersion,
-          polishBonus: newVersion * bonusPerVersion,
-          completedAt: { year: fresh.calendar.year, month: fresh.calendar.month, day: fresh.calendar.day },
-        });
-      }
-      store.removeTask(task.id);
-    }
   }
 
-  // 2c. Auto-fix pre-release bugs on completed game tasks
+  // Auto-fix pre-release bugs on completed game tasks
   const freshForAutofix = useGameStore.getState();
   for (const task of freshForAutofix.activeTasks) {
     if (task.type !== 'game' || task.progressPercent < 100 || !task.bugs?.length) continue;
@@ -333,19 +334,22 @@ export function processTick(store: GameStore): void {
   const merged = contribs.map((nc) => {
     const p = prev.find((pc) => pc.employeeId === nc.employeeId && pc.taskId === nc.taskId);
     if (!p) return nc;
+    const blendedCats: Partial<Record<keyof PhaseCategories, number>> = {};
+    const allCats = new Set([...Object.keys(nc.categories), ...Object.keys(p.categories)]) as Set<keyof PhaseCategories>;
+    for (const cat of allCats) {
+      blendedCats[cat] = (p.categories[cat] ?? 0) * blendFactor + (nc.categories[cat] ?? 0);
+    }
     return {
       ...nc,
-      graphics: p.graphics * blendFactor + nc.graphics,
-      gameplay: p.gameplay * blendFactor + nc.gameplay,
-      sound: p.sound * blendFactor + nc.sound,
-      polish: p.polish * blendFactor + nc.polish,
+      categories: blendedCats,
+      researchPoints: (p.researchPoints ?? 0) * blendFactor + nc.researchPoints,
       bugsIntroduced: p.bugsIntroduced * blendFactor + nc.bugsIntroduced,
       bugsFixed: p.bugsFixed * blendFactor + nc.bugsFixed,
     };
   });
   store.updateStaffContributions(merged);
 
-  // 3. Process all active games
+  // Process all active games
   let totalTickRevenue = 0;
   let totalNewFans = 0;
   let totalRP = 0;
@@ -364,7 +368,7 @@ export function processTick(store: GameStore): void {
     let phaseTicks = game.phaseTicks + 1;
     const newBugs: Bug[] = [];
 
-    // Sales (with DLC boost)
+    // Sales
     let saleRate = getSaleRatePerTick(game, state) * TICK_SCALE;
     if (game.dlcSalesBoost > 0) saleRate *= (1 + game.dlcSalesBoost);
     let actualCopies = Math.max(0, Math.round(saleRate * 100) / 100);
@@ -411,7 +415,7 @@ export function processTick(store: GameStore): void {
       }
     }
 
-    // Bug spawning with decay (decay once per day)
+    // Bug spawning with decay
     let bugRateDecay = game.bugRateDecay;
     if (isNewDay(fresh.calendar)) {
       bugRateDecay = Math.max(GAME_CONFIG.bugMinDecay, bugRateDecay * GAME_CONFIG.bugDecayPerDay);
@@ -431,7 +435,7 @@ export function processTick(store: GameStore): void {
       });
     }
 
-    // Bugfix employees fix released-game bugs (processed in same loop to avoid state overwrite)
+    // Bugfix employees fix released-game bugs
     const allBugsForGame = [...game.bugs, ...newBugs];
     const bugsToRemove: string[] = [];
     const updatedBugs = [...allBugsForGame];
@@ -469,7 +473,6 @@ export function processTick(store: GameStore): void {
       mergedRegionalFans[region as RegionId] = (mergedRegionalFans[region as RegionId] ?? 0) + count;
     }
 
-    // DLC sales boost decay (once per day)
     let dlcSalesBoost = game.dlcSalesBoost;
     if (dlcSalesBoost > 0 && isNewDay(fresh.calendar)) {
       dlcSalesBoost = Math.max(0, dlcSalesBoost - 0.02);
@@ -492,7 +495,6 @@ export function processTick(store: GameStore): void {
     totalTickRevenue += tickRevenue;
     totalNewFans += newGameFans + newStudioFans;
 
-    // Research: scale to per-tick (ticksPerDay ticks in a day)
     const researchPerTick = GAME_CONFIG.researchPointsPerGameDay / CALENDAR_CONFIG.ticksPerDay;
     if (researchPerTick > 0) {
       store.addResearchPoints(researchPerTick);

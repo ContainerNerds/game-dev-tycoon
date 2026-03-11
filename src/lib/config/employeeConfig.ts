@@ -1,9 +1,10 @@
-import type { EmployeeTitle } from '@/lib/game/types';
+import type { EmployeeTitle, EmployeeType } from '@/lib/game/types';
 import type { Rarity } from '@/lib/config/rarityConfig';
 
 export interface UniqueEmployeeDef {
   name: string;
   title: EmployeeTitle;
+  employeeType?: EmployeeType;
   description: string;
   guaranteedSkills?: Partial<Record<'graphics' | 'sound' | 'gameplay' | 'polish', number>>;
 }
@@ -138,6 +139,13 @@ export const EMPLOYEE_CONFIG = {
 
   pillarContributionMultiplier: 0.08,
 
+  employeeTypeDistribution: {
+    developer: 0.60,
+    researcher: 0.25,
+    administrator: 0.10,
+    hacker: 0.05,
+  } as Record<string, number>,
+
   bugChanceBase: 0.08,
   bugChanceReductionPerEffective: 0.0008,
   bugChanceFloor: 0.01,
@@ -195,6 +203,12 @@ export const EMPLOYEE_CONFIG = {
       name: 'Laurie Bream',
       title: 'Generalist' as EmployeeTitle,
       description: '"The numbers speak for themselves, and I agree with them."',
+    },
+    {
+      name: 'Anonymous',
+      title: 'Programmer' as EmployeeTitle,
+      employeeType: 'hacker' as EmployeeType,
+      description: '"We are Anonymous. We are Legion. We do not forgive. We do not forget."',
     },
   ] as UniqueEmployeeDef[],
 

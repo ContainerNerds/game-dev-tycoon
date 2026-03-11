@@ -55,17 +55,27 @@ export type ServerType = 'colocated' | 'datacenter';
 
 export type GameMode = 'standard' | 'liveservice';
 
-export type TaskType = 'game' | 'dlc' | 'patch' | 'engine';
+export type TaskType = 'game' | 'dlc' | 'patch' | 'engine' | 'research';
+
+export type EmployeeType = 'developer' | 'administrator' | 'researcher' | 'hacker';
 
 // ============================================================
-// Game Engines
+// Game Engines (component-based)
 // ============================================================
 
 export interface GameEngine {
   id: string;
   name: string;
+  features: string[];
+  totalEngineCost: number;
+}
+
+/** @deprecated Kept for save migration only */
+export interface LegacyGameEngine {
+  id: string;
+  name: string;
   version: number;
-  graphicsBonus: number;    // 0–1 multiplier bonus
+  graphicsBonus: number;
   soundBonus: number;
   gameplayBonus: number;
   polishBonus: number;
@@ -114,6 +124,7 @@ export interface Employee {
   id: string;
   name: string;
   title: EmployeeTitle;
+  employeeType: EmployeeType;
   rarity: Rarity;
   skills: EmployeeSkills;         // IVs (0–31 per skill)
   evs: EmployeeSkills;            // EVs (0–252 per skill, 510 total cap)
@@ -171,8 +182,23 @@ export const DEV_CATEGORY_LABELS: Record<keyof PhaseCategories, string> = {
   sound: 'Sound',
 };
 
+export function zeroCategoryMap(): PhaseCategories {
+  return {
+    engine: 0, gameplay: 0, storyQuests: 0,
+    dialogues: 0, levelDesign: 0, ai: 0,
+    worldDesign: 0, graphics: 0, sound: 0,
+  };
+}
+
 // ============================================================
-// Studio Task (unified: game dev, DLC, patch)
+// Category-based progress tracking (replaces old pillar system)
+// ============================================================
+
+export type CategoryProgress = PhaseCategories;
+export type CategoryTargets = PhaseCategories;
+
+// ============================================================
+// Studio Task (unified: game dev, DLC, patch, engine, research)
 // ============================================================
 
 export interface StudioTask {
@@ -180,8 +206,8 @@ export interface StudioTask {
   type: TaskType;
   name: string;
   targetGameId: string | null;
-  pillarProgress: PillarProgress;
-  pillarTargets: PillarTargets;
+  categoryProgress: CategoryProgress;
+  categoryTargets: CategoryTargets;
   progressPercent: number;
   bugsFound: number;
   assignedEmployeeIds: string[];
@@ -194,20 +220,22 @@ export interface StudioTask {
   topic?: Topic;
   mode?: GameMode;
   platforms?: Platform[];
-  pillarWeights?: PillarWeights;
+  stageWeights?: PhaseCategories;
   devCostSpent?: number;
   engineId?: string;
   gameSize?: GameSize;
   gameRating?: GameRating;
   // Phase development
   currentPhase?: DevPhase;
-  phaseProgress?: PhaseCategories;
-  phaseWeights?: PhaseCategories;
   developmentDaysTarget?: number;
   developmentDaysElapsed?: number;
   ticksInCurrentPhase?: number;
   // Pre-release bugs found during development
   bugs?: Bug[];
+  // Research task fields
+  targetFeatureId?: string;
+  researchProgress?: number;
+  researchTarget?: number;
 }
 
 // ============================================================
@@ -225,10 +253,8 @@ export interface StaffContribution {
   employeeName: string;
   taskId: string;
   taskName: string;
-  graphics: number;
-  gameplay: number;
-  sound: number;
-  polish: number;
+  categories: Partial<Record<keyof PhaseCategories, number>>;
+  researchPoints: number;
   bugsIntroduced: number;
   bugsFixed: number;
 }
@@ -332,7 +358,9 @@ export interface ActiveGame {
   mode: GameMode;
   comboMultiplier: number;
   phase: GameLifecyclePhase;
-  pillarWeights: PillarWeights;
+  stageWeights: PhaseCategories;
+  engineId?: string;
+  engineBenefitScore: number;
   reviewScore: number;
   blogReviews: BlogReview[];
   releaseMonth: number;
@@ -428,6 +456,7 @@ export interface StudioState {
   studioFans: number;
   researchPoints: number;
   unlockedStudioUpgrades: string[];
+  unlockedFeatures: string[];
 
   activeGames: ActiveGame[];
   activeTasks: StudioTask[];

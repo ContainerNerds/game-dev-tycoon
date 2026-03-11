@@ -38,11 +38,11 @@ export default function DevMenu() {
     const task = store.activeTasks[0];
     if (!task) return;
 
-    const pillars = ['graphics', 'gameplay', 'sound', 'polish'] as const;
-    for (const p of pillars) {
-      const remaining = task.pillarTargets[p] - task.pillarProgress[p];
+    const categories = Object.keys(task.categoryTargets) as (keyof typeof task.categoryTargets)[];
+    for (const cat of categories) {
+      const remaining = task.categoryTargets[cat] - task.categoryProgress[cat];
       if (remaining > 0) {
-        store.contributeToTask(task.id, p, remaining);
+        store.contributeToTask(task.id, cat, remaining);
       }
     }
 

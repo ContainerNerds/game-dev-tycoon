@@ -22,7 +22,7 @@ import { useGameStore } from '@/lib/store/gameStore';
 import { PACK_TYPES, type PackTypeId } from '@/lib/config/employeeConfig';
 import { generatePack } from '@/lib/game/employeeSystem';
 import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, Zap, Plus, Volume2, VolumeX, Crown, Gem, BookOpen } from 'lucide-react';
-import type { Employee, EmployeeActivity } from '@/lib/game/types';
+import type { Employee, EmployeeActivity, EmployeeType } from '@/lib/game/types';
 import EmployeeCard from '@/components/game/EmployeeCard';
 import EmployeeDetailModal from '@/components/game/EmployeeDetailModal';
 import UniqueCollectionModal from '@/components/game/UniqueCollectionModal';
@@ -44,6 +44,20 @@ const ACTIVITY_LABELS: Record<EmployeeActivity, string> = {
   bugfixing: 'Bug Fixing',
   testing: 'Testing',
   vacation: 'On Vacation',
+};
+
+const EMPLOYEE_TYPE_LABELS: Record<EmployeeType, string> = {
+  developer: 'Dev',
+  researcher: 'Res',
+  administrator: 'Admin',
+  hacker: 'Hack',
+};
+
+const EMPLOYEE_TYPE_COLORS: Record<EmployeeType, string> = {
+  developer: 'text-blue-400 border-blue-500/50',
+  researcher: 'text-purple-400 border-purple-500/50',
+  administrator: 'text-amber-400 border-amber-500/50',
+  hacker: 'text-red-400 border-red-500/50',
 };
 
 const REVEAL_DELAY_MS = 400;
@@ -294,26 +308,28 @@ export default function StaffTab() {
               <thead>
                 <tr className="border-b border-border text-muted-foreground">
                   <th className="text-left py-1.5 pr-3">Employee</th>
-                  <th className="text-right px-2">Gfx</th>
-                  <th className="text-right px-2">Game</th>
-                  <th className="text-right px-2">Snd</th>
-                  <th className="text-right px-2">Pol</th>
+                  <th className="text-right px-2">Dev Pts</th>
+                  <th className="text-right px-2">Research</th>
                   <th className="text-right px-2">Bugs+</th>
                   <th className="text-right pl-2">Fixed</th>
                 </tr>
               </thead>
               <tbody>
-                {staffContributions.filter((c) => c.graphics + c.gameplay + c.sound + c.polish + c.bugsFixed > 0.01).map((c) => (
-                  <tr key={c.employeeId} className="border-b border-border/50">
-                    <td className="py-1.5 pr-3 font-medium">{c.employeeName}</td>
-                    <td className="text-right px-2 text-pink-400">{c.graphics.toFixed(1)}</td>
-                    <td className="text-right px-2 text-blue-400">{c.gameplay.toFixed(1)}</td>
-                    <td className="text-right px-2 text-green-400">{c.sound.toFixed(1)}</td>
-                    <td className="text-right px-2 text-yellow-400">{c.polish.toFixed(1)}</td>
-                    <td className="text-right px-2 text-red-400">{c.bugsIntroduced > 0.1 ? c.bugsIntroduced.toFixed(0) : '-'}</td>
-                    <td className="text-right pl-2 text-emerald-400">{c.bugsFixed > 0.1 ? c.bugsFixed.toFixed(0) : '-'}</td>
-                  </tr>
-                ))}
+                {staffContributions.filter((c) => {
+                  const catTotal = Object.values(c.categories).reduce((s, v) => s + (v ?? 0), 0);
+                  return catTotal + (c.researchPoints ?? 0) + c.bugsFixed > 0.01;
+                }).map((c) => {
+                  const catTotal = Object.values(c.categories).reduce((s, v) => s + (v ?? 0), 0);
+                  return (
+                    <tr key={c.employeeId} className="border-b border-border/50">
+                      <td className="py-1.5 pr-3 font-medium">{c.employeeName}</td>
+                      <td className="text-right px-2 text-blue-400">{catTotal > 0.01 ? catTotal.toFixed(1) : '-'}</td>
+                      <td className="text-right px-2 text-purple-400">{(c.researchPoints ?? 0) > 0.01 ? c.researchPoints.toFixed(1) : '-'}</td>
+                      <td className="text-right px-2 text-red-400">{c.bugsIntroduced > 0.1 ? c.bugsIntroduced.toFixed(0) : '-'}</td>
+                      <td className="text-right pl-2 text-emerald-400">{c.bugsFixed > 0.1 ? c.bugsFixed.toFixed(0) : '-'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -342,10 +358,17 @@ export default function StaffTab() {
                       onClick={() => setDetailEmployee(emp)}
                     />
                     <div className="w-full flex items-center justify-between px-1">
-                      <span className={`text-[10px] font-medium ${ACTIVITY_COLORS[emp.activity]}`}>
-                        {ACTIVITY_LABELS[emp.activity]}
-                        {emp.onVacation && ` (${emp.vacationDaysLeft}d)`}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        {emp.employeeType && (
+                          <span className={`text-[10px] font-semibold ${EMPLOYEE_TYPE_COLORS[emp.employeeType] ?? 'text-muted-foreground'}`}>
+                            [{EMPLOYEE_TYPE_LABELS[emp.employeeType] ?? emp.employeeType}]
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-medium ${ACTIVITY_COLORS[emp.activity]}`}>
+                          {ACTIVITY_LABELS[emp.activity]}
+                          {emp.onVacation && ` (${emp.vacationDaysLeft}d)`}
+                        </span>
+                      </div>
                       <span className="text-[10px] text-muted-foreground">
                         {emp.isPlayer ? 'Founder' : `$${emp.monthlySalary.toLocaleString()}/mo`}
                       </span>

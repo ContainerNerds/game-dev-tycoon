@@ -12,14 +12,14 @@ import type {
   Server,
   OfficeTier,
   StudioTask,
-  PillarProgress,
   ServerRack,
   StaffContribution,
-  GameEngine,
+  PhaseCategories,
 } from '@/lib/game/types';
+import { zeroCategoryMap } from '@/lib/game/types';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
 import { OFFICE_CONFIG } from '@/lib/config/officeConfig';
-import { EMPLOYEE_CONFIG } from '@/lib/config/employeeConfig';
+import { getStartingUnlockedFeatures, getFeatureDef, canAddFeatureToEngine } from '@/lib/config/engineFeaturesConfig';
 import { saveToSlot, loadFromSlot } from './saveLoad';
 
 // ============================================================
@@ -48,6 +48,7 @@ export function createPlayerEmployee(playerName: string): Employee {
     id: 'player',
     name: playerName,
     title: 'CEO',
+    employeeType: 'developer',
     rarity: 'rare',
     skills: { graphics: 15, sound: 10, gameplay: 15, polish: 10 },
     evs: { graphics: 0, sound: 0, gameplay: 0, polish: 0 },
@@ -75,6 +76,7 @@ export function createInitialState(studioName: string, playerName: string, start
     studioFans: 0,
     researchPoints: 0,
     unlockedStudioUpgrades: [],
+    unlockedFeatures: getStartingUnlockedFeatures(),
     activeGames: [],
     activeTasks: [],
     completedGames: [],
@@ -119,11 +121,12 @@ interface GameActions {
   spendMoney: (amount: number) => boolean;
   earnMoney: (amount: number) => void;
 
-  // Tasks (unified: game dev, DLC, patch)
+  // Tasks (unified: game dev, DLC, patch, engine, research)
   addTask: (task: StudioTask) => void;
   removeTask: (taskId: string) => void;
   updateTask: (taskId: string, updates: Partial<StudioTask>) => void;
-  contributeToTask: (taskId: string, pillar: keyof PillarProgress, points: number) => void;
+  contributeToTask: (taskId: string, category: keyof PhaseCategories, points: number) => void;
+  contributeToResearch: (taskId: string, points: number) => void;
   addTaskBugs: (taskId: string, count: number) => void;
   addTaskBug: (taskId: string, bug: Bug) => void;
   removeTaskBug: (taskId: string, bugId: string) => void;
@@ -164,9 +167,13 @@ interface GameActions {
   unlockStudioUpgrade: (upgradeId: string) => void;
   unlockGameUpgrade: (gameId: string, upgradeId: string) => void;
 
-  // Engines
-  addEngine: (engine: GameEngine) => void;
-  updateEngine: (engineId: string, updates: Partial<GameEngine>) => void;
+  // Engines (component-based)
+  createEngine: (name: string) => void;
+  addFeatureToEngine: (engineId: string, featureId: string) => boolean;
+  removeFeatureFromEngine: (engineId: string, featureId: string) => void;
+
+  // Research
+  unlockFeature: (featureId: string) => void;
 
   // Bugs
   addBug: (gameId: string, bug: Bug) => void;
@@ -220,6 +227,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       studioFans: state.studioFans,
       researchPoints: state.researchPoints,
       unlockedStudioUpgrades: state.unlockedStudioUpgrades,
+      unlockedFeatures: state.unlockedFeatures,
       activeGames: state.activeGames,
       activeTasks: state.activeTasks,
       completedGames: state.completedGames,
@@ -310,20 +318,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
     activeTasks: s.activeTasks.map((t) => t.id === taskId ? { ...t, ...updates } : t),
   })),
 
-  contributeToTask: (taskId, pillar, points) => set((s) => ({
+  contributeToTask: (taskId, category, points) => set((s) => ({
     activeTasks: s.activeTasks.map((t) => {
       if (t.id !== taskId) return t;
       const newProgress = {
-        ...t.pillarProgress,
-        [pillar]: Math.min(t.pillarTargets[pillar], t.pillarProgress[pillar] + points),
+        ...t.categoryProgress,
+        [category]: Math.min(t.categoryTargets[category], t.categoryProgress[category] + points),
       };
-      const targets = t.pillarTargets;
-      const totalTarget = targets.graphics + targets.gameplay + targets.sound + targets.polish;
-      const totalDone = Math.min(newProgress.graphics, targets.graphics)
-        + Math.min(newProgress.gameplay, targets.gameplay)
-        + Math.min(newProgress.sound, targets.sound)
-        + Math.min(newProgress.polish, targets.polish);
-      return { ...t, pillarProgress: newProgress, progressPercent: totalTarget > 0 ? Math.min(100, (totalDone / totalTarget) * 100) : 0 };
+      const cats = Object.keys(t.categoryTargets) as (keyof PhaseCategories)[];
+      const totalTarget = cats.reduce((sum, c) => sum + t.categoryTargets[c], 0);
+      const totalDone = cats.reduce((sum, c) => sum + Math.min(newProgress[c], t.categoryTargets[c]), 0);
+      return { ...t, categoryProgress: newProgress, progressPercent: totalTarget > 0 ? Math.min(100, (totalDone / totalTarget) * 100) : 0 };
+    }),
+  })),
+
+  contributeToResearch: (taskId, points) => set((s) => ({
+    activeTasks: s.activeTasks.map((t) => {
+      if (t.id !== taskId) return t;
+      const newProgress = Math.min(t.researchTarget ?? 100, (t.researchProgress ?? 0) + points);
+      const target = t.researchTarget ?? 100;
+      return { ...t, researchProgress: newProgress, progressPercent: target > 0 ? Math.min(100, (newProgress / target) * 100) : 0 };
     }),
   })),
 
@@ -355,7 +369,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     activeTasks: s.activeTasks.map((t) =>
       t.id === taskId ? {
         ...t,
-        pillarProgress: { graphics: 0, gameplay: 0, sound: 0, polish: 0 },
+        categoryProgress: zeroCategoryMap(),
         progressPercent: 0,
         bugsFound: 0,
       } : t
@@ -535,15 +549,52 @@ export const useGameStore = create<GameStore>((set, get) => ({
   })),
 
   // ----------------------------------------------------------
-  // Engines
+  // Engines (component-based)
   // ----------------------------------------------------------
 
-  addEngine: (engine) => set((s) => ({
-    engines: [...s.engines, engine],
+  createEngine: (name) => set((s) => ({
+    engines: [...s.engines, {
+      id: `engine-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      name: name || 'Custom Engine',
+      features: [],
+      totalEngineCost: 0,
+    }],
   })),
 
-  updateEngine: (engineId, updates) => set((s) => ({
-    engines: s.engines.map((e) => e.id === engineId ? { ...e, ...updates } : e),
+  addFeatureToEngine: (engineId, featureId) => {
+    const state = get();
+    const engine = state.engines.find((e) => e.id === engineId);
+    if (!engine) return false;
+    const check = canAddFeatureToEngine(featureId, engine.features, state.unlockedFeatures);
+    if (!check.allowed) return false;
+    const def = getFeatureDef(featureId);
+    if (!def) return false;
+    if (state.money < def.engineCost) return false;
+    set((s) => ({
+      money: s.money - def.engineCost,
+      engines: s.engines.map((e) =>
+        e.id === engineId
+          ? { ...e, features: [...e.features, featureId], totalEngineCost: e.totalEngineCost + def.engineCost }
+          : e
+      ),
+    }));
+    return true;
+  },
+
+  removeFeatureFromEngine: (engineId, featureId) => set((s) => ({
+    engines: s.engines.map((e) =>
+      e.id === engineId
+        ? { ...e, features: e.features.filter((f) => f !== featureId) }
+        : e
+    ),
+  })),
+
+  // ----------------------------------------------------------
+  // Research
+  // ----------------------------------------------------------
+
+  unlockFeature: (featureId) => set((s) => ({
+    unlockedFeatures: s.unlockedFeatures.includes(featureId) ? s.unlockedFeatures : [...s.unlockedFeatures, featureId],
   })),
 
   // ----------------------------------------------------------

@@ -1,7 +1,8 @@
-import type { StudioTask, ActiveGame, StudioState, PlatformRelease, BlogReview } from './types';
-import { GAME_CONFIG } from '@/lib/config/gameConfig';
+import type { StudioTask, ActiveGame, StudioState, PlatformRelease, BlogReview, PillarWeights } from './types';
+import { zeroCategoryMap } from './types';
 import { PLATFORM_CONFIG } from '@/lib/config/platformConfig';
 import { getComboMultiplier } from '@/lib/config/genreStyleConfig';
+import { getEngineTotalBenefit } from '@/lib/config/engineFeaturesConfig';
 import { calculateReviewScore } from './calculations';
 
 const BLOG_NAMES = [
@@ -58,9 +59,22 @@ export function convertTaskToActiveGame(task: StudioTask, state: StudioState): A
   const style = task.style!;
   const mode = task.mode ?? 'standard';
   const platforms = task.platforms ?? ['PC'];
-  const pillarWeights = task.pillarWeights ?? { graphics: 25, gameplay: 25, sound: 25, polish: 25 };
+  const stageWeights = task.stageWeights ?? zeroCategoryMap();
+
+  // Derive approximate pillar weights from stage categories for the review system (temporary until review rework)
+  const pillarWeights: PillarWeights = {
+    graphics: Math.round((stageWeights.graphics + stageWeights.worldDesign * 0.5 + stageWeights.levelDesign * 0.3) / 3 * 100) / 100 || 25,
+    gameplay: Math.round((stageWeights.gameplay + stageWeights.engine * 0.5 + stageWeights.ai * 0.3) / 3 * 100) / 100 || 25,
+    sound: Math.round((stageWeights.sound + stageWeights.dialogues * 0.5) / 2 * 100) / 100 || 25,
+    polish: Math.round((stageWeights.storyQuests * 0.5 + stageWeights.levelDesign * 0.3 + stageWeights.dialogues * 0.3) / 3 * 100) / 100 || 25,
+  };
 
   const comboMultiplier = getComboMultiplier(genre, style);
+
+  // Engine benefit score
+  const engine = task.engineId ? state.engines.find((e) => e.id === task.engineId) : null;
+  const engineBenefitScore = engine ? getEngineTotalBenefit(engine.features) : 0;
+
   const formulaScore = calculateReviewScore(
     { genre, style, pillarWeights },
     task.bugsFound,
@@ -95,7 +109,9 @@ export function convertTaskToActiveGame(task: StudioTask, state: StudioState): A
     mode,
     comboMultiplier,
     phase: 'growth',
-    pillarWeights,
+    stageWeights,
+    engineId: task.engineId,
+    engineBenefitScore,
     reviewScore,
     blogReviews,
     releaseMonth: state.calendar.month,
