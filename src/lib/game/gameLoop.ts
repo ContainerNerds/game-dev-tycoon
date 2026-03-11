@@ -20,7 +20,10 @@ import {
   drainStamina,
   processVacationDay,
   getEffectiveSkills,
+  canEmployeeWorkOnTask,
+  canEmployeeBugFix,
 } from './employeeSystem';
+import { EMPLOYEE_TASK_ABILITIES } from '@/lib/config/employeeConfig';
 import type { Bug, BugSeverity, RegionId, StaffContribution, ActiveGame, DevPhase, PhaseCategories } from './types';
 import { PHASE_CATEGORIES } from './types';
 import { computeFurnitureBuffs, getBuffMultiplier } from './furnitureSystem';
@@ -143,17 +146,20 @@ export function processTick(store: GameStore): void {
     if (randomEmails.hateMail) dispatchEmail(store, randomEmails.hateMail);
   }
 
-  // Resolve auto-assigned employees to the first incomplete task
+  // Resolve auto-assigned employees to tasks matching their type
   {
     const latestState = useGameStore.getState();
-    const firstIncompleteTask = latestState.activeTasks.find(
+    const incompleteTasks = latestState.activeTasks.filter(
       (t) => t.progressPercent < 100 || t.type === 'patch'
     );
-    const hasWork = !!firstIncompleteTask;
     const updatedEmps = latestState.employees.map((emp) => {
       if (!emp.autoAssign || emp.onVacation) return emp;
-      const activity = hasWork ? 'developing' as const : 'idle' as const;
-      return { ...emp, activity };
+      const matchingTask = incompleteTasks.find((t) => canEmployeeWorkOnTask(emp, t.type));
+      if (matchingTask) {
+        const activity = EMPLOYEE_TASK_ABILITIES[emp.employeeType].activityWhenWorking;
+        return { ...emp, activity };
+      }
+      return { ...emp, activity: 'idle' as const };
     });
     store.updateEmployees(updatedEmps);
   }
@@ -174,22 +180,23 @@ export function processTick(store: GameStore): void {
   const contribs: StaffContribution[] = [];
   const currentEmployees = useGameStore.getState().employees;
   const autoAssignedEmployees = currentEmployees.filter((e) => e.autoAssign && !e.onVacation && e.assignedTaskId === null);
-  let autoAssignedUsed = false;
+  const autoAssignedUsedSet = new Set<string>();
 
   for (const task of state.activeTasks) {
     if (task.progressPercent >= 100 && task.type !== 'patch') continue;
 
     const crunchMultiplier = task.isCrunching ? GAME_CONFIG.crunchSpeedMultiplier : 1;
 
-    let taskEmployees = currentEmployees.filter((e) => e.assignedTaskId === task.id && !e.onVacation);
-    if (!autoAssignedUsed && autoAssignedEmployees.length > 0) {
-      taskEmployees = [...taskEmployees, ...autoAssignedEmployees];
-      autoAssignedUsed = true;
-    }
+    const manuallyAssigned = currentEmployees.filter((e) => e.assignedTaskId === task.id && !e.onVacation);
+    const autoForTask = autoAssignedEmployees.filter(
+      (e) => !autoAssignedUsedSet.has(e.id) && canEmployeeWorkOnTask(e, task.type)
+    );
+    for (const e of autoForTask) autoAssignedUsedSet.add(e.id);
+    const taskEmployees = [...manuallyAssigned, ...autoForTask];
 
     // Research tasks: only researchers contribute
     if (task.type === 'research') {
-      const researchers = taskEmployees.filter((e) => e.employeeType === 'researcher');
+      const researchers = taskEmployees.filter((e) => canEmployeeWorkOnTask(e, 'research'));
       if (researchers.length > 0) {
         for (const emp of researchers) {
           const efficiency = getStaminaEfficiency(emp.stamina);
@@ -219,10 +226,7 @@ export function processTick(store: GameStore): void {
       ? PHASE_CATEGORIES[task.currentPhase]
       : ALL_CATS;
 
-    // Developer employees contribute (and non-typed employees for backward compat)
-    const devEmployees = taskEmployees.filter((e) =>
-      e.employeeType === 'developer' || !e.employeeType
-    );
+    const devEmployees = taskEmployees.filter((e) => canEmployeeWorkOnTask(e, task.type));
 
     if (devEmployees.length > 0) {
       for (const emp of devEmployees) {
@@ -329,7 +333,7 @@ export function processTick(store: GameStore): void {
   for (const task of freshForAutofix.activeTasks) {
     if (task.type !== 'game' || task.progressPercent < 100 || !task.bugs?.length) continue;
     const idleEmployees = freshForAutofix.employees.filter(
-      (e) => (e.assignedTaskId === null || e.assignedTaskId === task.id) && !e.onVacation
+      (e) => (e.assignedTaskId === null || e.assignedTaskId === task.id) && !e.onVacation && canEmployeeBugFix(e)
     );
     if (idleEmployees.length === 0) continue;
 
@@ -389,7 +393,7 @@ export function processTick(store: GameStore): void {
   let totalNewFans = 0;
   let totalRP = 0;
   const latestEmps = useGameStore.getState().employees;
-  const bugfixEmployees = latestEmps.filter((e) => e.assignedTaskId === 'bugfix' && !e.onVacation);
+  const bugfixEmployees = latestEmps.filter((e) => e.assignedTaskId === 'bugfix' && !e.onVacation && canEmployeeBugFix(e));
 
   for (const game of state.activeGames) {
     if (game.phase === 'retired') continue;

@@ -1,5 +1,5 @@
-import type { Employee, EmployeeSkills, EmployeeTitle, EmployeeType, PhaseCategories } from './types';
-import { EMPLOYEE_CONFIG, PACK_TYPES, type PackTypeId } from '@/lib/config/employeeConfig';
+import type { Employee, EmployeeSkills, EmployeeTitle, EmployeeType, TaskType, PhaseCategories } from './types';
+import { EMPLOYEE_CONFIG, EMPLOYEE_TASK_ABILITIES, PACK_TYPES, type PackTypeId } from '@/lib/config/employeeConfig';
 import { CATEGORY_SKILL_MAP, PRIMARY_SKILL_WEIGHT, SECONDARY_SKILL_WEIGHT } from '@/lib/config/categoryConfig';
 import { type Rarity, RARITY_TIERS, RARITY_ORDER } from '@/lib/config/rarityConfig';
 
@@ -248,6 +248,20 @@ export function getStaminaEfficiency(stamina: number): number {
   }
   const t = stamina / lowThreshold;
   return lowEfficiency + t * (1 - lowEfficiency);
+}
+
+export function canEmployeeWorkOnTask(emp: Employee, taskType: TaskType): boolean {
+  const abilities = EMPLOYEE_TASK_ABILITIES[emp.employeeType];
+  return abilities.canWorkOn.includes(taskType);
+}
+
+export function canEmployeeBugFix(emp: Employee): boolean {
+  return EMPLOYEE_TASK_ABILITIES[emp.employeeType].canBugFix;
+}
+
+export function getActivityForTaskType(emp: Employee, taskType: TaskType): Employee['activity'] {
+  if (!canEmployeeWorkOnTask(emp, taskType)) return 'idle';
+  return EMPLOYEE_TASK_ABILITIES[emp.employeeType].activityWhenWorking;
 }
 
 export function drainStamina(currentStamina: number, isCrunching: boolean, drainMultiplier = 1): number {

@@ -29,6 +29,8 @@ import type { GameSizeXP } from '@/lib/config/studioLevelConfig';
 import { saveToSlot, loadFromSlot } from './saveLoad';
 import { generateGameReviewEmail } from '@/lib/game/emailSystem';
 import { createEmailNotification } from '@/lib/game/notificationSystem';
+import { canEmployeeWorkOnTask, canEmployeeBugFix } from '@/lib/game/employeeSystem';
+import { EMPLOYEE_TASK_ABILITIES } from '@/lib/config/employeeConfig';
 
 // ============================================================
 // Initial State Factory
@@ -344,7 +346,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   addTask: (task) => set((s) => {
     if (s.activeTasks.length >= s.maxParallelTasks) return {};
-    return { activeTasks: [...s.activeTasks, task] };
+    const employees = s.employees.map((e) => {
+      if (!e.autoAssign || e.onVacation || e.assignedTaskId !== null) return e;
+      if (!canEmployeeWorkOnTask(e, task.type)) return e;
+      const activity = EMPLOYEE_TASK_ABILITIES[e.employeeType].activityWhenWorking;
+      return { ...e, assignedTaskId: task.id, activity, autoAssign: false };
+    });
+    return { activeTasks: [...s.activeTasks, task], employees };
   }),
 
   removeTask: (taskId) => set((s) => ({
@@ -541,10 +549,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   assignEmployee: (employeeId, taskId) => set((s) => ({
     employees: s.employees.map((e) => {
       if (e.id !== employeeId) return e;
-      let activity: Employee['activity'] = 'idle';
-      if (taskId === 'bugfix') activity = 'bugfixing';
-      else if (taskId) activity = 'developing';
-      return { ...e, assignedTaskId: taskId, activity, autoAssign: false };
+
+      if (taskId === 'bugfix') {
+        if (!canEmployeeBugFix(e)) return e;
+        return { ...e, assignedTaskId: taskId, activity: 'bugfixing' as const, autoAssign: false };
+      }
+
+      if (taskId) {
+        const task = s.activeTasks.find((t) => t.id === taskId);
+        if (task && !canEmployeeWorkOnTask(e, task.type)) return e;
+        const activity = EMPLOYEE_TASK_ABILITIES[e.employeeType].activityWhenWorking;
+        return { ...e, assignedTaskId: taskId, activity, autoAssign: false };
+      }
+
+      return { ...e, assignedTaskId: null, activity: 'idle' as const, autoAssign: false };
     }),
   })),
 

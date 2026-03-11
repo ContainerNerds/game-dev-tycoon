@@ -1,5 +1,18 @@
-import type { EmployeeTitle, EmployeeType } from '@/lib/game/types';
+import type { EmployeeTitle, EmployeeType, EmployeeActivity, TaskType } from '@/lib/game/types';
 import type { Rarity } from '@/lib/config/rarityConfig';
+
+export interface EmployeeTaskAbilities {
+  canWorkOn: TaskType[];
+  canBugFix: boolean;
+  activityWhenWorking: EmployeeActivity;
+}
+
+export const EMPLOYEE_TASK_ABILITIES: Record<EmployeeType, EmployeeTaskAbilities> = {
+  developer:     { canWorkOn: ['game', 'dlc', 'patch', 'engine'], canBugFix: true,  activityWhenWorking: 'developing' },
+  researcher:    { canWorkOn: ['research'],                       canBugFix: false, activityWhenWorking: 'researching' },
+  administrator: { canWorkOn: [],                                 canBugFix: false, activityWhenWorking: 'idle' },
+  hacker:        { canWorkOn: [],                                 canBugFix: false, activityWhenWorking: 'idle' },
+};
 
 export interface UniqueEmployeeDef {
   name: string;
