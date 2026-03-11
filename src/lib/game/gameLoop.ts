@@ -422,7 +422,12 @@ export function processTick(store: GameStore): void {
   let totalNewFans = 0;
   let totalRP = 0;
   const latestEmps = useGameStore.getState().employees;
-  const bugfixEmployees = latestEmps.filter((e) => e.assignedTaskId === 'bugfix' && !e.onVacation && canEmployeeBugFix(e));
+  const dedicatedBugfixers = latestEmps.filter((e) => e.assignedTaskId === 'bugfix' && !e.onVacation && canEmployeeBugFix(e));
+  const idleBugfixers = latestEmps.filter(
+    (e) => e.activity === 'idle' && e.assignedTaskId === null && !e.onVacation && canEmployeeBugFix(e)
+  );
+  const bugfixEmployees = [...dedicatedBugfixers, ...idleBugfixers];
+  const releasedBugFixerIds = new Set<string>();
 
   for (const game of state.activeGames) {
     if (game.phase === 'retired') continue;
@@ -503,7 +508,7 @@ export function processTick(store: GameStore): void {
       });
     }
 
-    // Bugfix employees fix released-game bugs
+    // Bugfix employees fix released-game bugs (dedicated first, then idle devs)
     const allBugsForGame = [...game.bugs, ...newBugs];
     const bugsToRemove: string[] = [];
     const updatedBugs = [...allBugsForGame];
@@ -512,6 +517,7 @@ export function processTick(store: GameStore): void {
       for (let i = 0; i < updatedBugs.length && empIdx < bugfixEmployees.length; i++) {
         const bug = updatedBugs[i];
         const fixer = bugfixEmployees[empIdx];
+        releasedBugFixerIds.add(fixer.id);
         const efficiency = getStaminaEfficiency(fixer.stamina);
         const effSkills = getEffectiveSkills(fixer);
         const fixSkill = (effSkills.gameplay + effSkills.polish) / 2;
@@ -568,6 +574,16 @@ export function processTick(store: GameStore): void {
       store.addResearchPoints(researchPerTick);
       totalRP += researchPerTick;
     }
+  }
+
+  // Update activity for idle devs who helped fix released-game bugs
+  if (releasedBugFixerIds.size > 0) {
+    const empsAfterReleasedFix = useGameStore.getState().employees.map((emp) =>
+      releasedBugFixerIds.has(emp.id) && emp.activity === 'idle'
+        ? { ...emp, activity: 'bugfixing' as const }
+        : emp
+    );
+    store.updateEmployees(empsAfterReleasedFix);
   }
 
   // Daily rate tracking
