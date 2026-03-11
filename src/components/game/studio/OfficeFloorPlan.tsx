@@ -257,11 +257,11 @@ export default function OfficeFloorPlan() {
     return () => observer.disconnect();
   }, []);
 
-  const autoCell = containerWidth > 0
-    ? Math.floor((containerWidth - GRID_PADDING * 2 - layout.cols) / layout.cols)
+  const fitCell = containerWidth > 0
+    ? Math.max(MIN_CELL, Math.min(MAX_CELL, Math.floor((containerWidth - GRID_PADDING * 2 - layout.cols) / layout.cols)))
     : BASE_CELL;
 
-  const cellSize = Math.max(MIN_CELL, Math.min(MAX_CELL, autoCell + zoomDelta));
+  const cellSize = Math.max(MIN_CELL, fitCell + zoomDelta);
   const zoomPercent = Math.round((cellSize / BASE_CELL) * 100);
 
   const handleZoomIn = useCallback(() => setZoomDelta((d) => Math.min(d + ZOOM_STEP, MAX_CELL - MIN_CELL)), []);

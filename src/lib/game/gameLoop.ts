@@ -194,6 +194,20 @@ export function processTick(store: GameStore): void {
     store.updateEmployees(staminaUpdated);
   }
 
+  // Auto-vacation: send employees on vacation when stamina drops below threshold
+  {
+    const latestState = useGameStore.getState();
+    const threshold = latestState.autoVacationThreshold;
+    if (threshold > 0) {
+      for (const emp of latestState.employees) {
+        if (emp.onVacation || emp.activity === 'idle') continue;
+        if (emp.stamina <= threshold && emp.stamina > 0) {
+          store.sendOnVacation(emp.id);
+        }
+      }
+    }
+  }
+
   // Process all active tasks
   const TICK_SCALE = CATEGORY_DEV_CONFIG.tickScale;
   const contribs: StaffContribution[] = [];

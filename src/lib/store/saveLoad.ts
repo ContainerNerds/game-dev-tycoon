@@ -4,7 +4,7 @@ import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { getStartingUnlockedFeatures } from '@/lib/config/engineFeaturesConfig';
 import { computeLevelUp } from '@/lib/config/studioLevelConfig';
 
-const SAVE_VERSION = 9;
+const SAVE_VERSION = 10;
 const SLOT_KEY_PREFIX = 'game-dev-tycoon-slot-';
 const SETTINGS_KEY = 'game-dev-tycoon-settings';
 
@@ -306,6 +306,11 @@ function migrateState(state: StudioState, fromVersion: number): StudioState {
     // v8 → v9: Email & notification system
     raw.inbox = raw.inbox ?? [];
     raw.notifications = raw.notifications ?? [];
+  }
+
+  if (fromVersion < 10) {
+    // v9 → v10: Auto-vacation setting
+    raw.autoVacationThreshold = raw.autoVacationThreshold ?? 0;
   }
 
   return state;

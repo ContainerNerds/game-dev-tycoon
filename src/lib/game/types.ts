@@ -577,5 +577,6 @@ export interface StudioState {
   _dayAccRP: number;
   _dayTickCounter: number;
 
+  autoVacationThreshold: number; // 0 = off, 30 = send at 30% stamina
   isBankrupt: boolean;
 }

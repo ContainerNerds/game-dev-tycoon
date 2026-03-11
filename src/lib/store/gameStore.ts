@@ -115,6 +115,7 @@ export function createInitialState(studioName: string, playerName: string, start
     _dayAccFans: 0,
     _dayAccRP: 0,
     _dayTickCounter: 0,
+    autoVacationThreshold: 0,
     isBankrupt: false,
   };
 }
@@ -220,6 +221,9 @@ interface GameActions {
   clearDismissedNotifications: () => void;
   clearAllNotifications: () => void;
 
+  // Settings
+  setAutoVacationThreshold: (threshold: number) => void;
+
   // Tracking
   setBankrupt: () => void;
   trackDailyRate: (moneyDelta: number, fansDelta: number, rpDelta: number) => void;
@@ -288,6 +292,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       inbox: state.inbox,
       notifications: [],
       _dayAccMoney: 0, _dayAccFans: 0, _dayAccRP: 0, _dayTickCounter: 0,
+      autoVacationThreshold: state.autoVacationThreshold,
       isBankrupt: state.isBankrupt,
     };
     saveToSlot(slotId, stateOnly);
@@ -779,6 +784,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   })),
 
   clearAllNotifications: () => set({ notifications: [] }),
+
+  // ----------------------------------------------------------
+  // Settings
+  // ----------------------------------------------------------
+
+  setAutoVacationThreshold: (threshold) => set({ autoVacationThreshold: threshold }),
 
   // ----------------------------------------------------------
   // Tracking

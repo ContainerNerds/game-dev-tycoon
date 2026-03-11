@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/lib/store/gameStore';
 import { PACK_TYPES, type PackTypeId } from '@/lib/config/employeeConfig';
 import { generatePack } from '@/lib/game/employeeSystem';
-import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, Zap, Plus, Volume2, VolumeX, Crown, Gem, BookOpen } from 'lucide-react';
+import { UserMinus, Users, Palmtree, Package, ShoppingCart, Bug, Zap, Plus, Volume2, VolumeX, Crown, Gem, BookOpen, BedDouble } from 'lucide-react';
 import type { Employee, EmployeeActivity, EmployeeType } from '@/lib/game/types';
 import EmployeeCard from '@/components/game/EmployeeCard';
 import EmployeeDetailModal from '@/components/game/EmployeeDetailModal';
@@ -79,6 +79,8 @@ export default function StaffTab() {
   const assignEmployee = useGameStore((s) => s.assignEmployee);
   const setEmployeeAutoAssign = useGameStore((s) => s.setEmployeeAutoAssign);
   const sendOnVacation = useGameStore((s) => s.sendOnVacation);
+  const autoVacationThreshold = useGameStore((s) => s.autoVacationThreshold);
+  const setAutoVacationThreshold = useGameStore((s) => s.setAutoVacationThreshold);
 
   const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
   const [epicShakeIds, setEpicShakeIds] = useState<Set<string>>(new Set());
@@ -157,7 +159,7 @@ export default function StaffTab() {
   return (
     <div className="p-4 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Users className="h-6 w-6 text-muted-foreground" />
           <div>
@@ -168,6 +170,22 @@ export default function StaffTab() {
               Monthly salaries: ${totalMonthlySalary.toLocaleString()}
             </p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <BedDouble className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground mr-1">Auto-Vacation:</span>
+          {([0, 30] as const).map((val) => (
+            <Button
+              key={val}
+              size="sm"
+              variant={autoVacationThreshold === val ? 'default' : 'outline'}
+              className="h-6 px-2 text-[11px] cursor-pointer"
+              onClick={() => setAutoVacationThreshold(val)}
+            >
+              {val === 0 ? 'Off' : `${val}%`}
+            </Button>
+          ))}
         </div>
       </div>
 
