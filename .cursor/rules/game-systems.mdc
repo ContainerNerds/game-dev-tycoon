@@ -23,7 +23,7 @@ At month-end: auto-pause, show MonthlyReport modal, deduct all monthly costs ato
 | Fans | `fanSystem.ts` | `gameConfig.ts` |
 | Employees | `employeeSystem.ts` | `employeeConfig.ts` |
 | Offices | (store actions) | `officeConfig.ts` |
-| Skill tree | (store actions) | `skillTreeConfig.ts` |
+| Skill tree | (store actions) | `skillTreeConfig.ts`, `studioLevelConfig.ts` |
 | Genre/style combos | `calculations.ts` | `genreStyleConfig.ts` |
 | Platforms | `calculations.ts` | `platformConfig.ts` |
 

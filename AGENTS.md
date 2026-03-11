@@ -6,7 +6,7 @@
 
 A browser-based idle/incremental game where you manage a game development studio. You create games by choosing genre + style combos, set development pillar weights, hire staff, buy office space, manage server infrastructure across global regions, and grow your fan base.
 
-**Status**: V1 complete — all core systems implemented and playable.
+**Status**: V1.1 — UI overhaul complete. New skill tree and studio XP system.
 
 ## Tech Stack
 
@@ -67,7 +67,7 @@ Development → Release → Growth → Peak → Decline → (DLC / Sequel / Reti
 - **Employees**: 4 skill types (Devel/Infra/Project/Management), 1–5 rating, passive bonuses
 - **Offices**: 5 tiers (Garage → Studio Floor), gate max headcount
 - **Fans**: Game fans + Studio fans, affect DLC/sequel sales
-- **Skill Tree**: Studio-wide upgrades (persist) + per-game upgrades
+- **Skill Tree**: 3 specializations (Production/Business/Technology), ~55 nodes, multi-rank, powered by Studio XP/leveling
 - **Bugs**: Spawn based on player count, affect review score
 - **Research**: Earned passively while games are online
 
@@ -80,7 +80,8 @@ US-East (default), US-West, Brazil, Saudi Arabia, Russia, India, China, Japan, A
 |------|---------|
 | `gameConfig.ts` | Core constants: starting money, tick rate, lifecycle lengths, fan rates |
 | `genreStyleConfig.ts` | Genre × Style combo multipliers |
-| `skillTreeConfig.ts` | Upgrade nodes, costs, prerequisites, effects |
+| `skillTreeConfig.ts` | 3-spec skill tree: ~55 nodes with multi-rank, prerequisites |
+| `studioLevelConfig.ts` | Studio XP curve (max level 30), XP rewards per action |
 | `serverConfig.ts` | Region definitions, server costs, datacenter specs |
 | `calendarConfig.ts` | Speed settings, ms-per-tick, days-per-month |
 | `employeeConfig.ts` | Skill ranges, hire/salary formulas, pool size |
@@ -100,12 +101,12 @@ US-East (default), US-West, Brazil, Saudi Arabia, Russia, India, China, Japan, A
 - Calendar system: Jan 1 2040 start, Stop/1x/2x/4x speed controls
 - Tick-based game loop: revenue, bugs, fan conversion, server load, research
 - End-of-month report modal with itemized cost breakdown
-- 7 game tabs: Delivery, Upgrades, Bugs, Research, Press, Staff, Office
+- 7 game tabs: Studio, Skill Tree, Bugs, Research, Engines, Staff, Studio View
 - 9 server regions (US-East default, 8 more unlockable)
 - Colocated servers + Datacenter purchases
 - Employee hiring/firing with 4 skills (Devel/Infra/Project/Management 1–5)
 - 5-tier office system (Garage through Studio Floor)
-- Skill tree with studio-wide + per-game upgrades and prerequisite DAG
+- Skill tree with 3 specializations (Production/Business/Technology), studio XP/leveling (max 30)
 - Game lifecycle: Development → Growth → Peak → Decline
 - DLC creation, Sequel development, Game retirement
 - Bankruptcy detection and restart flow
