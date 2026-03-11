@@ -30,7 +30,19 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <TooltipProvider>{children}</TooltipProvider>
-        <Toaster position="bottom-right" richColors />
+        <Toaster
+          position="bottom-right"
+          richColors
+          closeButton
+          toastOptions={{
+            duration: 2500,
+            classNames: {
+              toast: '!py-2.5 !px-3 !text-sm !shadow-lg !border',
+              title: '!font-medium',
+              description: '!text-xs !mt-0.5',
+            },
+          }}
+        />
       </body>
     </html>
   );

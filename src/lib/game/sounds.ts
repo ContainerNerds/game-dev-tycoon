@@ -4,6 +4,7 @@ let audioCtx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
 let volume = 0.5;
 let muted = false;
+let notificationSoundMuted = false;
 
 function ensureAudio(): { ctx: AudioContext; gain: GainNode } | null {
   if (typeof window === 'undefined') return null;
@@ -20,6 +21,7 @@ export function initSoundSystem() {
   const settings = loadSettings();
   volume = settings.sfxVolume;
   muted = settings.sfxMuted;
+  notificationSoundMuted = settings.notificationsSoundMuted ?? false;
   if (masterGain) {
     masterGain.gain.value = muted ? 0 : volume;
   }
@@ -97,4 +99,37 @@ export function playEpicRevealSound() {
     osc.start(onset);
     osc.stop(onset + 0.5);
   });
+}
+
+/** Play a short notification chime. Respects notificationSoundMuted. */
+export function playNotificationSound() {
+  if (notificationSoundMuted || muted) return;
+  const audio = ensureAudio();
+  if (!audio) return;
+  const { ctx, gain } = audio;
+
+  const osc = ctx.createOscillator();
+  const env = ctx.createGain();
+  osc.connect(env);
+  env.connect(gain);
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(1100, ctx.currentTime + 0.06);
+
+  env.gain.setValueAtTime(0.15, ctx.currentTime);
+  env.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.12);
+}
+
+export function isNotificationSoundMuted(): boolean {
+  return notificationSoundMuted;
+}
+
+export function setNotificationSoundMuted(m: boolean) {
+  notificationSoundMuted = m;
+  const settings = loadSettings();
+  saveSettings({ ...settings, notificationsSoundMuted: m });
 }

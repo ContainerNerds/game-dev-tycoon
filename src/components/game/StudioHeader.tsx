@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import NotificationTray from '@/components/game/NotificationTray';
 import { useGameStore } from '@/lib/store/gameStore';
 import { formatDate } from '@/lib/game/calendarSystem';
 import type { GameSpeed } from '@/lib/game/types';
@@ -22,9 +23,10 @@ const SPEED_LABELS: Record<GameSpeed, string> = {
 interface StudioHeaderProps {
   slotId: number;
   onMenuClick: () => void;
+  onNavigateToInbox?: () => void;
 }
 
-export default function StudioHeader({ slotId, onMenuClick }: StudioHeaderProps) {
+export default function StudioHeader({ slotId, onMenuClick, onNavigateToInbox }: StudioHeaderProps) {
   const studioName = useGameStore((s) => s.studioName);
   const money = useGameStore((s) => s.money);
   const studioFans = useGameStore((s) => s.studioFans);
@@ -110,6 +112,7 @@ export default function StudioHeader({ slotId, onMenuClick }: StudioHeaderProps)
             {formatDate(calendar)}
           </div>
 
+          <NotificationTray onNavigateToInbox={onNavigateToInbox} />
           <Button
             size="sm"
             variant="outline"

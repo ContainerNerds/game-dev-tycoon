@@ -30,6 +30,10 @@ export interface GameSettings {
   autoSaveIntervalMinutes: number;
   sfxVolume: number;
   sfxMuted: boolean;
+  /** When true, toasts are not shown (notifications still stored in tray) */
+  notificationsToastsMuted: boolean;
+  /** When true, notification sound is not played */
+  notificationsSoundMuted: boolean;
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -37,6 +41,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   autoSaveIntervalMinutes: 5,
   sfxVolume: 0.5,
   sfxMuted: false,
+  notificationsToastsMuted: false,
+  notificationsSoundMuted: false,
 };
 
 function buildMeta(state: StudioState): SaveMeta {

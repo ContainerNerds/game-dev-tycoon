@@ -3,7 +3,9 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useGameStore } from '@/lib/store/gameStore';
+import { loadSettings } from '@/lib/store/saveLoad';
 import { NOTIFICATION_CONFIG } from '@/lib/config/emailConfig';
+import { playNotificationSound } from './sounds';
 import type { NotificationType } from './types';
 
 function getToastFn(variant: string) {
@@ -21,21 +23,30 @@ export function useNotificationToasts(): void {
   const processedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    const settings = loadSettings();
+    const toastsMuted = settings.notificationsToastsMuted ?? false;
+
     const undismissed = notifications.filter((n) => !n.dismissed);
 
     for (const notif of undismissed) {
       if (processedRef.current.has(notif.id)) continue;
       processedRef.current.add(notif.id);
 
-      const variant = NOTIFICATION_CONFIG.toastVariant[notif.type as NotificationType] ?? 'default';
-      const toastFn = getToastFn(variant);
+      playNotificationSound();
 
-      toastFn(notif.title, {
-        description: notif.message,
-        duration: 4000,
-        onAutoClose: () => dismissNotification(notif.id),
-        onDismiss: () => dismissNotification(notif.id),
-      });
+      if (!toastsMuted) {
+        const variant = NOTIFICATION_CONFIG.toastVariant[notif.type as NotificationType] ?? 'default';
+        const toastFn = getToastFn(variant);
+
+        toastFn(notif.title, {
+          description: notif.message,
+          duration: 2500,
+          closeButton: true,
+          onAutoClose: () => dismissNotification(notif.id),
+          onDismiss: () => dismissNotification(notif.id),
+        });
+      }
+      // When toasts muted: notification stays in tray for user to acknowledge there
     }
 
     // Periodically prune dismissed notifications from state

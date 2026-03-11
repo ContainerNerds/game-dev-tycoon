@@ -32,6 +32,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
   useGameTick();
   useNotificationToasts();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('studio');
 
   const isBankrupt = useGameStore((s) => s.isBankrupt);
   const saveToSlot = useGameStore((s) => s.saveToSlot);
@@ -65,12 +66,16 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
-      <StudioHeader slotId={slotId} onMenuClick={() => setMenuOpen(true)} />
+      <StudioHeader
+        slotId={slotId}
+        onMenuClick={() => setMenuOpen(true)}
+        onNavigateToInbox={() => setActiveTab('inbox')}
+      />
       <TaskBar />
       <ActiveGamesBar />
 
       <div className="flex-1 min-h-0">
-        <Tabs defaultValue="studio" className="h-full flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <TabsList className="w-full justify-start rounded-none border-b border-border bg-background px-2 sm:px-4 shrink-0 overflow-x-auto no-scrollbar">
             <TabsTrigger value="studio" className="cursor-pointer">Studio</TabsTrigger>
             <TabsTrigger value="skilltree" className="cursor-pointer">Skill Tree</TabsTrigger>
