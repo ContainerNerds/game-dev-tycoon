@@ -349,6 +349,7 @@ export function processTick(store: GameStore): void {
 
   // Auto-fix pre-release bugs on completed game tasks
   const freshForAutofix = useGameStore.getState();
+  const preReleaseBugFixerIds = new Set<string>();
   for (const task of freshForAutofix.activeTasks) {
     if (task.type !== 'game' || task.progressPercent < 100 || !task.bugs?.length) continue;
     const idleEmployees = freshForAutofix.employees.filter(
@@ -363,6 +364,7 @@ export function processTick(store: GameStore): void {
     for (let i = 0; i < updatedBugs.length && empIdx < idleEmployees.length; i++) {
       const bug = updatedBugs[i];
       const fixer = idleEmployees[empIdx];
+      preReleaseBugFixerIds.add(fixer.id);
       const eff = getStaminaEfficiency(fixer.stamina);
       const effSkills = getEffectiveSkills(fixer);
       const fixSkill = (effSkills.gameplay + effSkills.polish) / 2;
@@ -384,6 +386,14 @@ export function processTick(store: GameStore): void {
     } else if (empIdx > 0) {
       store.updateTask(task.id, { bugs: updatedBugs });
     }
+  }
+
+  // Update activity for employees actively squashing pre-release bugs
+  if (preReleaseBugFixerIds.size > 0) {
+    const empsAfterBugfix = useGameStore.getState().employees.map((emp) =>
+      preReleaseBugFixerIds.has(emp.id) ? { ...emp, activity: 'bugfixing' as const } : emp
+    );
+    store.updateEmployees(empsAfterBugfix);
   }
 
   // Blend contributions with previous
