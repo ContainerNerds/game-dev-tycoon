@@ -8,15 +8,13 @@ import DevMenu from '@/components/game/DevMenu';
 import GameMenu from '@/components/game/GameMenu';
 import TaskBar from '@/components/game/TaskBar';
 import ActiveGamesBar from '@/components/game/ActiveGamesBar';
-import DashboardTab from '@/components/game/tabs/DashboardTab';
+import StudioTab from '@/components/game/tabs/StudioTab';
 import UpgradesTab from '@/components/game/tabs/UpgradesTab';
 import BugsTab from '@/components/game/tabs/BugsTab';
 import ResearchTab from '@/components/game/tabs/ResearchTab';
 import DeliveryTab from '@/components/game/tabs/DeliveryTab';
-import PressTab from '@/components/game/tabs/PressTab';
 import StaffTab from '@/components/game/tabs/StaffTab';
 import OfficeTab from '@/components/game/tabs/OfficeTab';
-import FinancesTab from '@/components/game/tabs/FinancesTab';
 import EnginesTab from '@/components/game/tabs/EnginesTab';
 import StudioViewTab from '@/components/game/tabs/StudioViewTab';
 import { useGameTick } from '@/lib/game/useGameTick';
@@ -70,10 +68,9 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
       <ActiveGamesBar />
 
       <div className="flex-1 min-h-0">
-        <Tabs defaultValue="dashboard" className="h-full flex flex-col">
+        <Tabs defaultValue="studio" className="h-full flex flex-col">
           <TabsList className="w-full justify-start rounded-none border-b border-border bg-background px-2 sm:px-4 shrink-0 overflow-x-auto no-scrollbar">
-            <TabsTrigger value="dashboard" className="cursor-pointer">Dashboard</TabsTrigger>
-            <TabsTrigger value="finances" className="cursor-pointer">Finances</TabsTrigger>
+            <TabsTrigger value="studio" className="cursor-pointer">Studio</TabsTrigger>
             <TabsTrigger value="delivery" className="cursor-pointer">Delivery</TabsTrigger>
             <TabsTrigger value="upgrades" className="cursor-pointer">Upgrades</TabsTrigger>
             <TabsTrigger value="bugs" className="cursor-pointer">
@@ -85,25 +82,22 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
               )}
             </TabsTrigger>
             <TabsTrigger value="research" className="cursor-pointer">Research</TabsTrigger>
-            <TabsTrigger value="press" className="cursor-pointer">Press</TabsTrigger>
             <TabsTrigger value="engines" className="cursor-pointer">Engines</TabsTrigger>
             <TabsTrigger value="staff" className="cursor-pointer">Staff</TabsTrigger>
             <TabsTrigger value="office" className="cursor-pointer">Office</TabsTrigger>
-            <TabsTrigger value="studio" className="cursor-pointer">Studio View</TabsTrigger>
+            <TabsTrigger value="studioview" className="cursor-pointer">Studio View</TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-y-auto min-h-0">
-            <TabsContent value="dashboard" className="mt-0"><DashboardTab /></TabsContent>
-            <TabsContent value="finances" className="mt-0"><FinancesTab /></TabsContent>
+            <TabsContent value="studio" className="mt-0"><StudioTab /></TabsContent>
             <TabsContent value="delivery" className="mt-0"><DeliveryTab /></TabsContent>
             <TabsContent value="upgrades" className="mt-0"><UpgradesTab /></TabsContent>
             <TabsContent value="bugs" className="mt-0"><BugsTab /></TabsContent>
             <TabsContent value="research" className="mt-0"><ResearchTab /></TabsContent>
-            <TabsContent value="press" className="mt-0"><PressTab /></TabsContent>
             <TabsContent value="engines" className="mt-0"><EnginesTab /></TabsContent>
             <TabsContent value="staff" className="mt-0"><StaffTab /></TabsContent>
             <TabsContent value="office" className="mt-0"><OfficeTab /></TabsContent>
-            <TabsContent value="studio" className="mt-0"><StudioViewTab /></TabsContent>
+            <TabsContent value="studioview" className="mt-0"><StudioViewTab /></TabsContent>
           </div>
         </Tabs>
       </div>
