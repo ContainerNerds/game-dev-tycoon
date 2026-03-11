@@ -34,8 +34,14 @@ interface GameCreationModalProps {
   showTaskTypeSelector?: boolean;
 }
 
-const STEPS = ['Basics', 'Engine', 'Dev Focus', 'Summary'] as const;
-type Step = (typeof STEPS)[number];
+const ALL_STEPS = ['Basics', 'Engine', 'Dev Focus', 'Summary'] as const;
+type Step = (typeof ALL_STEPS)[number];
+
+function stepsForTaskType(t: TaskType): readonly Step[] {
+  if (t === 'patch') return ['Basics', 'Summary'];
+  if (t === 'dlc') return ['Basics', 'Dev Focus', 'Summary'];
+  return ALL_STEPS;
+}
 
 const DEFAULT_STAGE_WEIGHTS: Record<DevPhase, Record<string, number>> = {
   1: { engine: 33, gameplay: 34, storyQuests: 33 },
@@ -83,8 +89,17 @@ export default function GameCreationModal({ open, onOpenChange, onCreated, showT
   }, [selectedEngine]);
 
   const categoryTargets = useMemo(() => {
-    const baseComplexity = taskType === 'game' ? currentSizeDef.baseComplexity : taskType === 'dlc' ? 60 : 30;
     const targets = zeroCategoryMap();
+
+    if (taskType === 'patch') {
+      const perCategory = 4;
+      for (const cat of Object.keys(targets) as (keyof PhaseCategories)[]) {
+        targets[cat] = perCategory;
+      }
+      return targets;
+    }
+
+    const baseComplexity = taskType === 'game' ? currentSizeDef.baseComplexity : 60;
     for (const phase of [1, 2, 3] as DevPhase[]) {
       const cats = PHASE_CATEGORIES[phase];
       for (const cat of cats) {
@@ -121,7 +136,6 @@ export default function GameCreationModal({ open, onOpenChange, onCreated, showT
   const canAfford = taskType !== 'game' || money >= currentSizeDef.cost;
 
   const handleCreate = () => {
-    const baseComplexity = taskType === 'game' ? currentSizeDef.baseComplexity : taskType === 'dlc' ? 60 : 30;
     const devDaysTarget = taskType === 'game'
       ? Math.round((currentSizeDef.devMonthsMin + currentSizeDef.devMonthsMax) / 2 * 30)
       : taskType === 'dlc' ? 60 : 30;
@@ -159,7 +173,9 @@ export default function GameCreationModal({ open, onOpenChange, onCreated, showT
     setStep(0);
   };
 
-  const currentStep = STEPS[step];
+  const steps = stepsForTaskType(taskType);
+  const clampedStep = Math.min(step, steps.length - 1);
+  const currentStep = steps[clampedStep];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -169,16 +185,16 @@ export default function GameCreationModal({ open, onOpenChange, onCreated, showT
             {showTaskTypeSelector ? 'New Task' : 'Design Your Game'}
           </DialogTitle>
           <DialogDescription>
-            Step {step + 1} of {STEPS.length}: {currentStep}
+            Step {clampedStep + 1} of {steps.length}: {currentStep}
           </DialogDescription>
         </DialogHeader>
 
         {/* Step indicator */}
         <div className="flex gap-1 mb-2">
-          {STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <button
               key={s}
-              className={`flex-1 h-1.5 rounded-full cursor-pointer transition-colors ${i <= step ? 'bg-primary' : 'bg-muted'}`}
+              className={`flex-1 h-1.5 rounded-full cursor-pointer transition-colors ${i <= clampedStep ? 'bg-primary' : 'bg-muted'}`}
               onClick={() => setStep(i)}
             />
           ))}
@@ -189,7 +205,7 @@ export default function GameCreationModal({ open, onOpenChange, onCreated, showT
           <div className="flex gap-2 mb-3">
             {(['game', 'dlc', 'patch'] as TaskType[]).map((t) => (
               <Button key={t} size="sm" variant={taskType === t ? 'default' : 'outline'}
-                className="flex-1 text-xs cursor-pointer capitalize" onClick={() => setTaskType(t)}>
+                className="flex-1 text-xs cursor-pointer capitalize" onClick={() => { setTaskType(t); setStep(0); }}>
                 {t}
               </Button>
             ))}
@@ -424,16 +440,16 @@ export default function GameCreationModal({ open, onOpenChange, onCreated, showT
         )}
 
         <DialogFooter className="gap-2">
-          {step > 0 && (
-            <Button variant="outline" className="cursor-pointer" onClick={() => setStep(step - 1)}>
+          {clampedStep > 0 && (
+            <Button variant="outline" className="cursor-pointer" onClick={() => setStep(clampedStep - 1)}>
               <ChevronLeft className="h-4 w-4 mr-1" />Back
             </Button>
           )}
           <Button variant="outline" className="cursor-pointer" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          {step < STEPS.length - 1 ? (
-            <Button className="cursor-pointer" onClick={() => setStep(step + 1)} disabled={!gameName.trim()}>
+          {clampedStep < steps.length - 1 ? (
+            <Button className="cursor-pointer" onClick={() => setStep(clampedStep + 1)} disabled={!gameName.trim()}>
               Next<ChevronRight className="h-4 w-4 ml-1" />
             </Button>
           ) : (

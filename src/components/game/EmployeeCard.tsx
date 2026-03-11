@@ -4,9 +4,16 @@ import { useCallback, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { UserPlus, User } from 'lucide-react';
-import type { Employee } from '@/lib/game/types';
+import type { Employee, EmployeeType } from '@/lib/game/types';
 import { RARITY_TIERS } from '@/lib/config/rarityConfig';
 import { getEffectiveSkills } from '@/lib/game/employeeSystem';
+
+const TYPE_BADGE: Record<EmployeeType, { label: string; color: string }> = {
+  developer:     { label: 'DEV', color: 'text-blue-400 bg-blue-500/20 border-blue-500/50' },
+  researcher:    { label: 'RSC', color: 'text-purple-400 bg-purple-500/20 border-purple-500/50' },
+  administrator: { label: 'ADM', color: 'text-amber-400 bg-amber-500/20 border-amber-500/50' },
+  hacker:        { label: 'HCK', color: 'text-red-400 bg-red-500/20 border-red-500/50' },
+};
 
 export const SKILL_META: Record<string, { label: string; color: string; barColor: string }> = {
   graphics: { label: 'GFX', color: 'text-pink-400', barColor: 'bg-pink-500' },
@@ -90,9 +97,15 @@ export default function EmployeeCard({
                 </p>
                 <p className="text-[10px] text-muted-foreground truncate">{employee.title}</p>
               </div>
-              <Badge className={`text-[9px] px-1.5 py-0 shrink-0 ${rarity.textColor} ${rarity.bgColor} border ${rarity.borderColor}`}>
-                {rarity.label}
-              </Badge>
+              {employee.employeeType ? (
+                <Badge className={`text-[9px] px-1.5 py-0 shrink-0 border font-bold ${TYPE_BADGE[employee.employeeType].color}`}>
+                  {TYPE_BADGE[employee.employeeType].label}
+                </Badge>
+              ) : (
+                <Badge className={`text-[9px] px-1.5 py-0 shrink-0 ${rarity.textColor} ${rarity.bgColor} border ${rarity.borderColor}`}>
+                  {rarity.label}
+                </Badge>
+              )}
             </div>
 
             {/* Portrait */}

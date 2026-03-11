@@ -186,8 +186,11 @@ export function processTick(store: GameStore): void {
     }
 
     // Game/DLC/Patch/Engine tasks: 9-category contributions
-    const phase = task.currentPhase ?? 1;
-    const activeCategories = PHASE_CATEGORIES[phase];
+    // Games use phased categories; other tasks work on all categories at once
+    const ALL_CATS = Object.keys(task.categoryTargets) as (keyof PhaseCategories)[];
+    const activeCategories = (task.type === 'game' && task.currentPhase)
+      ? PHASE_CATEGORIES[task.currentPhase]
+      : ALL_CATS;
 
     // Developer employees contribute (and non-typed employees for backward compat)
     const devEmployees = taskEmployees.filter((e) =>
@@ -215,18 +218,20 @@ export function processTick(store: GameStore): void {
           }
         }
 
-        // Bug introduction
-        const bugChance = getBugChancePerContribution(emp) * (task.isCrunching ? 1.5 : 1) * TICK_SCALE;
-        if (Math.random() < bugChance) {
-          const severity = randomBugSeverity();
-          store.addTaskBug(task.id, {
-            id: generateBugId(), gameId: task.id, severity,
-            name: randomBugName(),
-            fixCost: Math.round(GAME_CONFIG.bugFixBaseCost * severityCostMultiplier(severity)),
-            fixTarget: GAME_CONFIG.bugFixTargets[severity],
-            fixProgress: 0, assignedFixerId: null, spawnedAt: Date.now(),
-          });
-          c.bugsIntroduced += 1;
+        // Bug introduction (skip for patches — they fix bugs, not introduce them)
+        if (task.type !== 'patch') {
+          const bugChance = getBugChancePerContribution(emp) * (task.isCrunching ? 1.5 : 1) * TICK_SCALE;
+          if (Math.random() < bugChance) {
+            const severity = randomBugSeverity();
+            store.addTaskBug(task.id, {
+              id: generateBugId(), gameId: task.id, severity,
+              name: randomBugName(),
+              fixCost: Math.round(GAME_CONFIG.bugFixBaseCost * severityCostMultiplier(severity)),
+              fixTarget: GAME_CONFIG.bugFixTargets[severity],
+              fixProgress: 0, assignedFixerId: null, spawnedAt: Date.now(),
+            });
+            c.bugsIntroduced += 1;
+          }
         }
 
         contribs.push(c);
@@ -240,26 +245,27 @@ export function processTick(store: GameStore): void {
       }
     }
 
-    // Phase advancement: time-based (each phase is 1/3 of total dev days)
-    if (task.currentPhase && task.developmentDaysTarget) {
-      const ticksInPhase = (task.ticksInCurrentPhase ?? 0) + 1;
-      const daysElapsed = (task.developmentDaysElapsed ?? 0) + (1 / CALENDAR_CONFIG.ticksPerDay);
-      const phaseDays = task.developmentDaysTarget / 3;
-      const phaseTicks = phaseDays * CALENDAR_CONFIG.ticksPerDay;
-
-      let newPhase = task.currentPhase;
-      let newTicksInPhase = ticksInPhase;
-
-      if (ticksInPhase >= phaseTicks && task.currentPhase < 3) {
-        newPhase = (task.currentPhase + 1) as DevPhase;
-        newTicksInPhase = 0;
+    // Phase advancement for games: completion-based (advance when all phase targets met)
+    if (task.type === 'game' && task.currentPhase && task.currentPhase < 3) {
+      const freshTask = useGameStore.getState().activeTasks.find((t) => t.id === task.id);
+      if (freshTask) {
+        const phaseCats = PHASE_CATEGORIES[freshTask.currentPhase!];
+        const phaseComplete = phaseCats.every(
+          (cat) => freshTask.categoryProgress[cat] >= freshTask.categoryTargets[cat]
+        );
+        if (phaseComplete) {
+          store.updateTask(task.id, {
+            currentPhase: (freshTask.currentPhase! + 1) as DevPhase,
+            ticksInCurrentPhase: 0,
+          });
+        }
       }
+    }
 
-      store.updateTask(task.id, {
-        currentPhase: newPhase,
-        ticksInCurrentPhase: newTicksInPhase,
-        developmentDaysElapsed: daysElapsed,
-      });
+    // Track elapsed days for analytics
+    if (task.developmentDaysTarget) {
+      const daysElapsed = (task.developmentDaysElapsed ?? 0) + (1 / CALENDAR_CONFIG.ticksPerDay);
+      store.updateTask(task.id, { developmentDaysElapsed: daysElapsed });
     }
   }
 
