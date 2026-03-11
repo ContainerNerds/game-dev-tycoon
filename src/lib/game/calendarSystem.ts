@@ -23,16 +23,18 @@ export function buildMonthlyReport(state: StudioState): MonthlyReport {
   let employeeCosts = 0;
   let computeCosts = 0;
   let devOverheadCosts = 0;
+  let gameDevCosts = 0;
+  let engineDevCosts = 0;
 
   for (const emp of state.employees) {
     if (emp.monthlySalary > 0) {
-      lineItems.push({ label: `Salary: ${emp.name}`, amount: -emp.monthlySalary });
+      lineItems.push({ label: `Salary: ${emp.name}`, amount: -emp.monthlySalary, category: 'employees' });
       employeeCosts += emp.monthlySalary;
     }
   }
 
   if (state.office.monthlyOverhead > 0) {
-    lineItems.push({ label: 'Office overhead', amount: -state.office.monthlyOverhead });
+    lineItems.push({ label: 'Office overhead', amount: -state.office.monthlyOverhead, category: 'overhead' });
     devOverheadCosts += state.office.monthlyOverhead;
   }
 
@@ -40,20 +42,27 @@ export function buildMonthlyReport(state: StudioState): MonthlyReport {
     lineItems.push({
       label: `Server (${server.regionId}, ${server.type})`,
       amount: -server.monthlyCost,
+      category: 'servers',
     });
     computeCosts += server.monthlyCost;
   }
   for (const rack of state.racks) {
     if (rack.monthlyCost > 0) {
-      lineItems.push({ label: `Rack lease (${rack.regionId})`, amount: -rack.monthlyCost });
+      lineItems.push({ label: `Rack lease (${rack.regionId})`, amount: -rack.monthlyCost, category: 'servers' });
       computeCosts += rack.monthlyCost;
     }
   }
 
   const furnitureMaintenance = getTotalFurnitureMaintenance(state.furniture);
   if (furnitureMaintenance > 0) {
-    lineItems.push({ label: 'Furniture maintenance', amount: -furnitureMaintenance });
+    lineItems.push({ label: 'Furniture maintenance', amount: -furnitureMaintenance, category: 'overhead' });
     devOverheadCosts += furnitureMaintenance;
+  }
+
+  for (const item of state.pendingMonthlyLineItems) {
+    lineItems.push(item);
+    if (item.category === 'game-dev') gameDevCosts += Math.abs(item.amount);
+    if (item.category === 'engine-dev') engineDevCosts += Math.abs(item.amount);
   }
 
   const reportMonth = state.calendar.month === 1 ? 12 : state.calendar.month - 1;
@@ -66,6 +75,8 @@ export function buildMonthlyReport(state: StudioState): MonthlyReport {
     employeeCosts,
     computeCosts,
     devOverheadCosts,
+    gameDevCosts,
+    engineDevCosts,
     netCashFlow: 0,
     lineItems,
   };

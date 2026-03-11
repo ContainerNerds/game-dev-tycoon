@@ -4,7 +4,7 @@ import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { getStartingUnlockedFeatures } from '@/lib/config/engineFeaturesConfig';
 import { computeLevelUp } from '@/lib/config/studioLevelConfig';
 
-const SAVE_VERSION = 10;
+const SAVE_VERSION = 11;
 const SLOT_KEY_PREFIX = 'game-dev-tycoon-slot-';
 const SETTINGS_KEY = 'game-dev-tycoon-settings';
 
@@ -311,6 +311,31 @@ function migrateState(state: StudioState, fromVersion: number): StudioState {
   if (fromVersion < 10) {
     // v9 → v10: Auto-vacation setting
     raw.autoVacationThreshold = raw.autoVacationThreshold ?? 0;
+  }
+
+  if (fromVersion < 11) {
+    // v10 → v11: Categorized monthly report line items + pending line items
+    raw.pendingMonthlyLineItems = raw.pendingMonthlyLineItems ?? [];
+
+    const inferCategory = (label: string, amount: number): string => {
+      if (label.startsWith('Salary:')) return 'employees';
+      if (label.startsWith('Server (') || label.startsWith('Rack lease')) return 'servers';
+      if (label.startsWith('Revenue:')) return 'revenue';
+      if (label.startsWith('Game Dev:')) return 'game-dev';
+      if (label.startsWith('Engine:')) return 'engine-dev';
+      if (amount > 0) return 'revenue';
+      return 'overhead';
+    };
+
+    raw.monthlyReports = (raw.monthlyReports ?? []).map((r: any) => ({
+      ...r,
+      gameDevCosts: r.gameDevCosts ?? 0,
+      engineDevCosts: r.engineDevCosts ?? 0,
+      lineItems: (r.lineItems ?? []).map((item: any) => ({
+        ...item,
+        category: item.category ?? inferCategory(item.label, item.amount),
+      })),
+    }));
   }
 
   return state;

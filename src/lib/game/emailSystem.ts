@@ -73,6 +73,7 @@ export function generateMonthlyReportEmail(
     priority: report.netCashFlow < 0 ? 'high' : 'normal',
     read: false,
     timestamp: calendarTimestamp(calendar),
+    metadata: { reportMonth: report.month, reportYear: report.year },
   };
 }
 
@@ -431,11 +432,13 @@ export function generateTestEmail(state: StudioState): GameEmail {
         employeeCosts: 15_000,
         computeCosts: 2_000,
         devOverheadCosts: 1_500,
+        gameDevCosts: 0,
+        engineDevCosts: 0,
         netCashFlow: 31_500,
         lineItems: [
-          { label: 'Game Sales', amount: 45_000 },
-          { label: 'DLC Sales', amount: 5_000 },
-          { label: 'Office Rent', amount: -1_500 },
+          { label: 'Game Sales', amount: 45_000, category: 'revenue' },
+          { label: 'DLC Sales', amount: 5_000, category: 'revenue' },
+          { label: 'Office Rent', amount: -1_500, category: 'overhead' },
         ],
       };
       return generateMonthlyReportEmail(mockReport, cal);

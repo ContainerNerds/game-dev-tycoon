@@ -626,7 +626,7 @@ function handleMonthEnd(store: GameStore): void {
     const monthlyRevenue = Math.max(0, game.totalRevenue - prevRevenue);
     totalMonthlyRevenue += monthlyRevenue;
 
-    report.lineItems.push({ label: `Revenue: ${game.name}`, amount: monthlyRevenue });
+    report.lineItems.push({ label: `Revenue: ${game.name}`, amount: monthlyRevenue, category: 'revenue' });
 
     store.updateGame(game.id, {
       monthlyHistory: [
@@ -642,11 +642,12 @@ function handleMonthEnd(store: GameStore): void {
   }
 
   report.income = totalMonthlyRevenue;
-  report.netCashFlow = report.income - report.employeeCosts - report.computeCosts - report.devOverheadCosts;
+  report.netCashFlow = report.income - report.employeeCosts - report.computeCosts - report.devOverheadCosts - report.gameDevCosts - report.engineDevCosts;
 
   const totalCosts = getTotalMonthlyCosts(state);
   store.spendMoney(totalCosts);
   store.pushMonthlyReport(report);
+  store.clearPendingLineItems();
   store.grantFreePack();
 
   // Generate monthly report email

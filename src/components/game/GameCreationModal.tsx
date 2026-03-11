@@ -55,6 +55,7 @@ export default function GameCreationModal({ open, onOpenChange, onCreated, showT
   const activeGames = useGameStore((s) => s.activeGames);
   const addTask = useGameStore((s) => s.addTask);
   const spendMoney = useGameStore((s) => s.spendMoney);
+  const pushPendingLineItem = useGameStore((s) => s.pushPendingLineItem);
   const calendar = useGameStore((s) => s.calendar);
 
   const [step, setStep] = useState<number>(0);
@@ -141,6 +142,9 @@ export default function GameCreationModal({ open, onOpenChange, onCreated, showT
       : taskType === 'dlc' ? 60 : 30;
 
     if (taskType === 'game' && !spendMoney(currentSizeDef.cost)) return;
+    if (taskType === 'game') {
+      pushPendingLineItem({ label: `Game Dev: ${gameName}`, amount: -currentSizeDef.cost, category: 'game-dev' });
+    }
 
     const task: StudioTask = {
       id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,

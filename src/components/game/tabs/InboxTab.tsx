@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/resizable';
 import { useGameStore } from '@/lib/store/gameStore';
 import { EMAIL_TYPE_META } from '@/lib/config/emailConfig';
-import type { GameEmail, EmailType } from '@/lib/game/types';
+import type { GameEmail, EmailType, MonthlyReport } from '@/lib/game/types';
+import MonthlyReportView from '@/components/game/MonthlyReportView';
 import {
   Mail,
   Inbox,
@@ -230,10 +231,12 @@ function MailDisplay({
   email,
   onDelete,
   onToggleRead,
+  matchedReport,
 }: {
   email: GameEmail | null;
   onDelete: (id: string) => void;
   onToggleRead: (id: string, read: boolean) => void;
+  matchedReport: MonthlyReport | null;
 }) {
   if (!email) {
     return (
@@ -293,8 +296,12 @@ function MailDisplay({
           </div>
         </div>
         <Separator />
-        <div className="flex-1 whitespace-pre-wrap p-4 text-sm">
-          {email.body}
+        <div className="flex-1 overflow-auto p-4 text-sm">
+          {matchedReport ? (
+            <MonthlyReportView report={matchedReport} />
+          ) : (
+            <div className="whitespace-pre-wrap">{email.body}</div>
+          )}
         </div>
       </div>
     </div>
@@ -307,6 +314,7 @@ function MailDisplay({
 
 export default function InboxTab() {
   const inbox = useGameStore((s) => s.inbox);
+  const monthlyReports = useGameStore((s) => s.monthlyReports);
   const markEmailRead = useGameStore((s) => s.markEmailRead);
   const deleteEmail = useGameStore((s) => s.deleteEmail);
   const markAllEmailsRead = useGameStore((s) => s.markAllEmailsRead);
@@ -340,6 +348,13 @@ export default function InboxTab() {
   }, [filteredByCategory, searchQuery]);
 
   const selectedEmail = selectedId ? inbox.find((e) => e.id === selectedId) ?? null : null;
+
+  const matchedReport = useMemo(() => {
+    if (!selectedEmail || selectedEmail.type !== 'monthly-report' || !selectedEmail.metadata) return null;
+    const { reportMonth, reportYear } = selectedEmail.metadata as { reportMonth?: number; reportYear?: number };
+    if (reportMonth == null || reportYear == null) return null;
+    return monthlyReports.find((r) => r.month === reportMonth && r.year === reportYear) ?? null;
+  }, [selectedEmail, monthlyReports]);
 
   const handleSelect = useCallback(
     (email: GameEmail) => {
@@ -449,6 +464,7 @@ export default function InboxTab() {
           email={selectedEmail}
           onDelete={handleDelete}
           onToggleRead={handleToggleRead}
+          matchedReport={matchedReport}
         />
       </ResizablePanel>
     </ResizablePanelGroup>

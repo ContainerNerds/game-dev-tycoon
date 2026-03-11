@@ -462,9 +462,12 @@ export interface CalendarState {
 // Monthly Report
 // ============================================================
 
+export type ReportCategory = 'revenue' | 'employees' | 'servers' | 'overhead' | 'game-dev' | 'engine-dev';
+
 export interface MonthlyReportLineItem {
   label: string;
   amount: number;
+  category: ReportCategory;
 }
 
 export interface MonthlyReport {
@@ -474,6 +477,8 @@ export interface MonthlyReport {
   employeeCosts: number;
   computeCosts: number;
   devOverheadCosts: number;
+  gameDevCosts: number;
+  engineDevCosts: number;
   netCashFlow: number;
   lineItems: MonthlyReportLineItem[];
 }
@@ -577,6 +582,7 @@ export interface StudioState {
   _dayAccRP: number;
   _dayTickCounter: number;
 
+  pendingMonthlyLineItems: MonthlyReportLineItem[];
   autoVacationThreshold: number; // 0 = off, 30 = send at 30% stamina
   isBankrupt: boolean;
 }

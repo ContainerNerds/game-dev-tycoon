@@ -8,6 +8,7 @@ import type {
   OfficeState,
   GameSpeed,
   MonthlyReport,
+  MonthlyReportLineItem,
   Bug,
   Server,
   OfficeTier,
@@ -115,6 +116,7 @@ export function createInitialState(studioName: string, playerName: string, start
     _dayAccFans: 0,
     _dayAccRP: 0,
     _dayTickCounter: 0,
+    pendingMonthlyLineItems: [],
     autoVacationThreshold: 0,
     isBankrupt: false,
   };
@@ -228,6 +230,8 @@ interface GameActions {
   setBankrupt: () => void;
   trackDailyRate: (moneyDelta: number, fansDelta: number, rpDelta: number) => void;
   pushMonthlyReport: (report: MonthlyReport) => void;
+  pushPendingLineItem: (item: MonthlyReportLineItem) => void;
+  clearPendingLineItems: () => void;
   updateStaffContributions: (contributions: StaffContribution[]) => void;
 
   setState: (state: StudioState) => void;
@@ -290,6 +294,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       staffContributions: state.staffContributions,
       monthlyReports: state.monthlyReports,
       inbox: state.inbox,
+      pendingMonthlyLineItems: state.pendingMonthlyLineItems,
       notifications: [],
       _dayAccMoney: 0, _dayAccFans: 0, _dayAccRP: 0, _dayTickCounter: 0,
       autoVacationThreshold: state.autoVacationThreshold,
@@ -683,6 +688,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
           ? { ...e, features: [...e.features, featureId], totalEngineCost: e.totalEngineCost + def.engineCost }
           : e
       ),
+      pendingMonthlyLineItems: [...s.pendingMonthlyLineItems, {
+        label: `Engine: ${def.name}`,
+        amount: -def.engineCost,
+        category: 'engine-dev' as const,
+      }],
     }));
     return true;
   },
@@ -823,6 +833,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pushMonthlyReport: (report) => set((s) => ({
     monthlyReports: [...s.monthlyReports, report],
   })),
+
+  pushPendingLineItem: (item) => set((s) => ({
+    pendingMonthlyLineItems: [...s.pendingMonthlyLineItems, item],
+  })),
+
+  clearPendingLineItems: () => set({ pendingMonthlyLineItems: [] }),
 
   setState: (state) => set(state),
 }));

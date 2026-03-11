@@ -1,21 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { useGameStore } from '@/lib/store/gameStore';
 import { OFFICE_CONFIG } from '@/lib/config/officeConfig';
 import { getTotalMonthlyCost, getTotalCapacityByRegion } from '@/lib/game/serverSystem';
-import { formatDate, getMonthName } from '@/lib/game/calendarSystem';
-import InteractiveChart from '@/components/game/InteractiveChart';
+import { buildMonthlyReport, formatDate } from '@/lib/game/calendarSystem';
+import MonthlyReportView from '@/components/game/MonthlyReportView';
 import GameDetailView from '@/components/game/GameDetailView';
 import {
   Building2, Server, DollarSign, Users, Gamepad2,
-  TrendingUp, TrendingDown, Globe,
-  Star, Newspaper, Quote, FileText,
+  TrendingUp, TrendingDown, Globe, FileText,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
@@ -26,14 +24,6 @@ const PHASE_BADGE: Record<string, string> = {
   decline: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
   retired: 'bg-muted text-muted-foreground border-border',
 };
-
-function scoreColor(score: number): string {
-  if (score >= 8) return 'text-green-400';
-  if (score >= 6) return 'text-blue-400';
-  if (score >= 4) return 'text-yellow-400';
-  if (score >= 2) return 'text-orange-400';
-  return 'text-red-400';
-}
 
 const REPORTS_PER_PAGE = 4;
 
@@ -58,43 +48,32 @@ export default function StudioTab() {
 
   const officeDef = OFFICE_CONFIG.tiers.find((t) => t.tier === office.tier);
 
-  const totalPlayers = activeGames.reduce(
-    (sum, g) => sum + g.platformReleases.reduce((s2, p) => s2 + p.activePlayers, 0), 0
-  );
-  const totalSold = activeGames.reduce(
-    (sum, g) => sum + g.platformReleases.reduce((s2, p) => s2 + p.totalCopiesSold, 0), 0
-  );
   const serverCount = servers.length;
   const serverMonthlyCost = getTotalMonthlyCost(servers)
     + racks.reduce((sum, r) => sum + r.monthlyCost, 0);
   const totalCapacity = servers.reduce((sum, s) => sum + s.capacity, 0);
+  const totalPlayers = activeGames.reduce(
+    (sum, g) => sum + g.platformReleases.reduce((s2, p) => s2 + p.activePlayers, 0), 0
+  );
   const hasLiveServiceGames = activeGames.some((g) => g.mode === 'liveservice');
   const serverLoad = hasLiveServiceGames && totalCapacity > 0 ? (totalPlayers / totalCapacity) * 100 : 0;
   const capacityByRegion = getTotalCapacityByRegion(servers);
   const activeRegions = Object.keys(capacityByRegion).length;
 
   const totalMonthlySalary = employees.reduce((sum, e) => sum + e.monthlySalary, 0);
-  const projectedMonthlyExpenses = totalMonthlySalary + serverMonthlyCost + office.monthlyOverhead;
   const netPerMonth = Math.round(dailyRates.moneyPerDay * 30);
-
-  const primaryGame = activeGames[0] ?? null;
-  const gameFans = activeGames.reduce((sum, g) => sum + g.gameFans, 0);
-  const reviewScore = primaryGame?.reviewScore ?? 0;
-  const blogReviews = primaryGame?.blogReviews ?? [];
-  const monthlyHistory = primaryGame?.monthlyHistory ?? [];
-  const phase = primaryGame?.phase;
-
-  const sentiment = reviewScore >= 8 ? 'Overwhelmingly Positive' :
-                    reviewScore >= 6 ? 'Mostly Positive' :
-                    reviewScore >= 4 ? 'Mixed' :
-                    reviewScore >= 2 ? 'Mostly Negative' : 'Overwhelmingly Negative';
-  const sentimentColor = scoreColor(reviewScore);
 
   const allGames: { id: string; name: string; phase: string; genre: string; style: string; reviewScore?: number; totalRevenue?: number; totalCopiesSold?: number }[] = [
     ...activeTasks.map((t) => ({ id: t.id, name: t.name, phase: 'development', genre: t.genre ?? '', style: t.style ?? '' })),
     ...activeGames.map((g) => ({ id: g.id, name: g.name, phase: g.phase, genre: g.genre, style: g.style })),
     ...completedGames.map((g) => ({ id: g.id, name: g.name, phase: 'retired', genre: g.genre, style: g.style, reviewScore: g.reviewScore, totalRevenue: g.totalRevenue, totalCopiesSold: g.totalCopiesSold })),
   ];
+
+  const projectedReport = useMemo(() => {
+    const state = useGameStore.getState();
+    return buildMonthlyReport(state);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employees, servers, racks, office, calendar]);
 
   const reversedReports = [...monthlyReports].reverse();
   const totalReportPages = Math.max(1, Math.ceil(reversedReports.length / REPORTS_PER_PAGE));
@@ -253,149 +232,20 @@ export default function StudioTab() {
         </Card>
       </div>
 
-      {/* ─── Primary Game: Charts + Score/Sentiment ─── */}
-      {primaryGame && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {monthlyHistory.length >= 2 ? (
-            <>
-              <Card>
-                <CardHeader className="pb-1 pt-3 px-4">
-                  <p className="text-xs text-muted-foreground">Copies Sold / Month</p>
-                </CardHeader>
-                <CardContent className="px-4 pb-3">
-                  <InteractiveChart data={monthlyHistory} dataKey="copiesSold" color="text-blue-400" />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-1 pt-3 px-4">
-                  <p className="text-xs text-muted-foreground">Active Players</p>
-                </CardHeader>
-                <CardContent className="px-4 pb-3">
-                  <InteractiveChart data={monthlyHistory} dataKey="activePlayers" color="text-green-400" />
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            <div className="lg:col-span-2" />
-          )}
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <Star className="h-5 w-5 text-yellow-400 shrink-0" />
-                <div className="flex-1 flex items-baseline justify-between">
-                  <span className="text-sm text-muted-foreground">Review Score</span>
-                  <span className={`text-lg font-bold ${scoreColor(reviewScore)}`}>{reviewScore.toFixed(1)}/10</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Newspaper className={`h-5 w-5 shrink-0 ${sentimentColor}`} />
-                <div className="flex-1 flex items-baseline justify-between">
-                  <span className="text-sm text-muted-foreground">Sentiment</span>
-                  <span className={`text-sm font-semibold ${sentimentColor}`}>{sentiment}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {phase === 'decline' ? (
-                  <TrendingDown className="h-5 w-5 shrink-0 text-red-400" />
-                ) : (
-                  <TrendingUp className="h-5 w-5 shrink-0 text-green-400" />
-                )}
-                <div className="flex-1 flex items-baseline justify-between">
-                  <span className="text-sm text-muted-foreground">Phase</span>
-                  <span className="text-sm font-semibold capitalize">{phase ?? 'N/A'}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {/* ─── Current Month (Projected) ─── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Current Month (Projected)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MonthlyReportView report={projectedReport} showHeader={false} compact />
+        </CardContent>
+      </Card>
 
-      {/* ─── Launch Reviews ─── */}
-      {blogReviews.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {blogReviews.map((review, i) => (
-            <Card key={i}>
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">{review.blogName}</span>
-                  <Badge variant="outline" className={`font-mono font-bold ${scoreColor(review.score)}`}>
-                    {review.score.toFixed(1)}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground italic flex gap-1">
-                  <Quote className="h-3 w-3 shrink-0 mt-0.5" />
-                  {review.summary}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* ─── Fan Base + Monthly Expenses ─── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Fan Base
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Game Fans</p>
-                <p className="text-lg font-bold text-purple-400">{Math.floor(gameFans).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Studio Fans</p>
-                <p className="text-lg font-bold text-blue-400">{Math.floor(studioFans).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Active Players</p>
-                <p className="text-lg font-bold text-green-400">{Math.floor(totalPlayers).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Total Copies Sold</p>
-                <p className="text-lg font-bold">{Math.floor(totalSold).toLocaleString()}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Monthly Expenses</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {employees.filter(e => e.monthlySalary > 0).map((emp) => (
-              <div key={emp.id} className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Salary: {emp.name}</span>
-                <span className="font-mono text-red-400">-${emp.monthlySalary.toLocaleString()}</span>
-              </div>
-            ))}
-            {office.monthlyOverhead > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Office overhead</span>
-                <span className="font-mono text-red-400">-${office.monthlyOverhead.toLocaleString()}</span>
-              </div>
-            )}
-            {serverMonthlyCost > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Server infrastructure</span>
-                <span className="font-mono text-red-400">-${serverMonthlyCost.toLocaleString()}</span>
-              </div>
-            )}
-            <Separator />
-            <div className="flex justify-between text-sm font-semibold">
-              <span>Total</span>
-              <span className="font-mono text-red-400">-${projectedMonthlyExpenses.toLocaleString()}/mo</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ─── Monthly Reports (paginated) ─── */}
+      {/* ─── Monthly Statements (paginated) ─── */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -436,54 +286,12 @@ export default function StudioTab() {
               No monthly reports yet. Reports are generated at the end of each month.
             </p>
           ) : (
-            <div className="space-y-3">
-              {pagedReports.map((report, i) => {
-                const globalIdx = reportPage * REPORTS_PER_PAGE + i;
-                const totalExpenses = report.employeeCosts + report.computeCosts + report.devOverheadCosts;
-                const prevReport = globalIdx < reversedReports.length - 1 ? reversedReports[globalIdx + 1] : null;
-                const monthlyIncome = prevReport
-                  ? Math.max(0, report.income - prevReport.income)
-                  : report.income;
-                const monthlyNet = monthlyIncome - totalExpenses;
-
-                return (
-                  <div key={`${report.year}-${report.month}`} className="border border-border rounded-md p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm">
-                        {getMonthName(report.month)} {report.year}
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className={`font-mono text-xs ${monthlyNet >= 0 ? 'text-green-400 border-green-500/50' : 'text-red-400 border-red-500/50'}`}
-                      >
-                        Net: {monthlyNet >= 0 ? '+' : ''}${Math.floor(monthlyNet).toLocaleString()}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Income</span>
-                        <span className="font-mono text-green-400">+${Math.floor(monthlyIncome).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Expenses</span>
-                        <span className="font-mono text-red-400">-${Math.floor(totalExpenses).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">  Employees</span>
-                        <span className="font-mono text-muted-foreground">-${Math.floor(report.employeeCosts).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">  Compute</span>
-                        <span className="font-mono text-muted-foreground">-${Math.floor(report.computeCosts).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">  Overhead</span>
-                        <span className="font-mono text-muted-foreground">-${Math.floor(report.devOverheadCosts).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-4">
+              {pagedReports.map((report) => (
+                <div key={`${report.year}-${report.month}`} className="border border-border rounded-md p-3">
+                  <MonthlyReportView report={report} />
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
