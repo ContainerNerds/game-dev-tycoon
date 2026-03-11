@@ -14,7 +14,7 @@ import InteractiveChart from '@/components/game/InteractiveChart';
 import GameDetailView from '@/components/game/GameDetailView';
 import {
   Building2, Server, DollarSign, Users, Gamepad2,
-  TrendingUp, TrendingDown, HardDrive, Globe,
+  TrendingUp, TrendingDown, Globe,
   Star, Newspaper, Quote, FileText,
   ChevronLeft, ChevronRight,
 } from 'lucide-react';
@@ -35,7 +35,7 @@ function scoreColor(score: number): string {
   return 'text-red-400';
 }
 
-const REPORTS_PER_PAGE = 6;
+const REPORTS_PER_PAGE = 4;
 
 export default function StudioTab() {
   const money = useGameStore((s) => s.money);
@@ -90,10 +90,10 @@ export default function StudioTab() {
                     reviewScore >= 2 ? 'Mostly Negative' : 'Overwhelmingly Negative';
   const sentimentColor = scoreColor(reviewScore);
 
-  const allGames: { id: string; name: string; phase: string; genre: string; style: string }[] = [
+  const allGames: { id: string; name: string; phase: string; genre: string; style: string; reviewScore?: number; totalRevenue?: number; totalCopiesSold?: number }[] = [
     ...activeTasks.map((t) => ({ id: t.id, name: t.name, phase: 'development', genre: t.genre ?? '', style: t.style ?? '' })),
     ...activeGames.map((g) => ({ id: g.id, name: g.name, phase: g.phase, genre: g.genre, style: g.style })),
-    ...completedGames.map((g) => ({ id: g.id, name: g.name, phase: 'retired', genre: g.genre, style: g.style })),
+    ...completedGames.map((g) => ({ id: g.id, name: g.name, phase: 'retired', genre: g.genre, style: g.style, reviewScore: g.reviewScore, totalRevenue: g.totalRevenue, totalCopiesSold: g.totalCopiesSold })),
   ];
 
   const reversedReports = [...monthlyReports].reverse();
@@ -253,154 +253,147 @@ export default function StudioTab() {
         </Card>
       </div>
 
-      {/* ─── Charts (from Press) ─── */}
-      {monthlyHistory.length >= 2 && (
+      {/* ─── Primary Game: Charts + Score/Sentiment ─── */}
+      {primaryGame && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {monthlyHistory.length >= 2 ? (
+            <>
+              <Card>
+                <CardHeader className="pb-1 pt-3 px-4">
+                  <p className="text-xs text-muted-foreground">Copies Sold / Month</p>
+                </CardHeader>
+                <CardContent className="px-4 pb-3">
+                  <InteractiveChart data={monthlyHistory} dataKey="copiesSold" color="text-blue-400" />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-1 pt-3 px-4">
+                  <p className="text-xs text-muted-foreground">Active Players</p>
+                </CardHeader>
+                <CardContent className="px-4 pb-3">
+                  <InteractiveChart data={monthlyHistory} dataKey="activePlayers" color="text-green-400" />
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <div className="lg:col-span-2" />
+          )}
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Star className="h-5 w-5 text-yellow-400 shrink-0" />
+                <div className="flex-1 flex items-baseline justify-between">
+                  <span className="text-sm text-muted-foreground">Review Score</span>
+                  <span className={`text-lg font-bold ${scoreColor(reviewScore)}`}>{reviewScore.toFixed(1)}/10</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Newspaper className={`h-5 w-5 shrink-0 ${sentimentColor}`} />
+                <div className="flex-1 flex items-baseline justify-between">
+                  <span className="text-sm text-muted-foreground">Sentiment</span>
+                  <span className={`text-sm font-semibold ${sentimentColor}`}>{sentiment}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {phase === 'decline' ? (
+                  <TrendingDown className="h-5 w-5 shrink-0 text-red-400" />
+                ) : (
+                  <TrendingUp className="h-5 w-5 shrink-0 text-green-400" />
+                )}
+                <div className="flex-1 flex items-baseline justify-between">
+                  <span className="text-sm text-muted-foreground">Phase</span>
+                  <span className="text-sm font-semibold capitalize">{phase ?? 'N/A'}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ─── Launch Reviews ─── */}
+      {blogReviews.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {blogReviews.map((review, i) => (
+            <Card key={i}>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">{review.blogName}</span>
+                  <Badge variant="outline" className={`font-mono font-bold ${scoreColor(review.score)}`}>
+                    {review.score.toFixed(1)}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground italic flex gap-1">
+                  <Quote className="h-3 w-3 shrink-0 mt-0.5" />
+                  {review.summary}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* ─── Fan Base + Monthly Expenses ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Popularity Over Time</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Fan Base
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Copies Sold / Month</p>
-              <InteractiveChart data={monthlyHistory} dataKey="copiesSold" color="text-blue-400" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Active Players</p>
-              <InteractiveChart data={monthlyHistory} dataKey="activePlayers" color="text-green-400" />
+          <CardContent>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Game Fans</p>
+                <p className="text-lg font-bold text-purple-400">{Math.floor(gameFans).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Studio Fans</p>
+                <p className="text-lg font-bold text-blue-400">{Math.floor(studioFans).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Active Players</p>
+                <p className="text-lg font-bold text-green-400">{Math.floor(totalPlayers).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Copies Sold</p>
+                <p className="text-lg font-bold">{Math.floor(totalSold).toLocaleString()}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
-      )}
 
-      {/* ─── Press & Reviews ─── */}
-      {blogReviews.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Launch Reviews
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {blogReviews.map((review, i) => (
-              <Card key={i}>
-                <CardContent className="p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">{review.blogName}</span>
-                    <Badge variant="outline" className={`font-mono font-bold ${scoreColor(review.score)}`}>
-                      {review.score.toFixed(1)}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground italic flex gap-1">
-                    <Quote className="h-3 w-3 shrink-0 mt-0.5" />
-                    {review.summary}
-                  </p>
-                </CardContent>
-              </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Monthly Expenses</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {employees.filter(e => e.monthlySalary > 0).map((emp) => (
+              <div key={emp.id} className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Salary: {emp.name}</span>
+                <span className="font-mono text-red-400">-${emp.monthlySalary.toLocaleString()}</span>
+              </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* ─── Scores & Sentiment ─── */}
-      {primaryGame && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardContent className="p-4 flex items-center gap-4">
-              <Star className="h-8 w-8 text-yellow-400" />
-              <div>
-                <p className="text-2xl font-bold">{reviewScore.toFixed(1)}/10</p>
-                <p className="text-sm text-muted-foreground">Avg. Review Score</p>
+            {office.monthlyOverhead > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Office overhead</span>
+                <span className="font-mono text-red-400">-${office.monthlyOverhead.toLocaleString()}</span>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center gap-4">
-              <Newspaper className={`h-8 w-8 ${sentimentColor}`} />
-              <div>
-                <p className={`text-lg font-semibold ${sentimentColor}`}>{sentiment}</p>
-                <p className="text-sm text-muted-foreground">Public Sentiment</p>
+            )}
+            {serverMonthlyCost > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Server infrastructure</span>
+                <span className="font-mono text-red-400">-${serverMonthlyCost.toLocaleString()}</span>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 flex items-center gap-4">
-              {phase === 'decline' ? (
-                <TrendingDown className="h-8 w-8 text-red-400" />
-              ) : (
-                <TrendingUp className="h-8 w-8 text-green-400" />
-              )}
-              <div>
-                <p className="text-lg font-semibold capitalize">{phase ?? 'N/A'}</p>
-                <p className="text-sm text-muted-foreground">Game Phase</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* ─── Fan Base ─── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Fan Base
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Game Fans</p>
-              <p className="text-xl font-bold text-purple-400">{Math.floor(gameFans).toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground/60">Buy DLC, hype sequels</p>
+            )}
+            <Separator />
+            <div className="flex justify-between text-sm font-semibold">
+              <span>Total</span>
+              <span className="font-mono text-red-400">-${projectedMonthlyExpenses.toLocaleString()}/mo</span>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Studio Fans</p>
-              <p className="text-xl font-bold text-blue-400">{Math.floor(studioFans).toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground/60">Auto-buy new releases</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
-            <div>
-              <p className="text-sm text-muted-foreground">Active Players</p>
-              <p className="text-xl font-bold text-green-400">{Math.floor(totalPlayers).toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Copies Sold</p>
-              <p className="text-xl font-bold">{Math.floor(totalSold).toLocaleString()}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ─── Monthly Expenses ─── */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Current Monthly Expenses</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {employees.filter(e => e.monthlySalary > 0).map((emp) => (
-            <div key={emp.id} className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Salary: {emp.name}</span>
-              <span className="font-mono text-red-400">-${emp.monthlySalary.toLocaleString()}</span>
-            </div>
-          ))}
-          {office.monthlyOverhead > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Office overhead</span>
-              <span className="font-mono text-red-400">-${office.monthlyOverhead.toLocaleString()}</span>
-            </div>
-          )}
-          {serverMonthlyCost > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Server infrastructure</span>
-              <span className="font-mono text-red-400">-${serverMonthlyCost.toLocaleString()}</span>
-            </div>
-          )}
-          <Separator />
-          <div className="flex justify-between text-sm font-semibold">
-            <span>Total</span>
-            <span className="font-mono text-red-400">-${projectedMonthlyExpenses.toLocaleString()}/mo</span>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* ─── Monthly Reports (paginated) ─── */}
       <Card>
@@ -506,7 +499,7 @@ export default function StudioTab() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {allGames.map((game, i) => {
                 const isClickable = game.phase !== 'development';
                 return (
@@ -519,41 +512,26 @@ export default function StudioTab() {
                       <span className="text-sm font-medium">{game.name}</span>
                       <span className="text-xs text-muted-foreground">{game.genre} / {game.style}</span>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs capitalize ${PHASE_BADGE[game.phase] ?? ''}`}
-                    >
-                      {game.phase}
-                    </Badge>
+                    <div className="flex items-center gap-3">
+                      {game.phase === 'retired' && game.reviewScore != null && (
+                        <span className="text-xs text-yellow-400">{game.reviewScore.toFixed(1)}/10</span>
+                      )}
+                      {game.phase === 'retired' && game.totalRevenue != null && (
+                        <span className="text-xs text-green-400 font-mono">${game.totalRevenue.toLocaleString()}</span>
+                      )}
+                      {game.phase === 'retired' && game.totalCopiesSold != null && (
+                        <span className="text-xs text-muted-foreground">{game.totalCopiesSold.toLocaleString()} sold</span>
+                      )}
+                      <Badge
+                        variant="outline"
+                        className={`text-xs capitalize ${PHASE_BADGE[game.phase] ?? ''}`}
+                      >
+                        {game.phase}
+                      </Badge>
+                    </div>
                   </div>
                 );
               })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ─── Past Releases ─── */}
-      {completedGames.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Past Releases</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {completedGames.map((game) => (
-                <div key={game.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <div>
-                    <span className="text-sm font-medium">{game.name}</span>
-                    <span className="text-xs text-muted-foreground ml-2">{game.genre} / {game.style}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs">
-                    <span className="text-yellow-400">{game.reviewScore.toFixed(1)}/10</span>
-                    <span className="text-green-400">${game.totalRevenue.toLocaleString()}</span>
-                    <span className="text-muted-foreground">{game.totalCopiesSold.toLocaleString()} sold</span>
-                  </div>
-                </div>
-              ))}
             </div>
           </CardContent>
         </Card>

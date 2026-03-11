@@ -23,7 +23,7 @@ export default function InteractiveChart({
   dataKey,
   color = 'text-blue-400',
   prefix = '',
-  height: chartHeight = 90,
+  height: chartHeight = 80,
 }: InteractiveChartProps) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
@@ -41,7 +41,7 @@ export default function InteractiveChart({
 
   return (
     <div className="relative">
-      <svg viewBox={`0 0 ${width} ${height}`} className={`w-full`} style={{ height: `${chartHeight / 4}rem` }}>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ height: `${chartHeight * 1.6}px` }}>
         <polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" className={color} />
 
         {values.map((v, i) => (
