@@ -250,17 +250,18 @@ export function getStaminaEfficiency(stamina: number): number {
   return lowEfficiency + t * (1 - lowEfficiency);
 }
 
-export function drainStamina(currentStamina: number, isCrunching: boolean): number {
-  const drain = EMPLOYEE_CONFIG.stamina.drainPerTick * (isCrunching ? EMPLOYEE_CONFIG.stamina.crunchDrainMultiplier : 1);
+export function drainStamina(currentStamina: number, isCrunching: boolean, drainMultiplier = 1): number {
+  const drain = EMPLOYEE_CONFIG.stamina.drainPerTick * (isCrunching ? EMPLOYEE_CONFIG.stamina.crunchDrainMultiplier : 1) * drainMultiplier;
   return Math.max(0, currentStamina - drain);
 }
 
-export function processVacationDay(vacationDaysLeft: number, stamina: number): {
+export function processVacationDay(vacationDaysLeft: number, stamina: number, recoveryMultiplier = 1): {
   vacationDaysLeft: number;
   stamina: number;
   onVacation: boolean;
 } {
-  const newStamina = Math.min(EMPLOYEE_CONFIG.stamina.max, stamina + EMPLOYEE_CONFIG.vacation.recoveryPerDay);
+  const recovery = EMPLOYEE_CONFIG.vacation.recoveryPerDay * recoveryMultiplier;
+  const newStamina = Math.min(EMPLOYEE_CONFIG.stamina.max, stamina + recovery);
   const daysLeft = vacationDaysLeft - 1;
   return {
     vacationDaysLeft: Math.max(0, daysLeft),

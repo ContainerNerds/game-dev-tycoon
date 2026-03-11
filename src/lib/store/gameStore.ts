@@ -15,6 +15,7 @@ import type {
   ServerRack,
   StaffContribution,
   PhaseCategories,
+  OwnedFurniture,
 } from '@/lib/game/types';
 import { zeroCategoryMap } from '@/lib/game/types';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
@@ -89,6 +90,7 @@ export function createInitialState(studioName: string, playerName: string, start
     packRevealed: [],
     freePackAvailable: true,
     engines: [],
+    furniture: [],
     office: createInitialOffice(),
     calendar: createInitialCalendar(),
     dailyRates: { moneyPerDay: 0, fansPerDay: 0, rpPerDay: 0 },
@@ -162,6 +164,10 @@ interface GameActions {
   upgradeOffice: (tier: OfficeTier) => void;
   upgradeParallelTasks: () => void;
   upgradeActiveGames: () => void;
+
+  // Furniture
+  buyFurniture: (item: OwnedFurniture, cost: number) => void;
+  sellFurniture: (furnitureId: string) => void;
 
   // Upgrades
   unlockStudioUpgrade: (upgradeId: string) => void;
@@ -240,6 +246,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       packRevealed: state.packRevealed,
       freePackAvailable: state.freePackAvailable,
       engines: state.engines,
+      furniture: state.furniture,
       office: state.office,
       calendar: state.calendar,
       dailyRates: state.dailyRates,
@@ -531,6 +538,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (s.maxActiveGames >= 3) return {};
     return { maxActiveGames: s.maxActiveGames + 1 };
   }),
+
+  // ----------------------------------------------------------
+  // Furniture
+  // ----------------------------------------------------------
+
+  buyFurniture: (item, cost) => set((s) => ({
+    furniture: [...s.furniture, item],
+    money: s.money - cost,
+  })),
+
+  sellFurniture: (furnitureId) => set((s) => ({
+    furniture: s.furniture.filter((f) => f.id !== furnitureId),
+  })),
 
   // ----------------------------------------------------------
   // Upgrades

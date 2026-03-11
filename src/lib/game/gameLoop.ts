@@ -22,6 +22,7 @@ import {
 } from './employeeSystem';
 import type { Bug, BugSeverity, RegionId, StaffContribution, ActiveGame, DevPhase, PhaseCategories } from './types';
 import { PHASE_CATEGORIES } from './types';
+import { computeFurnitureBuffs, getBuffMultiplier } from './furnitureSystem';
 
 function generateBugId(): string {
   return `bug-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -98,11 +99,18 @@ export function processTick(store: GameStore): void {
     return;
   }
 
+  const furnitureBuffs = computeFurnitureBuffs(state.furniture);
+  const recoveryMult = getBuffMultiplier(furnitureBuffs, 'staminaRecovery');
+  const drainMult = getBuffMultiplier(furnitureBuffs, 'staminaDrain');
+  const devSpeedMult = getBuffMultiplier(furnitureBuffs, 'devSpeed');
+  const bugFixMult = getBuffMultiplier(furnitureBuffs, 'bugFixSpeed');
+  const researchMult = getBuffMultiplier(furnitureBuffs, 'researchSpeed');
+
   // Process employee stamina and vacations (once per day)
   if (isNewDay(fresh.calendar)) {
     const updatedEmployees = fresh.employees.map((emp) => {
       if (emp.onVacation) {
-        const result = processVacationDay(emp.vacationDaysLeft, emp.stamina);
+        const result = processVacationDay(emp.vacationDaysLeft, emp.stamina, recoveryMult);
         return {
           ...emp,
           stamina: result.stamina,
@@ -137,7 +145,7 @@ export function processTick(store: GameStore): void {
     const staminaUpdated = latestState.employees.map((emp) => {
       if (emp.onVacation || emp.activity === 'idle') return emp;
       const isCrunching = latestState.activeTasks.some((t) => t.id === emp.assignedTaskId && t.isCrunching);
-      return { ...emp, stamina: drainStamina(emp.stamina, isCrunching) };
+      return { ...emp, stamina: drainStamina(emp.stamina, isCrunching, drainMult) };
     });
     store.updateEmployees(staminaUpdated);
   }
@@ -167,7 +175,7 @@ export function processTick(store: GameStore): void {
         for (const emp of researchers) {
           const efficiency = getStaminaEfficiency(emp.stamina);
           const researchPower = getEmployeeResearchPower(emp);
-          const points = researchPower * efficiency * crunchMultiplier *
+          const points = researchPower * efficiency * crunchMultiplier * researchMult *
             CATEGORY_DEV_CONFIG.researchRateConstant * CATEGORY_DEV_CONFIG.researchTickScale;
           store.contributeToResearch(task.id, points);
           contribs.push({
@@ -210,7 +218,7 @@ export function processTick(store: GameStore): void {
         for (const cat of activeCategories) {
           if (task.categoryTargets[cat] <= 0) continue;
           const catContrib = getEmployeeCategoryContribution(emp, cat);
-          const points = catContrib * crunchMultiplier * efficiency *
+          const points = catContrib * crunchMultiplier * efficiency * devSpeedMult *
             CATEGORY_DEV_CONFIG.rateConstant * TICK_SCALE;
           if (points > 0) {
             store.contributeToTask(task.id, cat, points);
@@ -314,7 +322,7 @@ export function processTick(store: GameStore): void {
       const eff = getStaminaEfficiency(fixer.stamina);
       const effSkills = getEffectiveSkills(fixer);
       const fixSkill = (effSkills.gameplay + effSkills.polish) / 2;
-      const points = GAME_CONFIG.bugFixProgressPerTick * fixSkill * eff * TICK_SCALE;
+      const points = GAME_CONFIG.bugFixProgressPerTick * fixSkill * eff * bugFixMult * TICK_SCALE;
       const progress = bug.fixProgress + points;
       if (progress >= bug.fixTarget) {
         bugsToRemove.push(bug.id);
@@ -453,7 +461,7 @@ export function processTick(store: GameStore): void {
         const efficiency = getStaminaEfficiency(fixer.stamina);
         const effSkills = getEffectiveSkills(fixer);
         const fixSkill = (effSkills.gameplay + effSkills.polish) / 2;
-        const points = GAME_CONFIG.bugFixProgressPerTick * fixSkill * efficiency * TICK_SCALE;
+        const points = GAME_CONFIG.bugFixProgressPerTick * fixSkill * efficiency * bugFixMult * TICK_SCALE;
         const progress = bug.fixProgress + points;
         if (progress >= bug.fixTarget) {
           bugsToRemove.push(bug.id);

@@ -3,7 +3,7 @@ import { formatDate } from '@/lib/game/calendarSystem';
 import { GAME_CONFIG } from '@/lib/config/gameConfig';
 import { getStartingUnlockedFeatures } from '@/lib/config/engineFeaturesConfig';
 
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
 const SLOT_KEY_PREFIX = 'game-dev-tycoon-slot-';
 const SETTINGS_KEY = 'game-dev-tycoon-settings';
 
@@ -245,6 +245,11 @@ function migrateState(state: StudioState, fromVersion: number): StudioState {
       bugsIntroduced: c.bugsIntroduced ?? 0,
       bugsFixed: c.bugsFixed ?? 0,
     }));
+  }
+
+  if (fromVersion < 7) {
+    // v6 → v7: Add furniture array
+    raw.furniture = raw.furniture ?? [];
   }
 
   return state;

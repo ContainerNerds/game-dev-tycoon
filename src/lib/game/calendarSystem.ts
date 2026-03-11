@@ -1,5 +1,6 @@
 import type { CalendarState, MonthlyReport, MonthlyReportLineItem, StudioState } from './types';
 import { CALENDAR_CONFIG } from '@/lib/config/calendarConfig';
+import { getTotalFurnitureMaintenance } from './furnitureSystem';
 
 export function getMonthName(month: number): string {
   const names = [
@@ -49,6 +50,12 @@ export function buildMonthlyReport(state: StudioState): MonthlyReport {
     }
   }
 
+  const furnitureMaintenance = getTotalFurnitureMaintenance(state.furniture);
+  if (furnitureMaintenance > 0) {
+    lineItems.push({ label: 'Furniture maintenance', amount: -furnitureMaintenance });
+    devOverheadCosts += furnitureMaintenance;
+  }
+
   const reportMonth = state.calendar.month === 1 ? 12 : state.calendar.month - 1;
   const reportYear = state.calendar.month === 1 ? state.calendar.year - 1 : state.calendar.year;
 
@@ -70,5 +77,6 @@ export function getTotalMonthlyCosts(state: StudioState): number {
   total += state.office.monthlyOverhead;
   for (const server of state.servers) total += server.monthlyCost;
   for (const rack of state.racks) total += rack.monthlyCost;
+  total += getTotalFurnitureMaintenance(state.furniture);
   return total;
 }

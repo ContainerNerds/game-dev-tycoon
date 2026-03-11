@@ -401,6 +401,16 @@ export interface GameSummary {
 }
 
 // ============================================================
+// Furniture
+// ============================================================
+
+export interface OwnedFurniture {
+  id: string;
+  definitionId: string;
+  purchasedAt: { year: number; month: number };
+}
+
+// ============================================================
 // Office
 // ============================================================
 
@@ -474,6 +484,7 @@ export interface StudioState {
   freePackAvailable: boolean;
   engines: GameEngine[];
 
+  furniture: OwnedFurniture[];
   office: OfficeState;
   calendar: CalendarState;
 

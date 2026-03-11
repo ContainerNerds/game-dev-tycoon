@@ -18,6 +18,7 @@ import StaffTab from '@/components/game/tabs/StaffTab';
 import OfficeTab from '@/components/game/tabs/OfficeTab';
 import FinancesTab from '@/components/game/tabs/FinancesTab';
 import EnginesTab from '@/components/game/tabs/EnginesTab';
+import StudioViewTab from '@/components/game/tabs/StudioViewTab';
 import { useGameTick } from '@/lib/game/useGameTick';
 import { useGameStore } from '@/lib/store/gameStore';
 import { loadSettings } from '@/lib/store/saveLoad';
@@ -88,6 +89,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
             <TabsTrigger value="engines" className="cursor-pointer">Engines</TabsTrigger>
             <TabsTrigger value="staff" className="cursor-pointer">Staff</TabsTrigger>
             <TabsTrigger value="office" className="cursor-pointer">Office</TabsTrigger>
+            <TabsTrigger value="studio" className="cursor-pointer">Studio View</TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-y-auto min-h-0">
@@ -101,6 +103,7 @@ export default function GameScreen({ slotId, onQuit }: GameScreenProps) {
             <TabsContent value="engines" className="mt-0"><EnginesTab /></TabsContent>
             <TabsContent value="staff" className="mt-0"><StaffTab /></TabsContent>
             <TabsContent value="office" className="mt-0"><OfficeTab /></TabsContent>
+            <TabsContent value="studio" className="mt-0"><StudioViewTab /></TabsContent>
           </div>
         </Tabs>
       </div>
