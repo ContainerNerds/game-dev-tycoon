@@ -1,17 +1,24 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useCallback, useMemo } from 'react';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable';
 import { useGameStore } from '@/lib/store/gameStore';
 import { EMAIL_TYPE_META } from '@/lib/config/emailConfig';
 import type { GameEmail, EmailType } from '@/lib/game/types';
 import {
   Mail,
-  MailOpen,
+  Inbox,
   Star,
   Heart,
   Flame,
@@ -20,11 +27,15 @@ import {
   BarChart3,
   TrendingUp,
   AlertTriangle,
-  CheckCheck,
   Trash2,
-  ArrowLeft,
-  Filter,
+  Search,
+  MailOpen,
+  CheckCheck,
 } from 'lucide-react';
+
+// ============================================================
+// Icon mapping for email types
+// ============================================================
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   star: Star,
@@ -41,79 +52,89 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 function EmailIcon({ type, className }: { type: EmailType; className?: string }) {
   const meta = EMAIL_TYPE_META[type];
   const Icon = ICON_MAP[meta.icon] ?? Mail;
-  return <Icon className={`${meta.color} ${className ?? ''}`} />;
+  return <Icon className={cn(meta.color, className)} />;
 }
-
-type FilterValue = 'all' | 'unread' | EmailType;
-
-const FILTER_OPTIONS: { value: FilterValue; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'unread', label: 'Unread' },
-  { value: 'game-review', label: 'Reviews' },
-  { value: 'fan-mail', label: 'Fan Mail' },
-  { value: 'hate-mail', label: 'Hate Mail' },
-  { value: 'monthly-report', label: 'Reports' },
-  { value: 'investment-opportunity', label: 'Investment' },
-  { value: 'server-alert', label: 'Alerts' },
-  { value: 'employee-quit', label: 'Resignations' },
-  { value: 'employee-vacation', label: 'Vacation' },
-];
 
 function formatTimestamp(ts: { year: number; month: number; day: number }): string {
   return `Y${ts.year} M${ts.month} D${ts.day}`;
 }
 
-function EmailDetail({
-  email,
-  onBack,
-  onDelete,
+// ============================================================
+// Nav item definitions for left sidebar
+// ============================================================
+
+interface NavItem {
+  id: 'all' | EmailType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: 'all', label: 'All Mail', icon: Inbox },
+  { id: 'game-review', label: 'Reviews', icon: Star },
+  { id: 'fan-mail', label: 'Fan Mail', icon: Heart },
+  { id: 'hate-mail', label: 'Hate Mail', icon: Flame },
+  { id: 'monthly-report', label: 'Reports', icon: BarChart3 },
+  { id: 'server-alert', label: 'Alerts', icon: AlertTriangle },
+  { id: 'investment-opportunity', label: 'Investment', icon: TrendingUp },
+  { id: 'employee-quit', label: 'Resignations', icon: UserMinus },
+  { id: 'employee-vacation', label: 'Vacation', icon: Palmtree },
+  { id: 'general', label: 'General', icon: Mail },
+];
+
+// ============================================================
+// CategoryNav — left sidebar
+// ============================================================
+
+function CategoryNav({
+  activeCategory,
+  onSelect,
+  counts,
 }: {
-  email: GameEmail;
-  onBack: () => void;
-  onDelete: (id: string) => void;
+  activeCategory: string;
+  onSelect: (id: string) => void;
+  counts: Record<string, number>;
 }) {
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center gap-2 pb-3">
-        <Button variant="ghost" size="sm" onClick={onBack} className="cursor-pointer">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back
-        </Button>
-        <div className="ml-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => { onDelete(email.id); onBack(); }}
-            className="text-destructive hover:text-destructive cursor-pointer"
+    <div className="flex flex-col gap-1 p-2">
+      {NAV_ITEMS.map((item) => {
+        const count = counts[item.id] ?? 0;
+        if (item.id !== 'all' && count === 0) return null;
+        const isActive = activeCategory === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item.id)}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors cursor-pointer',
+              isActive
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            )}
           >
-            <Trash2 className="h-4 w-4 mr-1" /> Delete
-          </Button>
-        </div>
-      </div>
-      <div className="space-y-3">
-        <div className="flex items-start gap-3">
-          <EmailIcon type={email.type} className="h-6 w-6 mt-0.5 shrink-0" />
-          <div className="min-w-0">
-            <h3 className="text-lg font-semibold text-foreground leading-tight">{email.subject}</h3>
-            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-              <span>From: {email.sender}</span>
-              <span>·</span>
-              <span>{formatTimestamp(email.timestamp)}</span>
-              <Badge variant="outline" className={`text-xs ${EMAIL_TYPE_META[email.type].color}`}>
-                {EMAIL_TYPE_META[email.type].label}
-              </Badge>
-            </div>
-          </div>
-        </div>
-        <Separator />
-        <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-          {email.body}
-        </div>
-      </div>
+            <item.icon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{item.label}</span>
+            {count > 0 && (
+              <span className={cn(
+                'ml-auto text-xs tabular-nums',
+                isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
+              )}>
+                {count}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-function EmailRow({
+// ============================================================
+// MailList — middle panel email list
+// ============================================================
+
+function MailListItem({
   email,
   isSelected,
   onClick,
@@ -126,39 +147,163 @@ function EmailRow({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left px-3 py-2.5 flex items-start gap-3 transition-colors cursor-pointer rounded-md ${
-        isSelected
-          ? 'bg-accent'
-          : email.read
-            ? 'hover:bg-muted/50'
-            : 'bg-muted/30 hover:bg-muted/60'
-      }`}
+      className={cn(
+        'flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-accent cursor-pointer w-full',
+        isSelected && 'bg-muted'
+      )}
     >
-      <div className="shrink-0 mt-0.5">
-        {email.read ? (
-          <MailOpen className="h-4 w-4 text-muted-foreground/50" />
-        ) : (
-          <EmailIcon type={email.type} className="h-4 w-4" />
-        )}
+      <div className="flex w-full flex-col gap-1">
+        <div className="flex items-center">
+          <div className="flex items-center gap-2">
+            <div className={cn('font-semibold', email.read && 'font-normal text-muted-foreground')}>
+              {email.sender}
+            </div>
+            {!email.read && (
+              <span className="flex h-2 w-2 rounded-full bg-blue-600" />
+            )}
+          </div>
+          <div className={cn(
+            'ml-auto text-xs',
+            isSelected ? 'text-foreground' : 'text-muted-foreground'
+          )}>
+            {formatTimestamp(email.timestamp)}
+          </div>
+        </div>
+        <div className="text-xs font-medium">{email.subject}</div>
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className={`text-sm truncate ${email.read ? 'text-muted-foreground' : 'font-semibold text-foreground'}`}>
-            {email.subject}
-          </span>
-          {!email.read && (
-            <span className="shrink-0 h-2 w-2 rounded-full bg-primary" />
-          )}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-          <span className="truncate">{email.sender}</span>
-          <span>·</span>
-          <span className="shrink-0">{formatTimestamp(email.timestamp)}</span>
-        </div>
+      <div className="line-clamp-2 text-xs text-muted-foreground">
+        {email.body.substring(0, 300)}
+      </div>
+      <div className="flex items-center gap-2">
+        <Badge
+          variant={email.type === 'server-alert' || email.type === 'hate-mail' ? 'destructive' : 'secondary'}
+          className="text-xs"
+        >
+          {EMAIL_TYPE_META[email.type].label}
+        </Badge>
+        {email.priority === 'urgent' && (
+          <Badge variant="destructive" className="text-xs">Urgent</Badge>
+        )}
+        {email.priority === 'high' && (
+          <Badge variant="outline" className="text-xs">Important</Badge>
+        )}
       </div>
     </button>
   );
 }
+
+function MailList({
+  items,
+  selectedId,
+  onSelect,
+}: {
+  items: GameEmail[];
+  selectedId: string | null;
+  onSelect: (email: GameEmail) => void;
+}) {
+  return (
+    <ScrollArea className="h-[calc(100vh-16rem)]">
+      <div className="flex flex-col gap-2 p-4 pt-0">
+        {items.length === 0 && (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            No messages found.
+          </div>
+        )}
+        {items.map((email) => (
+          <MailListItem
+            key={email.id}
+            email={email}
+            isSelected={selectedId === email.id}
+            onClick={() => onSelect(email)}
+          />
+        ))}
+      </div>
+    </ScrollArea>
+  );
+}
+
+// ============================================================
+// MailDisplay — right panel detail view
+// ============================================================
+
+function MailDisplay({
+  email,
+  onDelete,
+  onToggleRead,
+}: {
+  email: GameEmail | null;
+  onDelete: (id: string) => void;
+  onToggleRead: (id: string, read: boolean) => void;
+}) {
+  if (!email) {
+    return (
+      <div className="flex h-full items-center justify-center p-8 text-muted-foreground">
+        <div className="text-center">
+          <Mail className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
+          <p>No message selected</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center p-2">
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
+              onClick={() => onToggleRead(email.id, !email.read)}
+            >
+              {email.read ? <Mail className="h-4 w-4" /> : <MailOpen className="h-4 w-4" />}
+            </TooltipTrigger>
+            <TooltipContent>{email.read ? 'Mark as unread' : 'Mark as read'}</TooltipContent>
+          </Tooltip>
+          <Separator orientation="vertical" className="mx-1 h-6" />
+          <Tooltip>
+            <TooltipTrigger
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+              onClick={() => onDelete(email.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </TooltipTrigger>
+            <TooltipContent>Delete</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+      <Separator />
+      <div className="flex flex-1 flex-col">
+        <div className="flex items-start p-4">
+          <div className="flex items-start gap-4 text-sm">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
+              <EmailIcon type={email.type} className="h-5 w-5" />
+            </div>
+            <div className="grid gap-1">
+              <div className="font-semibold">{email.sender}</div>
+              <div className="line-clamp-1 text-xs">{email.subject}</div>
+              <div className="line-clamp-1 text-xs">
+                <Badge variant="outline" className={cn('text-xs', EMAIL_TYPE_META[email.type].color)}>
+                  {EMAIL_TYPE_META[email.type].label}
+                </Badge>
+              </div>
+            </div>
+          </div>
+          <div className="ml-auto text-xs text-muted-foreground">
+            {formatTimestamp(email.timestamp)}
+          </div>
+        </div>
+        <Separator />
+        <div className="flex-1 whitespace-pre-wrap p-4 text-sm">
+          {email.body}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// InboxTab — main component
+// ============================================================
 
 export default function InboxTab() {
   const inbox = useGameStore((s) => s.inbox);
@@ -167,17 +312,34 @@ export default function InboxTab() {
   const markAllEmailsRead = useGameStore((s) => s.markAllEmailsRead);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterValue>('all');
+  const [category, setCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const unreadCount = inbox.filter((e) => !e.read).length;
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: inbox.length };
+    for (const email of inbox) {
+      counts[email.type] = (counts[email.type] ?? 0) + 1;
+    }
+    return counts;
+  }, [inbox]);
 
-  const filteredEmails = inbox.filter((email) => {
-    if (filter === 'all') return true;
-    if (filter === 'unread') return !email.read;
-    return email.type === filter;
-  });
+  const filteredByCategory = useMemo(() => {
+    if (category === 'all') return inbox;
+    return inbox.filter((e) => e.type === category);
+  }, [inbox, category]);
 
-  const selectedEmail = selectedId ? inbox.find((e) => e.id === selectedId) : null;
+  const searchFiltered = useMemo(() => {
+    if (!searchQuery.trim()) return filteredByCategory;
+    const q = searchQuery.toLowerCase();
+    return filteredByCategory.filter(
+      (e) =>
+        e.subject.toLowerCase().includes(q) ||
+        e.sender.toLowerCase().includes(q) ||
+        e.body.toLowerCase().includes(q)
+    );
+  }, [filteredByCategory, searchQuery]);
+
+  const selectedEmail = selectedId ? inbox.find((e) => e.id === selectedId) ?? null : null;
 
   const handleSelect = useCallback(
     (email: GameEmail) => {
@@ -187,95 +349,108 @@ export default function InboxTab() {
     [markEmailRead],
   );
 
-  const handleBack = useCallback(() => setSelectedId(null), []);
+  const handleToggleRead = useCallback(
+    (emailId: string, read: boolean) => {
+      if (read) {
+        markEmailRead(emailId);
+      }
+      // Mark unread not currently in store — just mark read for now
+    },
+    [markEmailRead],
+  );
 
-  if (inbox.length === 0) {
-    return (
-      <div className="p-4 space-y-6">
-        <div className="flex items-center gap-4">
-          <Mail className="h-8 w-8 text-muted-foreground" />
-          <div>
-            <h3 className="text-2xl font-bold text-foreground">Inbox</h3>
-            <p className="text-sm text-muted-foreground">No emails yet. Keep playing and they&apos;ll start rolling in!</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleDelete = useCallback(
+    (emailId: string) => {
+      if (selectedId === emailId) setSelectedId(null);
+      deleteEmail(emailId);
+    },
+    [selectedId, deleteEmail],
+  );
 
-  if (selectedEmail) {
-    return (
-      <div className="p-4">
-        <EmailDetail email={selectedEmail} onBack={handleBack} onDelete={deleteEmail} />
-      </div>
-    );
-  }
+  const unreadCount = inbox.filter((e) => !e.read).length;
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Mail className="h-6 w-6 text-foreground" />
-          <h3 className="text-xl font-bold text-foreground">
-            Inbox
-            {unreadCount > 0 && (
-              <Badge variant="destructive" className="ml-2 text-xs">
-                {unreadCount} unread
-              </Badge>
-            )}
-          </h3>
+    <ResizablePanelGroup orientation="horizontal" className="h-full items-stretch">
+      {/* Left panel — category nav */}
+      <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+        <div className="flex h-[52px] items-center px-4">
+          <h2 className="text-lg font-bold">Mail</h2>
+          {unreadCount > 0 && (
+            <Badge variant="destructive" className="ml-2 text-xs">
+              {unreadCount}
+            </Badge>
+          )}
         </div>
-        {unreadCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={markAllEmailsRead} className="cursor-pointer text-xs">
-            <CheckCheck className="h-3.5 w-3.5 mr-1" /> Mark all read
-          </Button>
-        )}
-      </div>
+        <Separator />
+        <ScrollArea className="h-[calc(100vh-16rem)]">
+          <CategoryNav
+            activeCategory={category}
+            onSelect={setCategory}
+            counts={categoryCounts}
+          />
+        </ScrollArea>
+      </ResizablePanel>
 
-      {/* Filters */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <Filter className="h-3.5 w-3.5 text-muted-foreground mr-1" />
-        {FILTER_OPTIONS.map((opt) => (
-          <Button
-            key={opt.value}
-            variant={filter === opt.value ? 'default' : 'outline'}
-            size="sm"
-            className="text-xs h-7 cursor-pointer"
-            onClick={() => setFilter(opt.value)}
-          >
-            {opt.label}
-          </Button>
-        ))}
-      </div>
+      <ResizableHandle withHandle />
 
-      {/* Email list */}
-      <Card className="border-border bg-card">
-        <CardHeader className="py-2 px-3">
-          <CardTitle className="text-sm text-muted-foreground font-normal">
-            {filteredEmails.length} email{filteredEmails.length !== 1 ? 's' : ''}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ScrollArea className="h-[calc(100vh-22rem)]">
-            <div className="divide-y divide-border">
-              {filteredEmails.map((email) => (
-                <EmailRow
-                  key={email.id}
-                  email={email}
-                  isSelected={selectedId === email.id}
-                  onClick={() => handleSelect(email)}
+      {/* Middle panel — email list */}
+      <ResizablePanel defaultSize={35} minSize={25}>
+        <Tabs defaultValue="all">
+          <div className="flex items-center px-4 py-2">
+            <h2 className="text-xl font-bold">Inbox</h2>
+            <TabsList className="ml-auto">
+              <TabsTrigger value="all" className="cursor-pointer">All mail</TabsTrigger>
+              <TabsTrigger value="unread" className="cursor-pointer">Unread</TabsTrigger>
+            </TabsList>
+          </div>
+          <Separator />
+          <div className="bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search"
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
-              ))}
-            </div>
-            {filteredEmails.length === 0 && (
-              <div className="p-8 text-center text-sm text-muted-foreground">
-                No emails match this filter.
               </div>
-            )}
-          </ScrollArea>
-        </CardContent>
-      </Card>
-    </div>
+              {unreadCount > 0 && (
+                <Tooltip>
+                  <TooltipTrigger
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-sm font-medium hover:bg-muted transition-colors cursor-pointer"
+                    onClick={markAllEmailsRead}
+                  >
+                    <CheckCheck className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>Mark all as read</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
+          </div>
+          <TabsContent value="all" className="m-0">
+            <MailList items={searchFiltered} selectedId={selectedId} onSelect={handleSelect} />
+          </TabsContent>
+          <TabsContent value="unread" className="m-0">
+            <MailList
+              items={searchFiltered.filter((e) => !e.read)}
+              selectedId={selectedId}
+              onSelect={handleSelect}
+            />
+          </TabsContent>
+        </Tabs>
+      </ResizablePanel>
+
+      <ResizableHandle withHandle />
+
+      {/* Right panel — email detail */}
+      <ResizablePanel defaultSize={45} minSize={30}>
+        <MailDisplay
+          email={selectedEmail}
+          onDelete={handleDelete}
+          onToggleRead={handleToggleRead}
+        />
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }
