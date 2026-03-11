@@ -3,10 +3,12 @@
 import { useMemo } from 'react';
 import { useGameStore } from '@/lib/store/gameStore';
 import { SERVER_CONFIG } from '@/lib/config/serverConfig';
+import { getUpgradeMultiplier, getServerCostMultiplier } from '@/lib/game/calculations';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Globe, Lock, Signal } from 'lucide-react';
-import type { RegionId } from '@/lib/game/types';
+import type { RegionId, ServerRack } from '@/lib/game/types';
 
 function formatMoney(n: number): string {
   return `$${n.toLocaleString()}`;
@@ -22,6 +24,29 @@ export default function RegionCards() {
   const racks = useGameStore((s) => s.racks);
   const servers = useGameStore((s) => s.servers);
   const activeGames = useGameStore((s) => s.activeGames);
+  const money = useGameStore((s) => s.money);
+  const studioUpgrades = useGameStore((s) => s.unlockedStudioUpgrades);
+  const employees = useGameStore((s) => s.employees);
+  const spendMoney = useGameStore((s) => s.spendMoney);
+  const addRack = useGameStore((s) => s.addRack);
+
+  const regionCostMultiplier = getUpgradeMultiplier('regionUnlockCostMultiplier', studioUpgrades, []);
+
+  const handleUnlockRegion = (regionId: RegionId, unlockCost: number) => {
+    if (!spendMoney(unlockCost)) return;
+    const rackLeaseCost = Math.round(
+      SERVER_CONFIG.colocated.rackLeaseCostPerMonth *
+      SERVER_CONFIG.regions.find(r => r.id === regionId)!.costMultiplier
+    );
+    if (!spendMoney(rackLeaseCost)) return;
+    const rack: ServerRack = {
+      id: `rack-${regionId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      regionId,
+      servers: [],
+      monthlyCost: rackLeaseCost,
+    };
+    addRack(rack);
+  };
 
   const regionStats = useMemo(() => {
     return SERVER_CONFIG.regions.map((region) => {
@@ -54,6 +79,8 @@ export default function RegionCards() {
           0,
         ) + regionDCs.reduce((sum, s) => sum + s.monthlyCost, 0);
 
+      const unlockCost = Math.round(region.unlockCost * regionCostMultiplier);
+
       return {
         region,
         isUnlocked,
@@ -64,9 +91,10 @@ export default function RegionCards() {
         regionalPlayers,
         loadRatio,
         monthlyCost,
+        unlockCost,
       };
     });
-  }, [racks, servers, activeGames]);
+  }, [racks, servers, activeGames, regionCostMultiplier]);
 
   return (
     <div className="space-y-4">
@@ -88,15 +116,18 @@ export default function RegionCards() {
           regionalPlayers,
           loadRatio,
           monthlyCost,
+          unlockCost,
         }) => {
           const latency = LATENCY_LABELS[region.latencyTier];
+          const rackLeaseCost = Math.round(
+            SERVER_CONFIG.colocated.rackLeaseCostPerMonth * region.costMultiplier
+          );
+          const totalUnlockCost = unlockCost + rackLeaseCost;
 
           return (
             <Card
               key={region.id}
-              className={`p-3 gap-0 space-y-2 ${
-                !isUnlocked ? 'opacity-50' : ''
-              }`}
+              className={`p-3 gap-0 space-y-2 ${!isUnlocked ? 'opacity-60' : ''}`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
@@ -115,7 +146,6 @@ export default function RegionCards() {
 
               {isUnlocked ? (
                 <>
-                  {/* Rack indicator */}
                   <div className="flex items-center gap-1.5">
                     <div className="flex gap-0.5">
                       {Array.from({ length: maxRacks }, (_, i) => (
@@ -139,7 +169,6 @@ export default function RegionCards() {
                     )}
                   </div>
 
-                  {/* Load bar */}
                   <div className="space-y-0.5">
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
@@ -161,7 +190,6 @@ export default function RegionCards() {
                     </div>
                   </div>
 
-                  {/* Cost */}
                   {monthlyCost > 0 && (
                     <div className="text-[10px] text-muted-foreground">
                       {formatMoney(monthlyCost)}/mo
@@ -169,9 +197,18 @@ export default function RegionCards() {
                   )}
                 </>
               ) : (
-                <div className="text-[10px] text-muted-foreground space-y-0.5">
-                  <div>Unlock cost: {formatMoney(region.unlockCost)}</div>
-                  <div>Demand weight: {Math.round(region.playerDemandWeight * 100)}%</div>
+                <div className="space-y-2">
+                  <div className="text-[10px] text-muted-foreground space-y-0.5">
+                    <div>Demand weight: {Math.round(region.playerDemandWeight * 100)}%</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="w-full text-xs h-7 cursor-pointer"
+                    disabled={money < totalUnlockCost}
+                    onClick={() => handleUnlockRegion(region.id as RegionId, unlockCost)}
+                  >
+                    Unlock ({formatMoney(totalUnlockCost)})
+                  </Button>
                 </div>
               )}
             </Card>
