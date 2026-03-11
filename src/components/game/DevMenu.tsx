@@ -9,8 +9,10 @@ import { Badge } from '@/components/ui/badge';
 import { useGameStore } from '@/lib/store/gameStore';
 import { processTick } from '@/lib/game/gameLoop';
 import { convertTaskToActiveGame } from '@/lib/game/developmentSystem';
+import { generateTestEmail } from '@/lib/game/emailSystem';
+import { createEmailNotification } from '@/lib/game/notificationSystem';
 import type { GameStore } from '@/lib/store/gameStore';
-import { Wrench, X, Zap, FastForward, CheckCircle } from 'lucide-react';
+import { Wrench, X, Zap, FastForward, CheckCircle, Mail } from 'lucide-react';
 
 export default function DevMenu() {
   const [open, setOpen] = useState(false);
@@ -19,6 +21,8 @@ export default function DevMenu() {
   const money = useGameStore((s) => s.money);
   const activeTasks = useGameStore((s) => s.activeTasks);
   const earnMoney = useGameStore((s) => s.earnMoney);
+  const addEmail = useGameStore((s) => s.addEmail);
+  const addNotification = useGameStore((s) => s.addNotification);
 
   const firstTask = activeTasks[0] ?? null;
 
@@ -56,6 +60,13 @@ export default function DevMenu() {
 
   const handleAddMoney = (amount: number) => {
     earnMoney(amount);
+  };
+
+  const handleSendTestEmail = () => {
+    const state = useGameStore.getState();
+    const email = generateTestEmail(state);
+    addEmail(email);
+    addNotification(createEmailNotification(email, state.calendar));
   };
 
   if (!open) {
@@ -165,6 +176,21 @@ export default function DevMenu() {
           <p className="text-xs text-muted-foreground">
             Balance: <span className="text-green-400 font-mono">${Math.floor(money).toLocaleString()}</span>
           </p>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <span className="text-xs text-muted-foreground">Email</span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full text-xs cursor-pointer"
+            onClick={handleSendTestEmail}
+          >
+            <Mail className="h-3 w-3 mr-1" />
+            Send Test Email (random type)
+          </Button>
         </div>
       </CardContent>
     </Card>

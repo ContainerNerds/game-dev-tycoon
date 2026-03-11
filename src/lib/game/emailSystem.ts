@@ -5,6 +5,7 @@ import type {
   ActiveGame,
   Employee,
   StudioState,
+  RegionId,
 } from './types';
 import { getMonthName } from './calendarSystem';
 import {
@@ -298,4 +299,166 @@ export function rollRandomEmails(
   }
 
   return result;
+}
+
+// ============================================================
+// Test Email (Dev panel)
+// ============================================================
+
+const EMAIL_TYPES: import('./types').EmailType[] = [
+  'game-review',
+  'fan-mail',
+  'hate-mail',
+  'employee-quit',
+  'employee-vacation',
+  'monthly-report',
+  'investment-opportunity',
+  'server-alert',
+  'general',
+];
+
+const REGIONS: RegionId[] = [
+  'us-east',
+  'us-west',
+  'brazil',
+  'saudi-arabia',
+  'russia',
+  'india',
+  'china',
+  'japan',
+  'australia',
+];
+
+/** Generates a random test email for dev/debug purposes. */
+export function generateTestEmail(state: StudioState): GameEmail {
+  const cal = state.calendar;
+  const type = pickRandom(EMAIL_TYPES);
+  const gameName = state.activeGames[0]?.name ?? state.completedGames[0]?.name ?? 'Untitled Game';
+
+  switch (type) {
+    case 'game-review': {
+      const mockGame: ActiveGame = state.activeGames[0] ?? {
+        id: 'test-game',
+        name: gameName,
+        genre: 'RPG',
+        style: 'Fantasy',
+        mode: 'standard',
+        comboMultiplier: 1.5,
+        phase: 'growth',
+        stageWeights: { engine: 1, gameplay: 1, storyQuests: 1, dialogues: 1, levelDesign: 1, worldDesign: 1, graphics: 1, sound: 1, polish: 1 },
+        engineBenefitScore: 0,
+        reviewScore: 7.5,
+        blogReviews: [
+          { blogName: 'TestBlog', score: 8, summary: 'A solid effort!' },
+          { blogName: 'DevReview', score: 7, summary: 'Good for a test.' },
+        ],
+        releaseMonth: cal.month,
+        releaseYear: cal.year,
+        phaseTicks: 0,
+        platformReleases: [],
+        gameFans: 0,
+        regionalFans: {},
+        gamePrice: 20,
+        bugs: [],
+        dlcIds: [],
+        dlcCount: 0,
+        dlcSalesBoost: 1,
+        isLiveService: false,
+        unlockedGameUpgrades: [],
+        totalRevenue: 0,
+        monthlyHistory: [],
+        bugRateDecay: 1,
+        averageLatencyMs: 50,
+        devCostTotal: 10000,
+      };
+      return generateGameReviewEmail(mockGame, cal);
+    }
+    case 'fan-mail':
+      return generateFanMail(gameName, cal);
+    case 'hate-mail':
+      return generateHateMail(gameName, cal);
+    case 'employee-quit': {
+      const mockEmployee: Employee = state.employees[0] ?? {
+        id: 'test-emp',
+        name: 'Test Developer',
+        title: 'Programmer',
+        employeeType: 'developer',
+        rarity: 'common',
+        skills: { graphics: 10, sound: 10, gameplay: 10, polish: 10 },
+        evs: { graphics: 0, sound: 0, gameplay: 0, polish: 0 },
+        assignedTaskId: null,
+        activity: 'idle',
+        autoAssign: true,
+        isPlayer: false,
+        hireCost: 5000,
+        monthlySalary: 3000,
+        stamina: 100,
+        onVacation: false,
+        vacationDaysLeft: 0,
+        bugsFixed: 0,
+        totalBugFixPoints: 0,
+      };
+      return generateEmployeeQuitEmail(mockEmployee, cal);
+    }
+    case 'employee-vacation': {
+      const mockEmployee: Employee = state.employees[0] ?? {
+        id: 'test-emp',
+        name: 'Test Developer',
+        title: 'Programmer',
+        employeeType: 'developer',
+        rarity: 'common',
+        skills: { graphics: 10, sound: 10, gameplay: 10, polish: 10 },
+        evs: { graphics: 0, sound: 0, gameplay: 0, polish: 0 },
+        assignedTaskId: null,
+        activity: 'vacation',
+        autoAssign: true,
+        isPlayer: false,
+        hireCost: 5000,
+        monthlySalary: 3000,
+        stamina: 80,
+        onVacation: true,
+        vacationDaysLeft: 5,
+        bugsFixed: 0,
+        totalBugFixPoints: 0,
+      };
+      return generateEmployeeVacationEmail(mockEmployee, cal);
+    }
+    case 'monthly-report': {
+      const mockReport: MonthlyReport = {
+        month: cal.month,
+        year: cal.year,
+        income: 50_000,
+        employeeCosts: 15_000,
+        computeCosts: 2_000,
+        devOverheadCosts: 1_500,
+        netCashFlow: 31_500,
+        lineItems: [
+          { label: 'Game Sales', amount: 45_000 },
+          { label: 'DLC Sales', amount: 5_000 },
+          { label: 'Office Rent', amount: -1_500 },
+        ],
+      };
+      return generateMonthlyReportEmail(mockReport, cal);
+    }
+    case 'investment-opportunity':
+      return generateInvestmentEmail(state.studioName, cal);
+    case 'server-alert': {
+      const region = pickRandom(REGIONS);
+      const loadPercent = 0.7 + Math.random() * 0.3;
+      return generateServerAlertEmail(region, loadPercent, cal);
+    }
+    case 'general':
+    default: {
+      return {
+        id: generateId(),
+        type: 'general',
+        subject: 'Test Email — Dev Panel',
+        body: 'This is a test email generated from the Developer Menu. Use it to verify the inbox UI and notification system.',
+        sender: pickRandom(EMAIL_SENDERS.general),
+        priority: 'normal',
+        read: false,
+        timestamp: calendarTimestamp(cal),
+      };
+    }
+  }
 }
